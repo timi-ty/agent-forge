@@ -27,7 +27,7 @@ All subsequent commands run from this directory.
 
 If multiple lock files exist, prefer in the order listed above.
 
-**Deploy branch** — use the currently checked-out branch:
+**Deploy branch** -- use the currently checked-out branch:
 ```bash
 git branch --show-current
 ```
