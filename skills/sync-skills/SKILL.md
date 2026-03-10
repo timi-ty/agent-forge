@@ -31,8 +31,8 @@ Set `$OWNER`, `$REPO`, and `$BRANCH` for use in all steps below.
 Fetch and decode `catalog.json` from the target branch:
 
 ```bash
-gh api repos/$OWNER/$REPO/contents/catalog.json?ref=$BRANCH \
-  --jq '.content' | base64 -d | jq .
+gh api "repos/$OWNER/$REPO/contents/catalog.json?ref=$BRANCH" \
+  --jq '.content | @base64d | fromjson'
 ```
 
 Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`, `dependencies`, `notes`.
@@ -63,8 +63,8 @@ For each scope independently, classify every skill:
 **UPDATED** — skill is installed in this scope AND exists in the remote catalog, but the remote `SKILL.md` content differs from the local one. Fetch the remote `SKILL.md` to compare:
 
 ```bash
-gh api repos/$OWNER/$REPO/contents/{skill-path}/SKILL.md?ref=$BRANCH \
-  --jq '.content' | base64 -d
+gh api "repos/$OWNER/$REPO/contents/{skill-path}/SKILL.md?ref=$BRANCH" \
+  --jq '.content | @base64d'
 ```
 
 Compare against the local file. Any difference = updated.
@@ -97,7 +97,7 @@ Ask once: "Apply these changes?" before proceeding with any adds or updates.
 Ask separately for each skill to be removed: "Remove `{skill-name}` from {scope}? It is no longer in the remote catalog." Only remove if the user confirms.
 
 **Scope for new skills:**
-If a new skill is detected and only one scope exists, install there. If both scopes exist, ask the user: "Install `{skill-name}` globally or workspace-only?"
+If a new skill is detected and the workspace scope (`.cursor/skills/`) is not present in the current directory, default to global. If it exists, ask the user: "Install `{skill-name}` globally or workspace-only?"
 
 ---
 
@@ -110,11 +110,13 @@ Clone the remote branch to a temporary directory to get all skill files (not jus
 git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git <tmp-dir>
 ```
 
+If the clone fails, **abort** and tell the user: "Could not clone `{owner}/{repo}` at branch `{branch}`. Verify the URL and that the branch exists."
+
 Then apply confirmed changes:
 
 **For each REMOVED skill (confirmed):**
 ```bash
-Remove-Item "<scope-path>\{skill-name>" -Recurse -Force   # Windows
+Remove-Item "<scope-path>\{skill-name}" -Recurse -Force   # Windows
 rm -rf <scope-path>/{skill-name}                          # macOS/Linux
 ```
 

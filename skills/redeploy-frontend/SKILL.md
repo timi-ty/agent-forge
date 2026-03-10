@@ -19,7 +19,7 @@ git rev-parse --show-toplevel
 ```
 All subsequent commands run from this directory.
 
-**Package manager** — check for lock files at repo root:
+**Package manager** -- check for lock files at repo root:
 - `pnpm-lock.yaml` → `pnpm`
 - `yarn.lock` → `yarn`
 - `bun.lockb` → `bun`
