@@ -124,8 +124,6 @@ The prompt varies by situation:
 
 If the user excludes files, remove them from the list before continuing.
 
-If changes span multiple repositories, confirm each repo separately. Each repo gets its own branch and PR.
-
 #### Step 3: Verify remote branch state
 
 For each repository, fetch the latest remote state (without merging):
@@ -147,6 +145,8 @@ Act on the result:
 - **Behind only** (behind > 0, ahead = 0): ask the user: "Your branch is {N} commit(s) behind `origin/{branch}`. Fast-forward before proceeding?" If yes, run `git pull --ff-only origin $BRANCH` and continue. If no, abort.
 - **Ahead only** (behind = 0, ahead > 0): this is expected if there are already commits on the branch. Inform the user: "You have {N} existing commit(s) on `{branch}` not yet pushed. New commits will be added on top." Continue.
 - **Diverged** (both > 0): **abort** and tell the user: "Local `{branch}` has diverged from `origin/{branch}` ({N} ahead, {M} behind). Resolve the divergence manually before proceeding."
+
+If changes span multiple repositories, confirm each repo separately. Each repo gets its own branch and PR.
 
 ---
 

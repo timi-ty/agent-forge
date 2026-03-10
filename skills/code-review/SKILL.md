@@ -68,8 +68,8 @@ git fetch origin
 Compute the ahead/behind relationship:
 
 ```bash
-git rev-list --count HEAD..origin/$BRANCH   # commits behind
-git rev-list --count origin/$BRANCH..HEAD   # commits ahead
+git rev-list --count $BRANCH..origin/$BRANCH   # commits behind
+git rev-list --count origin/$BRANCH..$BRANCH   # commits ahead
 ```
 
 Act on the result:

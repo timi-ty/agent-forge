@@ -107,7 +107,8 @@ Open `$TIMESTAMP_FILE`. Look for an existing line matching the pattern `// redep
 
 Generate the timestamp:
 ```bash
-date -u +%Y-%m-%dT%H:%M:%SZ
+date -u +%Y-%m-%dT%H:%M:%SZ                                    # macOS/Linux/Git Bash
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")   # Windows PowerShell
 ```
 
 Example result:

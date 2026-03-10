@@ -60,14 +60,14 @@ For each scope independently, classify every skill:
 
 **NEW** — skill is in the remote catalog but not installed in this scope.
 
-**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but the remote `SKILL.md` content differs from the local one. Fetch the remote `SKILL.md` to compare:
+**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but at least one file listed in the catalog entry's `files` array differs from its local counterpart. For each file in `files`, fetch the remote content and compare against the local file:
 
 ```bash
-gh api "repos/$OWNER/$REPO/contents/{skill-path}/SKILL.md?ref=$BRANCH" \
+gh api "repos/$OWNER/$REPO/contents/{skill-path}/{file}?ref=$BRANCH" \
   --jq '.content | @base64d'
 ```
 
-Compare against the local file. Any difference = updated.
+If any file differs (or does not exist locally), classify the skill as UPDATED.
 
 **REMOVED** — skill folder exists locally in this scope but is NOT present in the remote catalog.
 
@@ -122,8 +122,13 @@ rm -rf <scope-path>/{skill-name}                          # macOS/Linux
 
 **For each NEW or UPDATED skill (confirmed):**
 ```bash
-Copy-Item "<tmp-dir>\{skill-path}" "<scope-path>\{skill-name}" -Recurse -Force   # Windows
-cp -r <tmp-dir>/{skill-path} <scope-path>/{skill-name}                           # macOS/Linux
+# Windows — remove first to avoid nesting into an existing folder
+Remove-Item "<scope-path>\{skill-name}" -Recurse -Force -ErrorAction SilentlyContinue
+Copy-Item "<tmp-dir>\{skill-path}" "<scope-path>\{skill-name}" -Recurse -Force
+
+# macOS/Linux — remove first to avoid nesting into an existing folder
+rm -rf <scope-path>/{skill-name}
+cp -r <tmp-dir>/{skill-path} <scope-path>/{skill-name}
 ```
 
 Clean up the temp directory after all changes are applied.
