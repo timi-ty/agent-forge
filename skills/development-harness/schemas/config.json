@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "skill_version": "1.0",
+  "project": {
+    "name": "my-app",
+    "description": "A full-stack web application with API and frontend"
+  },
+  "stack": {
+    "languages": ["typescript", "python"],
+    "frameworks": ["react", "fastapi"],
+    "package_manager": "pnpm",
+    "runtime": "node20"
+  },
+  "deployment": {
+    "target": "vercel",
+    "url": "https://my-app.vercel.app",
+    "environments": ["preview", "production"],
+    "ci_cd": "github-actions",
+    "verification_method": "smoke-test-url",
+    "smoke_test_url": "https://my-app.vercel.app/api/health"
+  },
+  "git": {
+    "default_branch": "main",
+    "branch_convention": "feature/ISSUE-123-short-description",
+    "commit_convention": "conventional-commits",
+    "pr_size": "small",
+    "merge_strategy": "squash",
+    "review_policy": "ai-review"
+  },
+  "testing": {
+    "e2e_framework": "playwright",
+    "unit_framework": "vitest",
+    "coverage_target": 80
+  },
+  "quality": {
+    "definition_of_done": [
+      "All tests pass",
+      "No lint errors",
+      "PR approved",
+      "Documentation updated"
+    ],
+    "mandatory_checks": [
+      "lint",
+      "test",
+      "build",
+      "e2e-smoke"
+    ]
+  },
+  "execution_mode": "local"
+}

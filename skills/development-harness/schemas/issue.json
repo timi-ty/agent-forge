@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "skill_version": "1.0",
+  "id": "ISSUE_001",
+  "title": "Login returns 500 when JWT secret is missing",
+  "severity": "critical",
+  "expected_behavior": "Login endpoint should return 400 Bad Request with a clear error message when JWT_SECRET is not configured, not a 500 Internal Server Error.",
+  "observed_behavior": "Login endpoint throws unhandled exception and returns 500 when JWT_SECRET env var is absent.",
+  "reproduction_steps": [
+    "Unset JWT_SECRET in environment",
+    "POST /api/auth/login with valid credentials",
+    "Observe 500 response with stack trace in logs"
+  ],
+  "suspected_phase": "PHASE_001",
+  "suspected_units": ["unit_002"],
+  "deployment_impact": "Blocks production deployment. Preview deployments may fail silently if env not configured.",
+  "regression_coverage": "Add unit test: login fails gracefully when JWT_SECRET is missing",
+  "status": "open",
+  "created": "2025-03-11T11:00:00Z",
+  "resolved": null
+}

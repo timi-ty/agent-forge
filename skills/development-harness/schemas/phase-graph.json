@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "skill_version": "1.0",
+  "phases": [
+    {
+      "id": "PHASE_001",
+      "slug": "foundation",
+      "status": "in_progress",
+      "depends_on": [],
+      "started": "2025-03-10T09:00:00Z",
+      "completed": null,
+      "units": [
+        {
+          "id": "unit_001",
+          "description": "Set up project structure and tooling",
+          "status": "completed",
+          "validation_evidence": [
+            "pnpm install succeeds",
+            "tsc --noEmit passes",
+            "Lint passes"
+          ]
+        },
+        {
+          "id": "unit_002",
+          "description": "Implement authentication middleware",
+          "status": "in_progress",
+          "validation_evidence": [
+            "Unit tests for JWT parsing pass"
+          ]
+        },
+        {
+          "id": "unit_003",
+          "description": "Add protected route decorator",
+          "status": "pending",
+          "validation_evidence": []
+        }
+      ]
+    },
+    {
+      "id": "PHASE_002",
+      "slug": "api-core",
+      "status": "pending",
+      "depends_on": ["PHASE_001"],
+      "started": null,
+      "completed": null,
+      "units": [
+        {
+          "id": "unit_004",
+          "description": "Create user CRUD endpoints",
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_005",
+          "description": "Add request validation schemas",
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_006",
+          "description": "Implement error handling middleware",
+          "status": "pending",
+          "validation_evidence": []
+        }
+      ]
+    }
+  ]
+}

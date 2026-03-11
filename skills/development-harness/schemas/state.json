@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "skill_version": "1.0",
+  "created": "2025-03-11T10:00:00Z",
+  "last_updated": "2025-03-11T14:30:00Z",
+  "execution": {
+    "active_phase": "PHASE_001",
+    "active_unit": "unit_002",
+    "last_completed_unit": "unit_001",
+    "next_unit": "unit_003",
+    "session_count": 3,
+    "loop_budget": 10
+  },
+  "validation_summary": {
+    "last_run": "2025-03-11T14:25:00Z",
+    "status": "passing",
+    "evidence": "All unit tests passed (42/42). E2E smoke test completed successfully."
+  },
+  "deployment_summary": {
+    "last_verified": "2025-03-11T12:00:00Z",
+    "status": "passing",
+    "evidence": "Vercel preview deployment healthy. Smoke test URL returned 200."
+  },
+  "issues": {
+    "total": 5,
+    "open": 2,
+    "resolved": 3
+  },
+  "drift": {
+    "last_sync": "2025-03-11T14:00:00Z",
+    "divergences": []
+  },
+  "checkpoint": {
+    "summary": "Implementing auth flow. Unit 002 in progress.",
+    "blockers": [],
+    "open_questions": ["Should we add rate limiting to login endpoint?"],
+    "next_action": "Complete unit_002: Add JWT validation middleware",
+    "timestamp": "2025-03-11T14:30:00Z"
+  },
+  "execution_mode": "local"
+}
