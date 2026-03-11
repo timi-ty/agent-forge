@@ -8,6 +8,7 @@ Portable collection of [Cursor](https://cursor.com) agent skills. Clone this rep
 |-------|-------------|----------|--------------|
 | **[code-review](skills/code-review/)** | Senior-engineer PR code review. Checks conformance, correctness, efficiency, and dead code across an 8-phase workflow. | `review a PR`, `code review`, `review pull request`, attach a PR URL | `gh` CLI |
 | **[commit-agent-changes](skills/commit-agent-changes/)** | Turn the current agent session's changes into a branch with logically grouped commits and a PR. | `commit my changes`, `commit agent changes`, `create a PR from this session`, `push what you changed` | `gh` CLI, `git` |
+| **[issue-resolution-report](skills/issue-resolution-report/)** | Write and post a technically sound issue resolution report as a GitHub issue comment and/or PR description after fixing a bug. | `write a resolution report`, `document what was fixed`, `update a PR body with findings`, `post a resolution comment` | `gh` CLI |
 | **[redeploy-frontend](skills/redeploy-frontend/)** | Trigger a Vercel redeploy by pushing a timestamp comment. Auto-detects package manager, branch, and target file. Auto-fixes prettier issues. | `redeploy`, `redeploy frontend`, `trigger vercel deploy` | `git`, Vercel |
 | **[sync-skills](skills/sync-skills/)** | Sync locally installed skills to match a branch of this repo. Handles first-time installs and updates in one flow. | paste a `github.com/timi-ty/cursor-skills` URL, `install skills`, `update skills`, `sync skills` | `gh` CLI, `git` |
 

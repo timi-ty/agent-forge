@@ -50,6 +50,22 @@
       "notes": "Works with any Node.js frontend deployed on Vercel. Auto-detects package manager (pnpm/yarn/bun/npm) from lock files, deploy branch from current git branch, and timestamp target file by searching for an existing '// redeploy:' comment or falling back to common entry points. Auto-fixes prettier formatting issues before pushing."
     },
     {
+      "name": "issue-resolution-report",
+      "path": "skills/issue-resolution-report",
+      "description": "Write and post a technically sound issue resolution report as a GitHub issue comment and/or PR description after fixing a bug or completing a task.",
+      "triggers": [
+        "write a resolution report",
+        "document what was fixed",
+        "update a PR body with findings",
+        "post a resolution comment on a GitHub issue",
+        "issue resolution report",
+        "resolution report"
+      ],
+      "files": ["SKILL.md"],
+      "dependencies": ["gh CLI (GitHub CLI)"],
+      "notes": "4-step workflow: gather proof (test output, build result, command output), write report using strict skeleton (root cause, per-change entries, verification block), apply non-negotiable writing rules (no self-reference, no evolution language, present tense, explicit impact radius), then post via gh CLI commands. Includes a self-review checklist before posting."
+    },
+    {
       "name": "sync-skills",
       "path": "skills/sync-skills",
       "description": "Sync locally installed Cursor agent skills to match a branch of the cursor-skills repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-skills URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
