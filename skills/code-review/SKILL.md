@@ -55,6 +55,32 @@ After gathering, list every changed file and categorize each as **added**, **mod
 
 ### Phase 2 -- Understand Existing Codebase Patterns
 
+#### Step 0: Verify local branch state
+
+Before reading any local files, ensure the local checkout of the base branch (`baseRefName` from Phase 1) is up to date. Set `$BRANCH` to the base branch name.
+
+Fetch the latest remote state (without merging):
+
+```bash
+git fetch origin
+```
+
+Compute the ahead/behind relationship:
+
+```bash
+git rev-list --count $BRANCH..origin/$BRANCH   # commits behind
+git rev-list --count origin/$BRANCH..$BRANCH   # commits ahead
+```
+
+Act on the result:
+
+- **Up to date** (both = 0): continue.
+- **Behind only** (behind > 0, ahead = 0): ask the user: "Your local `{branch}` is {N} commit(s) behind `origin/{branch}`. Fast-forward before reading local files?" If yes, run `git pull --ff-only origin $BRANCH` and continue. If no, warn that pattern analysis may be based on stale code and continue.
+- **Ahead only** (behind = 0, ahead > 0): continue. Local commits do not affect pattern reads.
+- **Diverged** (both > 0): warn the user: "Local `{branch}` has diverged from `origin/{branch}`. Pattern analysis may not reflect the current remote state." Continue.
+
+---
+
 This is the most critical phase. You cannot review code without knowing what "correct" looks like in this codebase.
 
 For each changed file:

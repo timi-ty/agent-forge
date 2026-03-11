@@ -16,7 +16,7 @@
       ],
       "files": ["SKILL.md", "checklist.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file."
+      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file (gitignored; not committed)."
     },
     {
       "name": "commit-agent-changes",
@@ -38,7 +38,7 @@
     {
       "name": "redeploy-frontend",
       "path": "skills/redeploy-frontend",
-      "description": "Trigger a Vercel redeploy of the frontend by pushing a harmless comment change to dev. Use when the user says 'redeploy', 'redeploy frontend', 'trigger vercel deploy', or 'trigger redeploy'.",
+      "description": "Trigger a Vercel redeploy of the frontend by pushing a harmless timestamp comment change. Use when the user says 'redeploy', 'redeploy frontend', 'trigger vercel deploy', or 'trigger redeploy'.",
       "triggers": [
         "redeploy",
         "redeploy frontend",
@@ -46,8 +46,24 @@
         "trigger redeploy"
       ],
       "files": ["SKILL.md"],
-      "dependencies": ["git", "pnpm", "Vercel (connected to the repo)"],
-      "notes": "Project-specific to a Next.js frontend deployed on Vercel. Updates a '// redeploy: <timestamp>' comment in src/app/layout.tsx and pushes to the dev branch. Auto-fixes prettier formatting issues before pushing. You will likely need to adapt the file paths, branch name, and package manager to your project."
+      "dependencies": ["git", "Vercel (connected to the repo)"],
+      "notes": "Works with any Node.js frontend deployed on Vercel. Auto-detects package manager (pnpm/yarn/bun/npm) from lock files, deploy branch from current git branch, and timestamp target file by searching for an existing '// redeploy:' comment or falling back to common entry points. Auto-fixes prettier formatting issues before pushing."
+    },
+    {
+      "name": "sync-skills",
+      "path": "skills/sync-skills",
+      "description": "Sync locally installed Cursor agent skills to match a branch of the cursor-skills repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-skills URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
+      "triggers": [
+        "user pastes a github.com/timi-ty/cursor-skills URL",
+        "install skills",
+        "update skills",
+        "sync skills",
+        "install cursor skills",
+        "update cursor skills"
+      ],
+      "files": ["SKILL.md"],
+      "dependencies": ["gh CLI (GitHub CLI)", "git"],
+      "notes": "Fetches catalog.json from the target branch, diffs against all locally installed skills (global and workspace scopes), presents a grouped summary of new/updated/removed skills, confirms with user before applying, then clones the branch to a temp dir and copies skill folders. Separate confirmation for destructive removals."
     }
   ]
 }

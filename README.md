@@ -8,13 +8,18 @@ Portable collection of [Cursor](https://cursor.com) agent skills. Clone this rep
 |-------|-------------|----------|--------------|
 | **[code-review](skills/code-review/)** | Senior-engineer PR code review. Checks conformance, correctness, efficiency, and dead code across an 8-phase workflow. | `review a PR`, `code review`, `review pull request`, attach a PR URL | `gh` CLI |
 | **[commit-agent-changes](skills/commit-agent-changes/)** | Turn the current agent session's changes into a branch with logically grouped commits and a PR. | `commit my changes`, `commit agent changes`, `create a PR from this session`, `push what you changed` | `gh` CLI, `git` |
-| **[redeploy-frontend](skills/redeploy-frontend/)** | Trigger a Vercel redeploy by pushing a timestamp comment to `dev`. Auto-fixes prettier issues. | `redeploy`, `redeploy frontend`, `trigger vercel deploy` | `git`, `pnpm`, Vercel |
-
-> **Note:** `redeploy-frontend` is project-specific (Next.js + Vercel). Adapt file paths, branch name, and package manager to your project before use.
+| **[redeploy-frontend](skills/redeploy-frontend/)** | Trigger a Vercel redeploy by pushing a timestamp comment. Auto-detects package manager, branch, and target file. Auto-fixes prettier issues. | `redeploy`, `redeploy frontend`, `trigger vercel deploy` | `git`, Vercel |
+| **[sync-skills](skills/sync-skills/)** | Sync locally installed skills to match a branch of this repo. Handles first-time installs and updates in one flow. | paste a `github.com/timi-ty/cursor-skills` URL, `install skills`, `update skills`, `sync skills` | `gh` CLI, `git` |
 
 ## Installation
 
-### Quick install (recommended)
+### Via Cursor agent (recommended)
+
+Once `sync-skills` is installed, all future installs and updates are agent-driven: paste the repo URL (or a branch URL) into any Cursor agent chat and the `sync-skills` skill handles the rest — diffing, confirming, and applying changes across global and workspace scopes.
+
+For the **first-time bootstrap** (before `sync-skills` is available), use one of the manual methods below.
+
+### Quick install (bootstrap)
 
 ```bash
 # Clone the repo
@@ -22,10 +27,10 @@ git clone https://github.com/timi-ty/cursor-skills.git
 cd cursor-skills
 
 # Install a skill globally (available in all projects)
-./install.sh code-review --global
+./install.sh sync-skills --global
 
-# Install a skill into the current workspace only
-./install.sh commit-agent-changes --workspace
+# Then paste https://github.com/timi-ty/cursor-skills into Cursor agent chat
+# to install the rest of the skills via the sync-skills skill
 ```
 
 ### Manual install
