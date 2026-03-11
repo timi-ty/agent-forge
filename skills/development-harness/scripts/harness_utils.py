@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 
 HARNESS_DIR = ".harness"
 SCHEMA_VERSION = "1.0"
-SKILL_VERSION = "1.0"
 
 MANAGED_BLOCK_START = "<!-- HARNESS:START -->"
 MANAGED_BLOCK_END = "<!-- HARNESS:END -->"
@@ -137,12 +136,3 @@ def remove_managed_block(content):
     )
     new_content, count = pattern.subn("\n", content)
     return new_content.rstrip("\n") + "\n" if count > 0 else content, count > 0
-
-
-def collect_errors(*results):
-    """Collect errors from multiple validation results."""
-    errors = []
-    for r in results:
-        if not r["valid"]:
-            errors.append(r["error"])
-    return errors

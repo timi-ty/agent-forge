@@ -52,7 +52,7 @@ Interpret the JSON output:
 Read the relevant phase document:
 
 ```
-.harness/PHASES/PHASE_XXX_<slug>.md
+PHASES/PHASE_XXX_<slug>.md
 ```
 
 Where `XXX` and `<slug>` come from the phase containing the selected unit. Understand:
@@ -200,7 +200,7 @@ After each completed unit, update all three state files atomically (complete all
 - `checkpoint.timestamp` → current ISO timestamp
 - `last_updated` → current ISO timestamp
 
-**CRITICAL:** `state.checkpoint.next_action` must match what `select_next_unit.py` would return. If you are unsure, run `select_next_unit.py` and use its output to populate this field. The stop hook compares these values — disagreement causes the loop to stop.
+**CRITICAL:** `state.checkpoint.next_action` must include the unit ID that `select_next_unit.py` would return (e.g., `"Complete unit_003: /api/users CRUD endpoints"`). The stop hook checks that `selected_unit` appears in `checkpoint.next_action` — if the unit ID is missing from the text, the hook stops. If unsure, run `select_next_unit.py` and use its output to populate this field.
 
 ### checkpoint.md
 Update the human-readable checkpoint:

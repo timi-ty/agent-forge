@@ -4,6 +4,11 @@
 The stop hook depends on this script. Deterministic selection of the next
 executable unit based on phase dependencies and unit status.
 
+IMPORTANT: Phases are processed in list order from phase-graph.json.
+The file MUST be topologically ordered by dependencies (a phase must appear
+after all phases it depends on). compile_roadmap.py and the create command
+are responsible for maintaining this ordering.
+
 Uses only Python 3 stdlib. Imports from harness_utils.
 """
 import argparse

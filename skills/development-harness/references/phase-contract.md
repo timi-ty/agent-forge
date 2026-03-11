@@ -40,7 +40,7 @@ Ordered list of bounded, validator-backed tasks. Each unit must include:
 
 | Field | Description |
 |-------|-------------|
-| **id** | Unique identifier (e.g., `U-001`) |
+| **id** | Unique identifier (e.g., `unit_001`) |
 | **description** | What the unit accomplishes |
 | **acceptance criteria** | Concrete conditions for completion |
 | **validation method** | How the validator proves completion (e.g., "pytest tests/unit/test_foo.py" or "npm run lint") |

@@ -168,10 +168,10 @@ Use the templates from this skill's `templates/workspace-commands/` directory. T
 | `create-development-harness.md` | Rebuild or reinitialize the harness |
 | `invoke-development-harness.md` | Execute the next unit of work |
 | `update-development-harness.md` | Modify harness configuration or phase plan |
-| `state-development-harness.md` | Report current harness and project state |
+| `harness-state.md` | Report current harness and project state |
 | `sync-development-harness.md` | Sync harness with code reality |
 | `clear-development-harness.md` | Remove all harness artifacts |
-| `inject-issues-development-harness.md` | Report problems or inject issues |
+| `inject-harness-issues.md` | Report problems or inject issues |
 
 ### .cursor/hooks.json
 
@@ -207,6 +207,10 @@ Generate from the corresponding templates in this skill's `templates/rules/` dir
 | `harness-git.mdc` | `templates/rules/harness-git.mdc` -- customize with project's git policy from config |
 | `harness-deployment.mdc` | `templates/rules/harness-deployment.mdc` |
 | `harness-testing.mdc` | `templates/rules/harness-testing.mdc` |
+
+### .harness/pr-review-checklist.md
+
+Copy from `templates/rules/pr-review-checklist.md`. This is used by the invoke command's phase completion review step. Add to manifest as harness-owned.
 
 ### PHASES/ directory
 

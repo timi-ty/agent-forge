@@ -25,7 +25,7 @@ PRODUCT_OWNED = "product-owned"
 def _resolve_root(args):
     """Resolve harness root from --root or find_harness_root."""
     if args.root:
-        root = Path(args.root).resolve()
+        root = args.root.resolve()
         if not (root / ".harness").is_dir():
             print("Error: --root must point to a directory containing .harness/", file=sys.stderr)
             sys.exit(1)
@@ -47,9 +47,17 @@ def _load_manifest(root):
 
 
 def _resolve_path(root, entry_path):
-    """Resolve manifest path (may have trailing slash) to absolute Path."""
+    """Resolve manifest path (may have trailing slash) to absolute Path.
+
+    Raises ValueError if the resolved path escapes the project root.
+    """
     p = entry_path.rstrip("/")
-    return (root / p).resolve()
+    abs_path = (root / p).resolve()
+    try:
+        abs_path.relative_to(root.resolve())
+    except ValueError:
+        raise ValueError(f"Path escapes project root: {entry_path}")
+    return abs_path
 
 
 def _list_dir_recursive(dir_path):
@@ -87,7 +95,11 @@ def _build_report(root, manifest):
             warnings.append("Skipping entry with missing path")
             continue
 
-        abs_path = _resolve_path(root, path_str)
+        try:
+            abs_path = _resolve_path(root, path_str)
+        except ValueError as e:
+            warnings.append(str(e))
+            continue
 
         if ownership == PRODUCT_OWNED:
             will_preserve.append({"path": path_str, "note": "product-owned"})
@@ -186,7 +198,7 @@ def _execute_deletion(root, report):
 
 def main():
     parser = argparse.ArgumentParser(description="Clear harness artifacts per manifest")
-    parser.add_argument("--root", type=str, help="Harness root directory (default: auto-detect)")
+    parser.add_argument("--root", type=Path, help="Harness root directory (default: auto-detect)")
     parser.add_argument("--execute", action="store_true", help="Execute deletion (default: dry-run)")
     parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
     args = parser.parse_args()
@@ -212,6 +224,8 @@ def main():
                 print("Aborted.")
                 sys.exit(0)
         _execute_deletion(root, report)
+        if report.get("errors"):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

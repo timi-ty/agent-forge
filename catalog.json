@@ -106,7 +106,7 @@
         "inject harness issues",
         "development harness"
       ],
-      "files": ["SKILL.md", "commands/", "schemas/", "references/", "scripts/", "templates/"],
+      "files": ["SKILL.md"],
       "dependencies": ["git", "python3"],
       "notes": "One globally-installed skill that bootstraps a workspace-local control plane. After creation, 7 slash commands are available in .cursor/commands/. Uses a stop hook (continue-loop.py) for invoke loop continuation. Deterministic Python scripts handle the data plane (validation, unit selection, drift detection, manifest-based clearing). All scripts use stdlib only -- no pip dependencies."
     }

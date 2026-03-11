@@ -14,12 +14,12 @@ The harness is a project-local control plane that compiles ROADMAP.md into phase
 | `phase-graph.json` | Canonical phase/unit ordering and dependencies |
 | `checkpoint.md` | Human-readable summary of current state and next action |
 | `ARCHITECTURE.md` | This document (generated from `architecture.md` during `create`) |
-| `scripts/` | Harness executables (select_next_unit.py, continue-loop.py, etc.) |
+| `scripts/` | Harness executables (select_next_unit.py, validate_harness.py, etc.) |
 | `plans/` | Generated execution plans |
 | `issues/` | Tracked blockers and open questions |
 | `PHASES/` | Phase documents (PHASE_XXX_slug.md) |
 | `.cursor/commands` | Workspace commands that invoke harness |
-| `.cursor/hooks` | Pre/post hooks for harness lifecycle |
+| `.cursor/hooks` | Stop hook for invoke continuation (`continue-loop.py`) |
 | `.cursor/rules/harness-*` | Rule files for agent behavior |
 
 ## Data Authority

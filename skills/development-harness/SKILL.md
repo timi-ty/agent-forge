@@ -1,6 +1,6 @@
 ---
 name: development-harness
-description: "A project-local development harness that compiles a ROADMAP.md into phased, validator-backed autonomous execution. Commands: create, invoke, update, state, sync, clear, inject-issues. Use when the user says 'create development harness', 'create dev harness', 'invoke harness', 'continue from harness', 'harness state', 'sync harness', 'update harness', 'clear harness', 'inject issues', or similar."
+description: A project-local development harness that compiles a ROADMAP.md into phased, validator-backed autonomous execution. Commands - create, invoke, update, state, sync, clear, inject-issues. Use when the user says 'create development harness', 'create dev harness', 'invoke harness', 'continue from harness', 'harness state', 'sync harness', 'update harness', 'clear harness', 'inject issues', or similar.
 ---
 
 # Development Harness

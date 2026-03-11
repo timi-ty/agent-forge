@@ -11,7 +11,7 @@ Three ownership classes govern what the harness controls vs. what the project ow
 | **Definition** | Created and fully controlled by the harness. |
 | **/clear behavior** | `/clear` removes these files. |
 | **Modification** | Only the harness may modify them. User edits should be flagged by sync. |
-| **Examples** | `.harness/state.json`, `.harness/config.json`, `.harness/manifest.json`, `.harness/phase-graph.json`, `.harness/checkpoint.md`, `.harness/ARCHITECTURE.md`, `.harness/scripts/*`, `.harness/plans/*`, `.harness/issues/*`, `.harness/PHASES/*` |
+| **Examples** | `.harness/state.json`, `.harness/config.json`, `.harness/manifest.json`, `.harness/phase-graph.json`, `.harness/checkpoint.md`, `.harness/ARCHITECTURE.md`, `.harness/scripts/*`, `.harness/plans/*`, `.harness/issues/*`, `PHASES/*` |
 
 ---
 

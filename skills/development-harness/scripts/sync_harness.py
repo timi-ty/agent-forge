@@ -16,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 
-from harness_utils import find_harness_root, now_iso, read_json
+from harness_utils import find_harness_root, now_iso
 
 
 EXCLUDE_DIRS = {

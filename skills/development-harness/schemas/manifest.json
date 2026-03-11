@@ -6,219 +6,178 @@
       "path": "AGENTS.md",
       "ownership": "harness-owned",
       "type": "guidance",
-      "removable": false,
-      "note": "Primary agent guidance document"
+      "removable": true,
+      "note": "Created only if none existed; if pre-existing, ownership is managed-block instead"
     },
     {
       "path": ".harness/",
       "ownership": "harness-owned",
       "type": "directory",
-      "removable": false,
-      "note": "Harness root directory"
+      "removable": true
     },
     {
       "path": ".harness/ARCHITECTURE.md",
       "ownership": "harness-owned",
-      "type": "guidance",
-      "removable": false,
-      "note": "Architecture documentation"
+      "type": "reference",
+      "removable": true
     },
     {
       "path": ".harness/config.json",
       "ownership": "harness-owned",
       "type": "config",
-      "removable": false,
-      "note": "Project configuration"
+      "removable": true
     },
     {
       "path": ".harness/manifest.json",
       "ownership": "harness-owned",
       "type": "manifest",
-      "removable": false,
-      "note": "Ownership manifest"
+      "removable": true
     },
     {
       "path": ".harness/state.json",
       "ownership": "harness-owned",
       "type": "state",
-      "removable": false,
-      "note": "Runtime state snapshot"
+      "removable": true
     },
     {
       "path": ".harness/phase-graph.json",
       "ownership": "harness-owned",
       "type": "phase-graph",
-      "removable": false,
-      "note": "Canonical phase/unit graph"
+      "removable": true
     },
     {
       "path": ".harness/checkpoint.md",
       "ownership": "harness-owned",
       "type": "checkpoint",
-      "removable": false,
-      "note": "Current checkpoint summary"
+      "removable": true
+    },
+    {
+      "path": ".harness/pr-review-checklist.md",
+      "ownership": "harness-owned",
+      "type": "reference",
+      "removable": true
     },
     {
       "path": ".harness/scripts/",
       "ownership": "harness-owned",
       "type": "directory",
-      "removable": false,
-      "note": "Harness utility scripts"
+      "removable": true
     },
     {
       "path": ".harness/plans/",
       "ownership": "harness-owned",
       "type": "directory",
-      "removable": false,
-      "note": "Harness plans"
+      "removable": true
     },
     {
       "path": ".harness/issues/",
       "ownership": "harness-owned",
       "type": "directory",
-      "removable": false,
-      "note": "Issue tracking"
+      "removable": true
     },
     {
       "path": "PHASES/",
       "ownership": "harness-owned",
       "type": "directory",
-      "removable": false,
-      "note": "Phase definitions"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/continue-loop.md",
+      "path": ".cursor/commands/create-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Continue loop command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/checkpoint.md",
+      "path": ".cursor/commands/invoke-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Checkpoint command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/validate.md",
+      "path": ".cursor/commands/update-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Validate command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/deploy.md",
+      "path": ".cursor/commands/harness-state.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Deploy command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/sync-drift.md",
+      "path": ".cursor/commands/sync-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Sync drift command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/report-status.md",
+      "path": ".cursor/commands/clear-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Report status command"
+      "removable": true
     },
     {
-      "path": ".cursor/commands/resolve-issue.md",
+      "path": ".cursor/commands/inject-harness-issues.md",
       "ownership": "harness-owned",
       "type": "command",
-      "removable": false,
-      "note": "Resolve issue command"
+      "removable": true
     },
     {
       "path": ".cursor/hooks.json",
       "ownership": "harness-owned",
       "type": "hook-config",
-      "removable": false,
-      "note": "Hook configuration"
+      "removable": true
     },
     {
       "path": ".cursor/hooks/continue-loop.py",
       "ownership": "harness-owned",
       "type": "hook-script",
-      "removable": false,
-      "note": "Continue loop hook script"
+      "removable": true
     },
     {
-      "path": ".cursor/rules/harness-phase.mdc",
+      "path": ".cursor/rules/harness-core.mdc",
       "ownership": "harness-owned",
       "type": "rule",
-      "removable": false,
-      "note": "Phase execution rule"
+      "removable": true
     },
     {
       "path": ".cursor/rules/harness-validation.mdc",
       "ownership": "harness-owned",
       "type": "rule",
-      "removable": false,
-      "note": "Validation rule"
+      "removable": true
     },
     {
-      "path": ".cursor/rules/harness-checkpoint.mdc",
+      "path": ".cursor/rules/harness-git.mdc",
       "ownership": "harness-owned",
       "type": "rule",
-      "removable": false,
-      "note": "Checkpoint rule"
+      "removable": true
     },
     {
       "path": ".cursor/rules/harness-deployment.mdc",
       "ownership": "harness-owned",
       "type": "rule",
-      "removable": false,
-      "note": "Deployment rule"
+      "removable": true
     },
     {
-      "path": ".cursor/rules/harness-drift.mdc",
+      "path": ".cursor/rules/harness-testing.mdc",
       "ownership": "harness-owned",
       "type": "rule",
-      "removable": false,
-      "note": "Drift sync rule"
+      "removable": true
     },
     {
-      "path": ".cursor/rules/harness-issue.mdc",
-      "ownership": "harness-owned",
-      "type": "rule",
-      "removable": false,
-      "note": "Issue handling rule"
-    },
-    {
-      "path": ".cursor/rules/harness-manifest.mdc",
-      "ownership": "harness-owned",
-      "type": "rule",
-      "removable": false,
-      "note": "Manifest rule"
-    },
-    {
-      "path": ".github/workflows/deploy.yml",
+      "path": ".github/workflows/ci.yml",
       "ownership": "product-owned",
       "type": "ci-cd",
-      "removable": true,
-      "note": "Product CI/CD workflow"
-    },
-    {
-      "path": "tests/e2e/auth.spec.ts",
-      "ownership": "product-owned",
-      "type": "script",
-      "removable": true,
-      "note": "Product E2E test"
-    },
-    {
-      "path": "src/components/README.md",
-      "ownership": "managed-block",
-      "type": "reference",
       "removable": false,
-      "note": "Component docs with harness-managed section",
-      "marker_pattern": "HARNESS:START/HARNESS:END"
+      "note": "Scaffolded by harness during create, now product-owned"
+    },
+    {
+      "path": "tests/e2e/",
+      "ownership": "product-owned",
+      "type": "directory",
+      "removable": false,
+      "note": "Scaffolded by harness during create, now product-owned"
     }
   ]
 }

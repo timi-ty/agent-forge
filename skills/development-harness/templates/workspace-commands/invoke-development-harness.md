@@ -34,7 +34,7 @@ python3 .harness/scripts/select_next_unit.py
 
 ## 4. Read Phase Context
 
-Read `.harness/PHASES/PHASE_XXX_<slug>.md` for the selected unit's phase. Note the unit's acceptance criteria and validation method from the Units of Work table.
+Read `PHASES/PHASE_XXX_<slug>.md` for the selected unit's phase. Note the unit's acceptance criteria and validation method from the Units of Work table.
 
 ## 5. Plan Internally
 
