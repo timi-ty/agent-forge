@@ -17,6 +17,7 @@ URL patterns:
 - `https://github.com/{owner}/{repo}` → branch = `main`
 - `https://github.com/{owner}/{repo}/tree/{branch}` → use the extracted branch
 - `https://github.com/{owner}/{repo}/tree/{branch}/...` → use the extracted branch
+- Any other URL shape → branch = `main`; confirm with the user before continuing: "Unrecognized URL pattern — defaulting to branch `main`. Is that correct?"
 
 Set `$OWNER`, `$REPO`, and `$BRANCH` for use in all steps below.
 

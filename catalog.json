@@ -16,7 +16,7 @@
       ],
       "files": ["SKILL.md", "checklist.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file."
+      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file (gitignored; not committed)."
     },
     {
       "name": "commit-agent-changes",
