@@ -1,6 +1,6 @@
 # cursor-forge
 
-Portable collection of [Cursor](https://cursor.com) agent skills and a development harness for AI-native engineering. Clone this repo to install battle-tested skills on any machine -- globally or per-workspace.
+Portable collection of [Cursor](https://cursor.com) agent skills and a development harness for AI-native engineering. Paste the repo URL into a Cursor agent chat to install battle-tested skills on any machine -- globally or per-workspace.
 
 ## Skill Catalog
 
@@ -30,23 +30,9 @@ The development harness is a project-local control plane that turns a ROADMAP.md
 
 ### Via Cursor agent (recommended)
 
-Once `sync-skills` is installed, all future installs and updates are agent-driven: paste the repo URL (or a branch URL) into any Cursor agent chat and the `sync-skills` skill handles the rest — diffing, confirming, and applying changes across global and workspace scopes.
+Paste `https://github.com/timi-ty/cursor-forge` (or a branch URL) into any Cursor agent chat. The agent reads the repo's `catalog.json`, presents available skills, asks where to install them, and copies them into place. This works for both first-time installs and subsequent updates.
 
-For the **first-time bootstrap** (before `sync-skills` is available), use one of the manual methods below.
-
-### Quick install (bootstrap)
-
-```bash
-# Clone the repo
-git clone https://github.com/timi-ty/cursor-forge.git
-cd cursor-forge
-
-# Install a skill globally (available in all projects)
-./install.sh sync-skills --global
-
-# Then paste https://github.com/timi-ty/cursor-forge into Cursor agent chat
-# to install the rest of the skills via the sync-skills skill
-```
+If the `sync-skills` skill is already installed locally, the agent uses it for smarter syncing -- diffing changed files, detecting removals, and batch-updating across scopes. Otherwise, the agent follows the repo's built-in [AI instructions](#for-ai-agents) to install from scratch. Either way, the entry point is the same: paste the URL.
 
 ### Manual install
 
@@ -63,7 +49,7 @@ cp -r skills/code-review .cursor/skills/code-review
 
 3. Restart Cursor or open a new agent session. The skill is now available.
 
-### Install all skills at once
+To install everything at once:
 
 ```bash
 ./install.sh --all --global      # every skill, globally
