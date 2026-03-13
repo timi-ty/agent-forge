@@ -95,6 +95,27 @@
       "notes": "Slash-command skill (disable-model-invocation: true). Launches a background subagent via the Task tool with run_in_background: true, then resumes the main task. Multiple /btw commands stack. Collects all subagent results after the main task completes and flags file conflicts."
     },
     {
+      "name": "aws-cli",
+      "path": "skills/aws",
+      "description": "Perform AWS operations via the CLI. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.",
+      "triggers": [
+        "manage AWS resources",
+        "AWS CLI",
+        "EC2 instances",
+        "S3 bucket",
+        "Lambda function",
+        "IAM user",
+        "CloudFormation stack",
+        "RDS database",
+        "Route53 DNS",
+        "deploy to AWS",
+        "AWS infrastructure"
+      ],
+      "files": ["SKILL.md"],
+      "dependencies": ["AWS CLI v2"],
+      "notes": "Discovers credentials and region at runtime from ~/.aws/config. Safety-first: confirms destructive ops and warns about cost-incurring resources before execution. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager."
+    },
+    {
       "name": "development-harness",
       "path": "skills/development-harness",
       "description": "A project-local development harness that compiles a ROADMAP.md into phased, validator-backed autonomous execution. One skill with 7 commands: create, invoke, update, state, sync, clear, inject-issues. Bootstraps workspace-local slash commands, a stop hook for bounded continuation, and deterministic Python helpers.",
