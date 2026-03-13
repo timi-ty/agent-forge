@@ -1,11 +1,11 @@
 ---
 name: commit-agent-changes
-description: Identify the current agent's code changes, create a branch, group changes into logical commits, and open a PR. Use when the user says "commit my changes", "commit agent changes", "create a PR from this session", "push what you changed", or wants to turn the current agent's work into a pull request.
+description: Identify the current agent's code changes, push them to a remote-only branch, and open a PR -- all without ever leaving the base branch. Use when the user says "commit my changes", "commit agent changes", "create a PR from this session", "push what you changed", or wants to turn the current agent's work into a pull request.
 ---
 
 # Commit Agent Changes
 
-Turn the current agent session's code changes into a well-structured branch with logically grouped commits and a pull request.
+Turn the current agent session's code changes into logically grouped commits on a remote-only branch with a pull request -- without ever switching the local branch. This keeps parallel agents working on the same base branch undisturbed.
 
 ## Workflow
 
@@ -14,10 +14,10 @@ Copy this checklist and track progress:
 ```
 Commit Progress:
 - [ ] Phase 1: Identify agent's changes
-- [ ] Phase 2: Detect branch state and confirm with user
-- [ ] Phase 3: Branch out (skip if already on feature branch)
-- [ ] Phase 4: Group and commit
-- [ ] Phase 5: Push (and create PR if needed)
+- [ ] Phase 2: Confirm with user and determine remote branch
+- [ ] Phase 3: Group and commit
+- [ ] Phase 4: Push, reset, and create PR
+- [ ] Phase 5: Post-push cleanup (optional)
 ```
 
 ---
@@ -74,6 +74,10 @@ git diff --name-only --cached
 
 Build the final change list: a file is included ONLY if it appears in BOTH the agent's list (Steps 1+2) AND git reports it as changed/untracked/deleted. This filters out pre-existing dirty state that the agent did not cause.
 
+#### Step 4: Check for other uncommitted changes
+
+Compare the agent's final file list against all dirty files reported by git. Any dirty file NOT in the agent's list belongs to another agent or pre-existing state. If such files exist, record them separately -- they will NOT be committed, but the user should be made aware of them in Phase 2 so they know other work is in progress.
+
 Organize the final list by repository:
 
 ```
@@ -81,15 +85,18 @@ repo: <repo-name> (<repo-path>)
   modified: path/relative/to/repo
   new:      path/relative/to/repo
   deleted:  path/relative/to/repo
+  (other uncommitted files not owned by this agent:)
+    path/relative/to/repo
+    path/relative/to/repo
 ```
 
 If no files survive the intersection, inform the user that there are no uncommitted agent changes and stop.
 
 ---
 
-### Phase 2 -- Detect Branch State and Confirm with User
+### Phase 2 -- Confirm with User and Determine Remote Branch
 
-#### Step 1: Detect the current branch
+#### Step 1: Identify the base branch
 
 For each repository with changes, run:
 
@@ -97,90 +104,77 @@ For each repository with changes, run:
 git rev-parse --abbrev-ref HEAD
 ```
 
-Classify the result:
-- **Default branch** (`main`, `master`, `develop`) -- a new feature branch is needed (Phase 3 will run).
-- **Feature branch** (anything else) -- already on the right branch (Phase 3 will be skipped).
+This is the **base branch** (e.g., `dev`, `main`). The agent stays on this branch throughout the entire operation.
 
-When on a feature branch, check for an existing open PR:
+#### Step 2: Generate the remote branch name
+
+Determine the branch type from the nature of the changes:
+- `feat/` -- new functionality
+- `fix/` -- bug fix
+- `refactor/` -- restructuring without behavior change
+- `chore/` -- tooling, config, dependencies
+- `docs/` -- documentation only
+
+Generate a concise slug (3-5 words, kebab-case) summarizing the scope. The remote branch name follows the pattern `<type>/<slug>`. Examples:
+- `refactor/remove-telemetry-caching`
+- `feat/add-ingestion-buffer`
+- `fix/mqtt-reconnect-handling`
+
+Check if the generated name already exists on the remote:
 
 ```bash
-gh pr view --json number,title,url,baseRefName 2>/dev/null
+git ls-remote --heads origin <type>/<slug>
 ```
 
-Record three pieces of state per repo for use in later phases:
-- `on_feature_branch`: boolean
-- `existing_pr`: `{number, title, url, baseRefName}` or null
-- `base_branch`: from the existing PR's `baseRefName`, or to be asked
+If it exists, check for an open PR from that branch:
 
-#### Step 2: Present the situation and confirm
+```bash
+gh pr list --head <type>/<slug> --json number,title,url --jq '.[0]' 2>/dev/null
+```
 
-Present the change list from Phase 1 to the user, along with the detected branch state. Use `AskQuestion` to confirm.
+#### Step 3: Present the situation and confirm
+
+Present the change list from Phase 1 to the user, along with the plan. Use `AskQuestion` to confirm.
 
 The prompt varies by situation:
 
-- **On a feature branch with an existing PR**: "You're on `refactor/remove-caching` which has PR #42 open against `main`. Commit and push to it?" Options: proceed, exclude files.
-- **On a feature branch with no PR**: "You're on `feat/ingestion-buffer` with no open PR. Commit, push, and create a new PR?" Options: proceed, exclude files. Also ask for the **base branch** (present the repo's default branch as the default option).
-- **On a default branch**: "You're on `main`. I'll create a new feature branch." Options: proceed, exclude files. Ask for the **base branch** (present `main` as the default).
+- **New remote branch**: "You're on `dev`. I'll commit your changes, push to remote branch `feat/add-buffer`, and open a PR against `dev`." Options: proceed, exclude files.
+- **Existing remote branch with open PR**: "You're on `dev`. Remote branch `feat/add-buffer` already has PR #42. I'll force-push your latest changes to update it." Options: proceed, exclude files, create new branch instead.
+- **Other uncommitted changes detected**: Additionally note: "Other uncommitted changes exist in this repo (not owned by this agent): {list}. These will NOT be included in your commit."
 
 If the user excludes files, remove them from the list before continuing.
 
-#### Step 3: Verify remote branch state
+If changes span multiple repositories, confirm each repo separately. Each repo gets its own remote branch and PR.
 
-Set `$BRANCH` to the current branch name (result of `git rev-parse --abbrev-ref HEAD` from Step 1).
+#### Step 4: Verify remote state
 
-For each repository, fetch the latest remote state (without merging):
+For each repository, fetch the latest remote state:
 
 ```bash
 git fetch origin
 ```
 
-Compute the ahead/behind relationship against the current branch (`$BRANCH`):
+If fetch fails, abort and tell the user to check their network/auth.
+
+After fetching, check whether the local base branch is ahead of its remote counterpart:
 
 ```bash
-git rev-list --count HEAD..origin/$BRANCH   # commits behind
-git rev-list --count origin/$BRANCH..HEAD   # commits ahead
+AHEAD=$(git rev-list --count origin/$BRANCH..HEAD)
 ```
 
-Act on the result:
-
-- **Up to date** (both = 0): continue.
-- **Behind only** (behind > 0, ahead = 0): ask the user: "Your branch is {N} commit(s) behind `origin/{branch}`. Fast-forward before proceeding?" If yes, run `git pull --ff-only origin $BRANCH` and continue. If no, abort.
-- **Ahead only** (behind = 0, ahead > 0): this is expected if there are already commits on the branch. Inform the user: "You have {N} existing commit(s) on `{branch}` not yet pushed. New commits will be added on top." Continue.
-- **Diverged** (both > 0): **abort** and tell the user: "Local `{branch}` has diverged from `origin/{branch}` ({N} ahead, {M} behind). Resolve the divergence manually before proceeding."
-
-**Note (applies to all of Phase 2):** If changes span multiple repositories, confirm each repo separately. Each repo gets its own branch and PR.
+If `AHEAD > 0`, warn the user: "Your local `{branch}` is {N} commit(s) ahead of `origin/{branch}`. These unpushed commits will be included in the PR." Options: abort (so the user can push or reset first), proceed anyway.
 
 ---
 
-### Phase 3 -- Branch Out
+### Phase 3 -- Group and Commit
 
-**Skip this phase entirely if `on_feature_branch` is true for the repo.** Proceed directly to Phase 4.
+#### Save the base state
 
-For each repository that is on a default branch:
-
-1. **Determine the branch type** from the nature of the changes:
-   - `feat/` -- new functionality
-   - `fix/` -- bug fix
-   - `refactor/` -- restructuring without behavior change
-   - `chore/` -- tooling, config, dependencies
-   - `docs/` -- documentation only
-
-2. **Generate a concise slug** (3-5 words, kebab-case) summarizing the scope. Examples:
-   - `refactor/remove-telemetry-caching`
-   - `feat/add-ingestion-buffer`
-   - `fix/mqtt-reconnect-handling`
-
-3. **Create the branch**:
+Before making any commits, record the current HEAD so the branch can be reset later:
 
 ```bash
-git checkout -b <branch-name>
+BASE_HASH=$(git rev-parse HEAD)
 ```
-
-If the branch name already exists, append a short numeric suffix (e.g., `-2`).
-
----
-
-### Phase 4 -- Group and Commit
 
 #### Analyze and group
 
@@ -201,17 +195,24 @@ Read the diffs (`git diff -- <file>` for each file) and group them by cohesive c
 
 Process groups in dependency order (foundational changes first, consuming code after).
 
-For each group:
+For each group, first add any **new (untracked)** files from this group:
 
 ```bash
-git add <file1> <file2> ...
+git add <new-file1> <new-file2>
+```
+
+Then commit using **pathspec** to include only this group's files:
+
+```bash
 git commit -m "$(cat <<'EOF'
 type(scope): concise description
 
 Optional body explaining WHY, not what. One short paragraph max.
 EOF
-)"
+)" -- <file1> <file2> <file3>
 ```
+
+Using `git commit -- <files>` is critical: it stages and commits only the listed files, ignoring anything else in the staging area or working directory. This prevents one agent's commit from accidentally capturing another agent's staged changes.
 
 **Commit message rules:**
 - Subject line: `type(scope): description` -- under 72 characters
@@ -222,34 +223,45 @@ EOF
 
 ---
 
-### Phase 5 -- Push (and Create PR if Needed)
+### Phase 4 -- Push, Reset, and Create PR
 
-Push the commits:
+#### Push to the remote-only branch
+
+Push all commits (from `$BASE_HASH` to `HEAD`) to the remote branch. Use `--force-with-lease` to safely handle both new and existing remote branches:
 
 ```bash
-git push -u origin HEAD
+git push --force-with-lease origin HEAD:refs/heads/<remote-branch>
 ```
 
-#### If an existing PR was found in Phase 2
+If the push fails (e.g., due to a remote branch protection rule or lease conflict), inform the user and abort. Do NOT reset if the push failed.
 
-The push is sufficient -- the PR is already open and will reflect the new commits. Display the existing PR URL to the user.
+#### Reset the local branch
 
-#### If no existing PR was found
-
-Create a new PR:
+Only after a successful push, reset the local branch back to its original state:
 
 ```bash
-gh pr create --base <base-branch> --title "<title>" --body "$(cat <<'EOF'
+git reset $BASE_HASH
+```
+
+This is a mixed reset: the commit(s) are undone, but all working directory changes (from ALL agents) are preserved exactly as they were. The local base branch is back at the same commit it was on before the operation started.
+
+#### Create or update the PR
+
+**If an existing PR was found in Phase 2:**
+
+The force-push already updated the PR. Display the existing PR URL to the user.
+
+**If no existing PR was found:**
+
+Create a new PR. Note: `--head` is the remote branch name (not a local branch):
+
+```bash
+gh pr create --head <remote-branch> --base <base-branch> --title "<title>" --body "$(cat <<'EOF'
 ## Summary
 
 - <bullet 1: what changed and why>
 - <bullet 2: what changed and why>
 - <bullet 3 if needed>
-
-## Commits
-
-- `<hash-short>` type(scope): description
-- `<hash-short>` type(scope): description
 
 ## Test plan
 
@@ -263,20 +275,47 @@ EOF
 
 **PR body rules:**
 - Summary: 1-3 bullets focused on WHY, not WHAT
-- Commits: list each commit hash + message (get from `git log --oneline <base>..HEAD`)
 - Test plan: concrete steps someone can follow to verify the changes work
 
-After pushing (or creating a PR), display the PR URL to the user.
+After creating the PR (or confirming the existing one was updated), display the PR URL to the user.
 
-If changes spanned multiple repos, repeat Phases 3-5 for each repo.
+If changes spanned multiple repos, repeat Phases 3-4 for each repo.
+
+---
+
+### Phase 5 -- Post-Push Cleanup (Optional)
+
+After a successful push and reset, the agent's files remain modified in the working directory (the reset preserved them). Offer to clean them up:
+
+For **modified** files only this agent touched:
+
+```bash
+git checkout -- <file1> <file2>
+```
+
+This restores them to the base branch state. The changes are safe on the remote branch.
+
+For **new** files this agent created:
+
+```bash
+rm <file1> <file2>
+```
+
+For **deleted** files: no cleanup needed (the file is already gone).
+
+Ask the user before cleaning up: "Your changes are on remote branch `<branch>` and PR #N is open. Restore your modified files to the base state locally?" Options: clean up, keep dirty. Default to keeping them dirty (safest option).
 
 ---
 
 ## Important Principles
 
+- **Never leave the base branch**: All commits are made on the base branch and pushed to remote-only refs. No local branches are created, no `git checkout -b`, no `git switch -c`.
+- **Pathspec commits**: Always use `git commit -- <files>` to scope commits to specific files. This prevents staging area conflicts between concurrent agents.
+- **Reset to a saved hash**: Always record `BASE_HASH=$(git rev-parse HEAD)` before committing and reset to it afterward. Never use relative resets like `HEAD~N`.
+- **Push before reset**: Never reset until the push succeeds. If the push fails, the commits are still on the local branch and can be retried.
 - **Only commit agent changes**: Never commit files the agent didn't touch, even if they have uncommitted changes.
 - **Atomic commits**: Each commit should compile and make sense on its own. Don't commit half a refactor.
-- **No AI references**: Commit messages, PR titles, and PR bodies should read as if a human wrote them. Never mention "agent", "AI", "Cursor", or "automated".
+- **No AI references**: Commit messages, PR titles, PR bodies, and branch names should read as if a human wrote them. Never mention "agent", "AI", "Cursor", or "automated".
 - **Respect existing conventions**: If the repo has a commit message convention or PR template, follow it instead of the defaults above.
-- **Ask before acting**: Always confirm the file list and base branch before creating any commits.
-- **Clean state**: After creating the PR, run `git status` to confirm the working tree is clean (for the files the agent owned). Report any leftover uncommitted changes to the user.
+- **Ask before acting**: Always confirm the file list, remote branch name, and base branch before creating any commits.
+- **Report final state**: After creating the PR, run `git status` to confirm the working tree state and report it to the user.

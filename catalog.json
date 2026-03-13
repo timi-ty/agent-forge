@@ -21,7 +21,7 @@
     {
       "name": "commit-agent-changes",
       "path": "skills/commit-agent-changes",
-      "description": "Identify the current agent's code changes, create a branch, group changes into logical commits, and open a PR. Use when the user says 'commit my changes', 'commit agent changes', 'create a PR from this session', 'push what you changed', or wants to turn the current agent's work into a pull request.",
+      "description": "Identify the current agent's code changes, push them to a remote-only branch, and open a PR -- all without ever leaving the base branch. Use when the user says 'commit my changes', 'commit agent changes', 'create a PR from this session', 'push what you changed', or wants to turn the current agent's work into a pull request.",
       "triggers": [
         "commit my changes",
         "commit agent changes",
@@ -33,7 +33,7 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["gh CLI (GitHub CLI)", "git"],
-      "notes": "5-phase workflow: identify agent changes (introspect context + parse transcript + cross-reference git), detect branch state, branch out, group and commit with conventional commit messages, push and create PR. Handles multi-repo workspaces."
+      "notes": "5-phase branchless workflow: identify agent changes (introspect context + parse transcript + cross-reference git), confirm with user and determine remote branch, group and commit with pathspec-scoped conventional commits, push to remote-only branch and reset local base, optional post-push cleanup. Never leaves the base branch -- safe for parallel agents. Handles multi-repo workspaces."
     },
     {
       "name": "redeploy-frontend",
