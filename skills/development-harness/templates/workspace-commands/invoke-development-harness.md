@@ -6,7 +6,17 @@ description: "Execute the next unit of work from the development harness"
 
 Read `.harness/ARCHITECTURE.md` for project context.
 
-## 1. Validate
+## 1. Activate Invoke Session
+
+Create the invoke session flag so the stop hook knows this is a harness session:
+
+```bash
+touch .harness/.invoke-active
+```
+
+This flag is checked by `continue-loop.py`. Without it, the hook is a no-op.
+
+## 2. Validate
 
 ```bash
 python3 .harness/scripts/validate_harness.py
@@ -14,14 +24,14 @@ python3 .harness/scripts/validate_harness.py
 
 If invalid, report errors and stop.
 
-## 2. Load State
+## 3. Load State
 
 Read these files:
 - `.harness/state.json` — execution pointers, loop budget, checkpoint
 - `.harness/checkpoint.md` — human-readable progress summary
 - `.harness/phase-graph.json` — canonical phase/unit status
 
-## 3. Select Next Unit
+## 4. Select Next Unit
 
 ```bash
 python3 .harness/scripts/select_next_unit.py
@@ -29,22 +39,22 @@ python3 .harness/scripts/select_next_unit.py
 
 - If `found: false` and `all_complete: true` → report completion, stop
 - If `found: false` and `all_complete: false` → report blocked, stop
-- If `phase_complete: true` → run phase completion review (step 10) before proceeding
+- If `phase_complete: true` → run phase completion review (step 11) before proceeding
 - If `found: true` → continue with the selected unit
 
-## 4. Read Phase Context
+## 5. Read Phase Context
 
 Read `PHASES/PHASE_XXX_<slug>.md` for the selected unit's phase. Note the unit's acceptance criteria and validation method from the Units of Work table.
 
-## 5. Plan Internally
+## 6. Plan Internally
 
 Determine files to create/modify, tests to write, and validation to run. Do not switch to Plan Mode. Do not ask the user unless requirements are genuinely ambiguous.
 
-## 6. Implement
+## 7. Implement
 
 Write production code and tests. Match existing codebase patterns.
 
-## 7. Validate
+## 8. Validate
 
 Run applicable validation layers:
 
@@ -61,7 +71,7 @@ On failure:
 On success:
 - Record concrete evidence (e.g., `"tests/auth.test.ts passes (5/5)"`)
 
-## 8. Update State
+## 9. Update State
 
 Update all three files:
 
@@ -76,7 +86,7 @@ Update all three files:
 **checkpoint.md:**
 - What completed, evidence, what's next, any blockers
 
-## 9. Commit
+## 10. Commit
 
 Check for `commit-agent-changes` skill:
 ```bash
@@ -88,7 +98,7 @@ If found, delegate to the skill. Otherwise, commit directly following `.harness/
 - Write conventional commit message
 - Push if on a feature branch with a remote
 
-## 10. Phase Completion Review
+## 11. Phase Completion Review
 
 When all units in a phase are done:
 
@@ -99,6 +109,6 @@ When all units in a phase are done:
    - If verifier fails → add blocker, stop
 3. Mark phase `"completed"` in `phase-graph.json` only after review passes
 
-## 11. Turn Ends
+## 12. Turn Ends
 
-The stop hook (`continue-loop.py`) fires automatically. It checks loop budget, blockers, open questions, and runs `select_next_unit.py` to determine whether to continue. Do not manually loop.
+The stop hook (`continue-loop.py`) fires automatically. It checks for the `.harness/.invoke-active` flag first -- if absent, the hook is a no-op. If present, it checks loop budget, blockers, open questions, and runs `select_next_unit.py` to determine whether to continue. When the hook decides to stop, it deletes the flag. Do not manually loop.

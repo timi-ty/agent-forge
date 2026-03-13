@@ -58,6 +58,12 @@
       "removable": true
     },
     {
+      "path": ".harness/.gitignore",
+      "ownership": "harness-owned",
+      "type": "config",
+      "removable": true
+    },
+    {
       "path": ".harness/scripts/",
       "ownership": "harness-owned",
       "type": "directory",

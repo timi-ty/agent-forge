@@ -13,6 +13,7 @@ The harness is a project-local control plane that compiles ROADMAP.md into phase
 | `manifest.json` | Inventory of harness-owned files and managed blocks |
 | `phase-graph.json` | Canonical phase/unit ordering and dependencies |
 | `checkpoint.md` | Human-readable summary of current state and next action |
+| `.invoke-active` | Transient flag file created by invoke, checked by stop hook (not committed) |
 | `ARCHITECTURE.md` | This document (generated from `architecture.md` during `create`) |
 | `scripts/` | Harness executables (select_next_unit.py, validate_harness.py, etc.) |
 | `plans/` | Generated execution plans |
@@ -55,14 +56,22 @@ No phase is complete until applicable layers have evidence. See `validation-hier
 
 ## Loop Mechanics
 
-The invoke loop uses a stop hook (`continue-loop.py`) that:
+The invoke loop uses a stop hook (`continue-loop.py`) that is gated by a session flag file:
 
-1. Reads `state.json`
-2. Runs `select_next_unit.py`
-3. Compares selector output with checkpoint consensus
-4. **Continue** if deterministic selector and checkpoint agree on next action
-5. **Stop** if they disagree
-6. **Stop** if blockers or open questions exist
+**Session gating:** The invoke command creates `.harness/.invoke-active` as its very first step. The hook checks for this flag before any other logic. If the flag is absent, the hook returns an empty response (no-op). This prevents the hook from hijacking non-harness agent sessions (e.g. running "sync skills" or other unrelated commands in the same workspace).
+
+When the flag is present, the hook proceeds with its authority chain:
+
+1. Checks `.harness/.invoke-active` exists (session gate)
+2. Checks status is "completed"
+3. Reads `state.json` for loop budget, blockers, open questions
+4. Runs `select_next_unit.py`
+5. Compares selector output with checkpoint consensus
+6. **Continue** if deterministic selector and checkpoint agree on next action
+7. **Stop** if they disagree
+8. **Stop** if blockers or open questions exist
+
+When the hook decides to stop (for any reason), it deletes `.harness/.invoke-active` to reset the gate for the next session. When continuing, the flag is left in place.
 
 ## Git Integration
 

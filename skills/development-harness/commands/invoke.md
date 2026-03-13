@@ -6,7 +6,19 @@ Execute the next unit of work from the harness. This is the primary runtime comm
 
 ---
 
-## Step 1: Validate Harness
+## Step 1: Activate Invoke Session
+
+Create the invoke session flag so the stop hook knows this is a harness session:
+
+```bash
+touch .harness/.invoke-active
+```
+
+This flag is checked by `continue-loop.py`. Without it, the hook is a no-op and will not interfere with non-harness agent sessions.
+
+---
+
+## Step 2: Validate Harness
 
 Run the harness validator:
 
@@ -18,7 +30,7 @@ If validation fails, report the errors to the user and **stop**. Do not proceed 
 
 ---
 
-## Step 2: Load State
+## Step 3: Load State
 
 Read the three state files to establish execution context:
 
@@ -30,7 +42,7 @@ Parse `state.json` into memory. Note `execution.active_phase`, `execution.active
 
 ---
 
-## Step 3: Select Next Unit
+## Step 4: Select Next Unit
 
 Run the authoritative unit selector:
 
@@ -42,12 +54,12 @@ Interpret the JSON output:
 
 - **`found: false` and `all_complete: true`** — All phases are complete. Report completion to the user and **stop**.
 - **`found: false` and `all_complete: false`** — No executable unit (likely blocked by dependencies). Report the situation and **stop**.
-- **`phase_complete: true`** — A previous phase has all units completed but is not yet marked complete. Run the **phase completion review** (Step 8) for that phase before proceeding to the selected unit.
+- **`phase_complete: true`** — A previous phase has all units completed but is not yet marked complete. Run the **phase completion review** (Step 9) for that phase before proceeding to the selected unit.
 - **`found: true`** — Proceed with the selected `phase_id`, `unit_id`, and `unit_description`.
 
 ---
 
-## Step 4: Read Phase Context
+## Step 5: Read Phase Context
 
 Read the relevant phase document:
 
@@ -64,20 +76,20 @@ Where `XXX` and `<slug>` come from the phase containing the selected unit. Under
 
 ---
 
-## Step 5: Plan the Unit
+## Step 6: Plan the Unit
 
 Internally determine (do NOT switch to Plan Mode):
 
 1. **Files to create or modify** — identify each file and the nature of the change
 2. **Tests to write** — unit tests are mandatory for testable code; integration/E2E if applicable
-3. **Validation to run** — which layers of the validation hierarchy apply (see Step 7)
+3. **Validation to run** — which layers of the validation hierarchy apply (see Step 8)
 4. **Dependencies** — any packages to install, configs to update, migrations to run
 
 Do not ask the user unless requirements are genuinely ambiguous. If the phase document and codebase provide enough information, proceed autonomously.
 
 ---
 
-## Step 6: Implement the Unit
+## Step 7: Implement the Unit
 
 Write the code:
 
@@ -88,7 +100,7 @@ Write the code:
 
 ---
 
-## Step 7: Validate
+## Step 8: Validate
 
 Run applicable layers of the validation hierarchy. Only run layers that are relevant to the changes made:
 
@@ -141,11 +153,11 @@ Record specific evidence for each passing layer. Evidence must be concrete:
 
 ---
 
-## Step 8: Phase Completion Review
+## Step 9: Phase Completion Review
 
 This step runs when all units in a phase are completed (signaled by `phase_complete: true` from select_next_unit.py, or when the unit just completed was the last pending unit in its phase).
 
-### 8a: Run Review Checklist
+### 9a: Run Review Checklist
 
 Read `.harness/pr-review-checklist.md` (workspace copy) or fall back to `templates/rules/pr-review-checklist.md` from this skill. Verify each item:
 
@@ -159,7 +171,7 @@ Read `.harness/pr-review-checklist.md` (workspace copy) or fall back to `templat
 - [ ] All changes committed following git policy
 - [ ] Checkpoint updated with completion summary
 
-### 8b: Deployment Truth Gate
+### 9b: Deployment Truth Gate
 
 Check the phase document's **Deployment Implications** section.
 
@@ -171,7 +183,7 @@ If the phase is **deploy-affecting**:
 
 If the phase is **not deploy-affecting**, skip this gate.
 
-### 8c: Mark Phase Complete
+### 9c: Mark Phase Complete
 
 Only after the review checklist passes and deployment gate (if applicable) passes:
 - Set the phase's `status` to `"completed"` in `phase-graph.json`
@@ -179,7 +191,7 @@ Only after the review checklist passes and deployment gate (if applicable) passe
 
 ---
 
-## Step 9: Update State
+## Step 10: Update State
 
 After each completed unit, update all three state files atomically (complete all updates before moving on):
 
@@ -213,7 +225,7 @@ Update the human-readable checkpoint:
 
 ---
 
-## Step 10: Commit
+## Step 11: Commit
 
 ### Check for commit-agent-changes skill
 
@@ -241,18 +253,21 @@ ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skil
 
 ---
 
-## Step 11: Turn Ends
+## Step 12: Turn Ends
 
 The agent's turn ends here. The stop hook (`continue-loop.py`) fires automatically after the agent completes. It will:
 
-1. Check if status is "completed" (only continues on completed)
-2. Check `execution.loop_budget` — stop if budget exhausted
-3. Check `checkpoint.blockers` — stop if any blockers exist
-4. Check `checkpoint.open_questions` — stop if any open questions exist
-5. Run `select_next_unit.py` for authoritative next unit
-6. Compare selector output against `checkpoint.next_action`
-7. If they **agree** and all conditions pass → return `followup_message` to continue the loop
-8. If they **disagree** → stop (disagreement = ambiguity)
+1. Check for `.harness/.invoke-active` — if absent, the hook is a no-op (this prevents the hook from hijacking non-harness agent sessions)
+2. Check if status is "completed" (only continues on completed)
+3. Check `execution.loop_budget` — stop if budget exhausted
+4. Check `checkpoint.blockers` — stop if any blockers exist
+5. Check `checkpoint.open_questions` — stop if any open questions exist
+6. Run `select_next_unit.py` for authoritative next unit
+7. Compare selector output against `checkpoint.next_action`
+8. If they **agree** and all conditions pass → return `followup_message` to continue the loop
+9. If they **disagree** → stop (disagreement = ambiguity)
+
+When the hook decides to stop, it deletes `.harness/.invoke-active` to reset the gate for the next session.
 
 Do NOT manually loop or call invoke again. The hook handles continuation.
 
@@ -283,7 +298,7 @@ ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skil
 ls ~/.cursor/skills/code-review/SKILL.md 2>/dev/null || ls .cursor/skills/code-review/SKILL.md 2>/dev/null
 ```
 
-- **commit-agent-changes**: If available, use it for Step 10 (commit/PR workflow)
-- **code-review**: If available, use it during Step 8 (phase completion review) to get an AI code review of the phase's changes before marking complete
+- **commit-agent-changes**: If available, use it for Step 11 (commit/PR workflow)
+- **code-review**: If available, use it during Step 9 (phase completion review) to get an AI code review of the phase's changes before marking complete
 
 Note their availability but only invoke them at the appropriate steps.
