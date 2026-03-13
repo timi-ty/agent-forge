@@ -82,6 +82,19 @@
       "notes": "Fetches catalog.json from the target branch, diffs against all locally installed skills (global and workspace scopes), presents a grouped summary of new/updated/removed skills, confirms with user before applying, then clones the branch to a temp dir and copies skill folders. Separate confirmation for destructive removals."
     },
     {
+      "name": "btw",
+      "path": "skills/btw",
+      "description": "Interrupt the current task with a side-task that runs in a background subagent. Use when the user says /btw followed by a task description.",
+      "triggers": [
+        "/btw",
+        "btw",
+        "by the way"
+      ],
+      "files": ["SKILL.md"],
+      "dependencies": [],
+      "notes": "Slash-command skill (disable-model-invocation: true). Launches a background subagent via the Task tool with run_in_background: true, then resumes the main task. Multiple /btw commands stack. Collects all subagent results after the main task completes and flags file conflicts."
+    },
+    {
       "name": "development-harness",
       "path": "skills/development-harness",
       "description": "A project-local development harness that compiles a ROADMAP.md into phased, validator-backed autonomous execution. One skill with 7 commands: create, invoke, update, state, sync, clear, inject-issues. Bootstraps workspace-local slash commands, a stop hook for bounded continuation, and deterministic Python helpers.",
