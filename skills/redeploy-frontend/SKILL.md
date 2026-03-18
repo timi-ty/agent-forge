@@ -5,7 +5,7 @@ description: Trigger a Vercel redeploy of the frontend by pushing a harmless com
 
 # Redeploy Frontend
 
-Push a trivial timestamp comment change to the current deploy branch to trigger a Vercel redeploy. Auto-detects the package manager, deploy branch, and target file. Auto-fixes prettier formatting issues before pushing.
+Push a trivial timestamp comment change to the current deploy branch to trigger a Vercel redeploy. Uses a git worktree so the user's working directory is never touched -- works even with uncommitted local changes. Auto-detects the package manager, deploy branch, and target file. Auto-fixes prettier formatting issues before pushing.
 
 ## Workflow
 
@@ -17,7 +17,9 @@ Resolve the repo root and detect project settings before proceeding.
 ```bash
 git rev-parse --show-toplevel
 ```
-All subsequent commands run from this directory.
+All subsequent commands run from this directory. Set `$REPO_ROOT` to this path.
+
+**Repo name** -- derive `$REPO_NAME` from the directory name or git remote.
 
 **Package manager** -- check for lock files at repo root:
 - `pnpm-lock.yaml` → `pnpm`
@@ -38,47 +40,67 @@ The user is responsible for being on the correct deploy branch before invoking t
 2. Try common entry points in order: `src/app/layout.tsx`, `app/layout.tsx`, `src/main.tsx`, `src/App.tsx`, `src/index.ts`, `src/index.tsx`
 3. If none of the above exist, ask the user: "Which file should I use to inject the redeploy timestamp comment?"
 
-Set `$BRANCH`, `$PKG_MANAGER`, and `$TIMESTAMP_FILE` for use in all steps below.
+Set `$BRANCH`, `$PKG_MANAGER`, and `$TIMESTAMP_FILE` for use in all steps below. `$TIMESTAMP_FILE` is a path relative to the repo root.
 
 ---
 
-### Step 1: Ensure clean working tree
+### Step 1: Create a worktree for the deploy branch
 
-```bash
-git status --porcelain
-```
-
-If there is any output, **abort** and tell the user:
-
-> "There are uncommitted changes in this repo. Stash or commit them before redeploying."
-
-### Step 2: Verify remote branch state
-
-Fetch the latest remote state (without merging):
+Fetch the latest remote state and create a clean worktree at `origin/$BRANCH`:
 
 ```bash
 git fetch origin
+git worktree add ../$REPO_NAME-wt-redeploy origin/$BRANCH
 ```
 
-Compute the ahead/behind relationship:
+Set `$DEPLOY_DIR` to the absolute path of the created worktree.
+
+If the worktree path already exists (from a previous interrupted redeploy), remove it first:
 
 ```bash
-git rev-list --count HEAD..origin/$BRANCH   # commits behind
-git rev-list --count origin/$BRANCH..HEAD   # commits ahead
+git worktree remove ../$REPO_NAME-wt-redeploy --force
 ```
 
-Act on the result:
+#### Handle unpushed local commits
 
-- **Up to date** (both = 0): continue.
-- **Behind only** (behind > 0, ahead = 0): ask the user: "Your branch is {N} commit(s) behind `origin/{branch}`. Fast-forward before proceeding?" If yes, run `git pull --ff-only origin $BRANCH` and continue. If no, abort.
-- **Ahead only** (behind = 0, ahead > 0): warn the user: "You have {N} unpushed commit(s) on `{branch}`. Proceed anyway?" If yes, continue. If no, abort.
-- **Diverged** (both > 0): **abort** and tell the user: "Local `{branch}` has diverged from `origin/{branch}` ({N} ahead, {M} behind). Resolve the divergence manually before proceeding."
+Check if the user has local commits on `$BRANCH` that are not yet on the remote:
+
+```bash
+git rev-list --count origin/$BRANCH..HEAD
+```
+
+If ahead > 0 and the user is on `$BRANCH`, ask: "You have {N} unpushed commit(s) on `{branch}` not yet on the remote. Include them in the redeploy?"
+
+If yes, capture the local tip and merge it into the worktree's detached HEAD:
+
+```bash
+LOCAL_TIP=$(git rev-parse $BRANCH)
+git -C $DEPLOY_DIR merge $LOCAL_TIP --no-edit
+```
+
+Do NOT use `git -C $DEPLOY_DIR checkout $BRANCH` -- git forbids the same branch in two worktrees simultaneously, and the user's main worktree already has `$BRANCH` checked out. The worktree is on a detached HEAD (from `origin/$BRANCH`), so a merge incorporates the local commits without violating the one-branch-per-tree rule.
+
+If no, continue with the worktree at `origin/$BRANCH`.
+
+### Step 2: Install dependencies
+
+Install dependencies in the worktree so the build step works:
+
+```bash
+cd $DEPLOY_DIR
+$PKG_MANAGER install
+```
+
+**Optimization:** For large projects where `install` is slow, you may symlink `node_modules` from the main worktree instead: `ln -s $REPO_ROOT/node_modules $DEPLOY_DIR/node_modules` (Unix) or `mklink /J $DEPLOY_DIR\node_modules $REPO_ROOT\node_modules` (Windows). This avoids a full install. Only do this if both worktrees are on the same branch and dependency versions match.
 
 ### Step 3: Local pre-build check and auto-fix
+
+**All commands in this step run in `$DEPLOY_DIR`.**
 
 Run the build locally to catch failures before pushing:
 
 ```bash
+cd $DEPLOY_DIR
 $PKG_MANAGER run build
 ```
 
@@ -89,6 +111,7 @@ $PKG_MANAGER run build
 - **Prettier-only failure** -- the output contains `[warn]` lines listing files and ends with `Code style issues found`. The build phase never ran. Auto-fix:
 
   ```bash
+  cd $DEPLOY_DIR
   $PKG_MANAGER run format
   ```
 
@@ -96,11 +119,11 @@ $PKG_MANAGER run build
   - If the re-run **passes**, continue to Step 4. The formatted files will be staged alongside the timestamp change in Step 5.
   - If the re-run **fails** with a different error, treat as non-trivial (see below).
 
-- **Non-trivial failure** (ESLint errors, TypeScript type errors, build errors) -- **abort** and report the full build output to the user. Ask follow-up questions about how to resolve before pushing.
+- **Non-trivial failure** (ESLint errors, TypeScript type errors, build errors) -- **abort**, clean up the worktree (Step 7), and report the full build output to the user. Ask follow-up questions about how to resolve before pushing.
 
 ### Step 4: Update the redeploy timestamp
 
-Open `$TIMESTAMP_FILE`. Look for an existing line matching the pattern `// redeploy:`.
+Open `$DEPLOY_DIR/$TIMESTAMP_FILE`. Look for an existing line matching the pattern `// redeploy:`.
 
 - If the line exists, **replace** it with a new UTC timestamp: `// redeploy: <timestamp>`
 - If no such line exists, **insert** `// redeploy: <timestamp>` as the very first line of the file.
@@ -119,9 +142,12 @@ Example result:
 
 ### Step 5: Commit and push
 
+**All commands in this step run in `$DEPLOY_DIR`.**
+
 If prettier auto-fixed files in Step 3, stage everything and use the format-aware message:
 
 ```bash
+cd $DEPLOY_DIR
 git add .
 git commit -m "chore: format and trigger redeploy"
 git push origin $BRANCH
@@ -130,6 +156,7 @@ git push origin $BRANCH
 If no prettier fixes were needed (only the timestamp changed), stage just the timestamp file:
 
 ```bash
+cd $DEPLOY_DIR
 git add $TIMESTAMP_FILE
 git commit -m "chore: trigger redeploy"
 git push origin $BRANCH
@@ -138,3 +165,19 @@ git push origin $BRANCH
 ### Step 6: Confirm
 
 Report the push result to the user. Include the commit hash from the output.
+
+### Step 7: Cleanup worktree
+
+Remove the worktree:
+
+```bash
+git worktree remove ../$REPO_NAME-wt-redeploy
+```
+
+If removal fails, force it:
+
+```bash
+git worktree remove --force ../$REPO_NAME-wt-redeploy
+```
+
+This step runs after Step 6 on success, or after a build failure abort in Step 3.

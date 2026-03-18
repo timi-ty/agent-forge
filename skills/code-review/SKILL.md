@@ -23,13 +23,14 @@ Copy this checklist and track progress:
 ```
 Review Progress:
 - [ ] Phase 1: Gather PR context
-- [ ] Phase 2: Understand existing codebase patterns
+- [ ] Phase 2: Understand existing codebase patterns (via worktree)
 - [ ] Phase 3: File-by-file diff review
 - [ ] Phase 4: Cross-cutting analysis
 - [ ] Phase 5: Deliver structured report
 - [ ] Phase 6: Determine verdict
 - [ ] Phase 7: Confirm verdict with user
 - [ ] Phase 8: Apply verdict
+- [ ] Phase 9: Cleanup worktrees
 ```
 
 ### Phase 1 -- Gather PR Context
@@ -55,37 +56,45 @@ After gathering, list every changed file and categorize each as **added**, **mod
 
 ### Phase 2 -- Understand Existing Codebase Patterns
 
-#### Step 0: Verify local branch state
+#### Step 0: Create a worktree for the base branch
 
-Before reading any local files, ensure the local checkout of the base branch (`baseRefName` from Phase 1) is up to date. Set `$BRANCH` to the base branch name.
+Create an isolated worktree checked out to the latest remote base branch. This avoids touching the user's working directory and guarantees pattern reads come from the true base branch state regardless of what is currently checked out locally.
 
-Fetch the latest remote state (without merging):
+Set `$BRANCH` to the base branch name (`baseRefName` from Phase 1). Determine the repo name from the git remote or directory name and set `$REPO_NAME`. Set `$REVIEW_BASE` to the worktree path.
 
 ```bash
 git fetch origin
+git worktree add ../$REPO_NAME-wt-review-pr<N> origin/$BRANCH
 ```
 
-Compute the ahead/behind relationship:
+Set `$REVIEW_BASE` to the absolute path of the created worktree (e.g., `../<repo>-wt-review-pr<N>`).
+
+If the worktree path already exists (e.g., from a previous interrupted review), remove it first:
 
 ```bash
-git rev-list --count $BRANCH..origin/$BRANCH   # commits behind
-git rev-list --count origin/$BRANCH..$BRANCH   # commits ahead
+git worktree remove ../$REPO_NAME-wt-review-pr<N> --force
 ```
 
-Act on the result:
+#### Optional: Check out the PR head branch
 
-- **Up to date** (both = 0): continue.
-- **Behind only** (behind > 0, ahead = 0): ask the user: "Your local `{branch}` is {N} commit(s) behind `origin/{branch}`. Fast-forward before reading local files?" If yes, run `git pull --ff-only origin $BRANCH` and continue. If no, warn that pattern analysis may be based on stale code and continue.
-- **Ahead only** (behind = 0, ahead > 0): continue. Local commits do not affect pattern reads.
-- **Diverged** (both > 0): warn the user: "Local `{branch}` has diverged from `origin/{branch}`. Pattern analysis may not reflect the current remote state." Continue.
+If you need to run the PR code locally (build, test, lint), also create a worktree for the PR's head:
+
+```bash
+git fetch origin pull/<N>/head:pr-<N>
+git worktree add ../$REPO_NAME-wt-review-pr<N>-head pr-<N>
+```
+
+This is not required for every review. Use it when deeper verification (running builds/tests) is needed.
 
 ---
 
 This is the most critical phase. You cannot review code without knowing what "correct" looks like in this codebase.
 
+**All file reads in this phase use the `$REVIEW_BASE` worktree path**, not the workspace root. This guarantees you are reading the base branch state.
+
 For each changed file:
-1. **Read the full current file** (not just the diff) to understand the surrounding context.
-2. **Read 2-3 sibling files** in the same directory or module to identify:
+1. **Read the full current file** from `$REVIEW_BASE` (not just the diff) to understand the surrounding context.
+2. **Read 2-3 sibling files** from `$REVIEW_BASE` in the same directory or module to identify:
    - Naming conventions (files, functions, variables, types)
    - Architectural patterns (how modules are structured, how exports are organized)
    - Error handling style (try/catch patterns, error types, Result types)
@@ -221,6 +230,32 @@ gh pr review <PR> --repo <owner/repo> --request-changes --body "$(cat <<'EOF'
 <request changes comment body>
 EOF
 )"
+```
+
+### Phase 9 -- Cleanup Worktrees
+
+After the review is complete (verdict applied or user chose "Plan to address issues"), remove all worktrees created during the review:
+
+```bash
+git worktree remove ../$REPO_NAME-wt-review-pr<N>
+```
+
+If the PR head worktree was also created:
+
+```bash
+git worktree remove ../$REPO_NAME-wt-review-pr<N>-head
+```
+
+If removal fails (e.g., modified files in the worktree), force it:
+
+```bash
+git worktree remove --force ../$REPO_NAME-wt-review-pr<N>
+```
+
+Also clean up the local `pr-<N>` branch ref if it was created for the head worktree:
+
+```bash
+git branch -D pr-<N>
 ```
 
 ---
