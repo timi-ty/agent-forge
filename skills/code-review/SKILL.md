@@ -180,7 +180,7 @@ State the verdict clearly to the user along with a one-sentence rationale (e.g.,
 
 ### Phase 7 -- Confirm Verdict with User
 
-Use the `AskQuestion` tool to present the verdict and let the user confirm or override it. Offer these options:
+Ask the user to confirm or override the verdict. Offer these options:
 
 - **Go ahead** -- apply the verdict as-is.
 - **Plan to address issues** -- (only shown when verdict is Request Changes) switch to plan mode and create a plan to fix the issues found in the review.
@@ -192,13 +192,13 @@ Do not proceed until the user responds.
 
 #### If "Plan to address issues" is selected
 
-Ask a follow-up `AskQuestion` to determine scope. Offer these options:
+Ask a follow-up question to determine scope. Offer these options:
 
 - **All issues** -- plan to address every issue from the review report (High, Medium, and Low).
 - **Exclude specific issues** -- address all issues except ones the user specifies. If selected, ask the user to input the issue numbers to omit (referencing the numbered items from the review report).
 - **Include specific issues only** -- address only the issues the user specifies. If selected, ask the user to input the issue numbers to include.
 
-Once the scope is determined, switch to plan mode using `SwitchMode` and create a plan with one actionable todo per selected issue, referencing the file path and fix description from the review report. Do **not** apply the PR verdict (no approve or request-changes is posted) -- the user can re-run the review or manually apply the verdict after fixes are made.
+Once the scope is determined, switch to plan mode and create a plan with one actionable todo per selected issue, referencing the file path and fix description from the review report. Do **not** apply the PR verdict (no approve or request-changes is posted) -- the user can re-run the review or manually apply the verdict after fixes are made.
 
 ### Phase 8 -- Apply Verdict
 

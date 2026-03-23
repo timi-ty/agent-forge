@@ -35,7 +35,7 @@ Classify the requested change into one or more categories:
 | **Validation policy change** | Adjust which validation layers are required |
 | **Loop behavior change** | Budget, stop conditions, hook parameters |
 | **Schema migration** | `schema_version` bump (v1 only handles trivial same-version case) |
-| **Hook changes** | Add, modify, or remove hooks in `.cursor/hooks/` |
+| **Hook changes** | Add, modify, or remove hooks in the tool's hooks directory |
 
 ### 4. Check Ownership
 
@@ -70,7 +70,7 @@ After approval, apply the changes:
 - For configuration changes: update `config.json`
 - For validation policy changes: update `config.json` quality section and relevant rule files
 - For loop behavior changes: update `config.json` and hook scripts
-- For hook changes: modify files in `.cursor/hooks/`
+- For hook changes: modify files in the tool's hooks directory (`.cursor/hooks/` or `.claude/hooks/`)
 
 ### 7. Update Manifest
 

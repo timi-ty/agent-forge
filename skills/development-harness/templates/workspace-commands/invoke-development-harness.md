@@ -6,6 +6,15 @@ description: "Execute the next unit of work from the development harness"
 
 Read `.harness/ARCHITECTURE.md` for project context.
 
+## 0. Resolve tool paths
+
+Read `.harness/config.json` and check the `tool` field. Set variables:
+
+| Variable | cursor | claude-code |
+|----------|--------|-------------|
+| `$GLOBAL_SKILLS_DIR` | `~/.cursor/skills` | `~/.claude/commands` |
+| `$WORKSPACE_SKILLS_DIR` | `.cursor/skills` | `.claude/commands` |
+
 ## 1. Activate Invoke Session
 
 Create the invoke session flag so the stop hook knows this is a harness session:
@@ -90,7 +99,7 @@ Update all three files:
 
 Check for `commit-agent-changes` skill:
 ```bash
-ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null
 ```
 
 If found, delegate to the skill. Otherwise, commit directly following `.harness/config.json` git policy:

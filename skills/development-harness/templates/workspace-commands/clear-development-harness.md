@@ -12,7 +12,7 @@ description: Remove all development harness artifacts safely using the manifest
    - **Will remove managed blocks** from: each file
    - **Will preserve** (product-owned): each file with note
    - **Warnings**: any edge cases
-5. Ask for confirmation using AskQuestion:
+5. Ask the user for confirmation:
    - "Yes, clear the harness"
    - "No, cancel"
    - "Exclude specific items" (if chosen, ask which items to keep and re-run dry-run)

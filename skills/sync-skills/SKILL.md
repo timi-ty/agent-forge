@@ -1,11 +1,11 @@
 ---
 name: sync-skills
-description: Sync locally installed Cursor agent skills to match a branch of the cursor-forge repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says "install skills", "update skills", "sync skills", or "install cursor skills".
+description: Sync locally installed agent skills to match a branch of the cursor-forge repo. Works with both Cursor and Claude Code. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says "install skills", "update skills", "sync skills", or "install cursor skills".
 ---
 
 # Sync Skills
 
-Sync locally installed Cursor agent skills with a branch of the `cursor-forge` GitHub repo. Works for first-time installs (everything is new) and subsequent updates (adds new skills, updates changed ones, removes deleted ones). Always asks for confirmation before making changes.
+Sync locally installed agent skills with a branch of the `cursor-forge` GitHub repo. Works for first-time installs (everything is new) and subsequent updates (adds new skills, updates changed ones, removes deleted ones). Always asks for confirmation before making changes.
 
 ## Workflow
 
@@ -23,6 +23,21 @@ Set `$OWNER`, `$REPO`, and `$BRANCH` for use in all steps below.
 
 ---
 
+### Step 0.5: Detect host tool
+
+Determine whether you are running in **Cursor** or **Claude Code**:
+
+- **Cursor**: Your system prompt identifies you as a Cursor agent, or you have access to the `AskQuestion` tool.
+  - Global skills path: `~/.cursor/skills/` (macOS/Linux) or `%USERPROFILE%\.cursor\skills\` (Windows)
+  - Workspace skills path: `.cursor/skills/`
+- **Claude Code**: Your system prompt identifies you as Claude Code, or you have access to the `AskUserQuestion` tool.
+  - Global skills path: `~/.claude/commands/` (macOS/Linux) or `%USERPROFILE%\.claude\commands\` (Windows)
+  - Workspace skills path: `.claude/commands/`
+
+Set `$GLOBAL_SKILLS_DIR` and `$WORKSPACE_SKILLS_DIR` accordingly. Use these variables in all subsequent steps instead of hardcoded paths.
+
+---
+
 ### Step 1: Fetch remote catalog
 
 Fetch and decode `catalog.json` from the target branch:
@@ -32,7 +47,9 @@ gh api "repos/$OWNER/$REPO/contents/catalog.json?ref=$BRANCH" \
   --jq '.content | @base64d | fromjson'
 ```
 
-Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`, `dependencies`, `notes`.
+Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`, `dependencies`, `notes`, `platforms`.
+
+The `platforms` object contains tool-specific install paths. Use the paths matching your detected tool.
 
 ---
 
@@ -40,12 +57,11 @@ Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`
 
 Check both scopes for installed skill folders:
 
-**Global scope:**
-- Windows: `%USERPROFILE%\.cursor\skills\`
-- macOS/Linux: `~/.cursor/skills/`
+**Global scope** (`$GLOBAL_SKILLS_DIR`):
+- Scan for skill folders in the global skills directory
 
-**Workspace scope:**
-- `.cursor/skills/` relative to the current working directory (only if this folder exists)
+**Workspace scope** (`$WORKSPACE_SKILLS_DIR`):
+- Only check if this directory exists relative to the current working directory
 
 For each installed skill folder found, note its name and scope.
 
@@ -79,7 +95,7 @@ If any file differs (or does not exist locally), classify the skill as UPDATED.
 Show a grouped diff for each scope that has changes. Example:
 
 ```
-Global (~/.cursor/skills/):
+Global ($GLOBAL_SKILLS_DIR):
   + sync-skills          [new]        requires: gh CLI
   ~ redeploy-frontend    [updated]
   - old-skill            [removed]
@@ -96,7 +112,7 @@ Ask once: "Apply these changes?" before proceeding with any adds or updates.
 Ask separately for each skill to be removed: "Remove `{skill-name}` from {scope}? It is no longer in the remote catalog." Only remove if the user confirms.
 
 **Scope for new skills:**
-If the workspace scope (`.cursor/skills/`) is not present in the current directory, default all new skills to global. If it exists, ask once: "Where should I install these new skills? [list all new skill names] — globally, workspace-only, or mixed? (If mixed, specify per skill.)"
+If the workspace scope directory is not present in the current directory, default all new skills to global. If it exists, ask once: "Where should I install these new skills? [list all new skill names] — globally, workspace-only, or mixed? (If mixed, specify per skill.)"
 
 ---
 
@@ -142,12 +158,12 @@ List every change applied, grouped by scope and action:
 
 ```
 Applied:
-  Global:
+  Global ($GLOBAL_SKILLS_DIR):
     + sync-skills installed
     ~ redeploy-frontend updated
     - old-skill removed
 
-Reminder: Start a new Cursor agent session for skill changes to take effect.
+Reminder: Start a new agent session for skill changes to take effect.
 ```
 
 If any changes were skipped (user declined), list them as skipped.

@@ -51,17 +51,26 @@ Then proceed regardless.
 
 ### Step 4 -- Launch Background Subagent
 
-Call the `Task` tool with these parameters:
+Launch a background subagent to handle the side-task. Use the available background execution mechanism for your tool:
 
+**Cursor:** Call the `Task` tool with:
 - `subagent_type`: `generalPurpose`
 - `run_in_background`: `true`
 - `model`: `fast`
 - `description`: a 3-5 word summary of the side-task
-- `prompt`: a self-contained prompt built from Step 2's context block plus the side-task description. The prompt must end with:
+- `prompt`: the self-contained prompt from below
+
+**Claude Code:** Call the `Agent` tool with:
+- `run_in_background`: `true`
+- `model`: `sonnet` (optional, for faster execution)
+- `description`: a 3-5 word summary of the side-task
+- `prompt`: the self-contained prompt from below
+
+**Prompt content** (same for both): Build a self-contained prompt from Step 2's context block plus the side-task description. The prompt must end with:
 
 > When you are done, return a concise summary of exactly what you changed (files, lines, commands) and any issues encountered.
 
-Record the returned `output_file` path. If this is not the first `/btw` in the conversation, append it to the existing list rather than replacing it. Track each entry as `(task_description, output_file)`.
+Record a tracking entry for the subagent. If this is not the first `/btw` in the conversation, append it to the existing list rather than replacing it. Track each entry as `(task_description, subagent_id_or_output_file)`.
 
 ### Step 5 -- Resume Main Task
 
@@ -73,13 +82,16 @@ If there is no prior main task (the `/btw` was the very first message), simply i
 
 Run this step only after the main task is fully complete.
 
-For each tracked `(task_description, output_file)`:
+For each tracked `(task_description, subagent_id_or_output_file)`:
 
-1. **Read the output file.**
-2. **Check if the subagent is still running** -- if the file has no `exit_code` footer yet, poll up to 3 times with escalating waits (2 s, 4 s, 8 s). Re-read the file after each wait.
-3. **If still running after polling**, report to the user:
-   > BTW "{task_description}" is still running. Check the output later at: `{output_file}`
-4. **If finished**, read the subagent's final output and include it in a summary.
+**Cursor:** Read the output file. If the file has no `exit_code` footer yet, poll up to 3 times with escalating waits (2 s, 4 s, 8 s). Re-read the file after each wait.
+
+**Claude Code:** Background agents notify automatically when complete. Wait for the notification, then read the agent's returned result.
+
+**If still running after polling / no notification yet**, report to the user:
+> BTW "{task_description}" is still running in the background.
+
+**If finished**, read the subagent's final output and include it in a summary.
 
 Present all completed side-task results under a **BTW Results** heading:
 

@@ -1,6 +1,7 @@
 {
   "schema_version": "1.0",
   "skill_version": "1.0",
+  "_comment": "Paths prefixed with $TOOL_DIR are parameterized. During create, substitute $TOOL_DIR with .cursor (Cursor) or .claude (Claude Code). $RULE_EXT is .mdc (Cursor) or .md (Claude Code). $HOOK_CONFIG ownership must be set to harness-owned for Cursor (.cursor/hooks.json) or managed-block for Claude Code (.claude/settings.local.json) since the latter is a shared file.",
   "entries": [
     {
       "path": "AGENTS.md",
@@ -88,85 +89,86 @@
       "removable": true
     },
     {
-      "path": ".cursor/commands/create-development-harness.md",
+      "path": "$TOOL_DIR/commands/create-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/invoke-development-harness.md",
+      "path": "$TOOL_DIR/commands/invoke-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/update-development-harness.md",
+      "path": "$TOOL_DIR/commands/update-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/harness-state.md",
+      "path": "$TOOL_DIR/commands/harness-state.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/sync-development-harness.md",
+      "path": "$TOOL_DIR/commands/sync-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/clear-development-harness.md",
+      "path": "$TOOL_DIR/commands/clear-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/commands/inject-harness-issues.md",
+      "path": "$TOOL_DIR/commands/inject-harness-issues.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": ".cursor/hooks.json",
+      "path": "$HOOK_CONFIG",
       "ownership": "harness-owned",
       "type": "hook-config",
-      "removable": true
+      "removable": true,
+      "note": "Cursor: .cursor/hooks.json (harness-owned). Claude Code: .claude/settings.local.json (shared -- treat as managed-block if other settings exist)."
     },
     {
-      "path": ".cursor/hooks/continue-loop.py",
+      "path": "$TOOL_DIR/hooks/continue-loop.py",
       "ownership": "harness-owned",
       "type": "hook-script",
       "removable": true
     },
     {
-      "path": ".cursor/rules/harness-core.mdc",
+      "path": "$TOOL_DIR/rules/harness-core$RULE_EXT",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": ".cursor/rules/harness-validation.mdc",
+      "path": "$TOOL_DIR/rules/harness-validation$RULE_EXT",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": ".cursor/rules/harness-git.mdc",
+      "path": "$TOOL_DIR/rules/harness-git$RULE_EXT",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": ".cursor/rules/harness-deployment.mdc",
+      "path": "$TOOL_DIR/rules/harness-deployment$RULE_EXT",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": ".cursor/rules/harness-testing.mdc",
+      "path": "$TOOL_DIR/rules/harness-testing$RULE_EXT",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
