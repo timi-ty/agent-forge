@@ -6,6 +6,21 @@ Execute the next unit of work from the harness. This is the primary runtime comm
 
 ---
 
+## Step 0: Detect Host Tool
+
+Determine whether you are running in **Cursor** or **Claude Code**.
+
+Set the following variables:
+
+| Variable | Cursor | Claude Code |
+|----------|--------|-------------|
+| `$TOOL` | `cursor` | `claude-code` |
+| `$TOOL_DIR` | `.cursor` | `.claude` |
+| `$GLOBAL_SKILLS_DIR` | `~/.cursor/skills` | `~/.claude/commands` |
+| `$WORKSPACE_SKILLS_DIR` | `.cursor/skills` | `.claude/commands` |
+
+---
+
 ## Step 1: Activate Invoke Session
 
 Create the invoke session flag so the stop hook knows this is a harness session:
@@ -229,9 +244,9 @@ Update the human-readable checkpoint:
 
 ### Check for commit-agent-changes skill
 
-Look for the skill:
+Look for the skill in both global and workspace paths:
 ```bash
-ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null
 ```
 
 **If found:** Read the skill file and delegate the commit/PR workflow to it. The skill handles branch creation, commit grouping, and PR creation.
@@ -258,14 +273,16 @@ ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skil
 The agent's turn ends here. The stop hook (`continue-loop.py`) fires automatically after the agent completes. It will:
 
 1. Check for `.harness/.invoke-active` — if absent, the hook is a no-op (this prevents the hook from hijacking non-harness agent sessions)
-2. Check if status is "completed" (only continues on completed)
-3. Check `execution.loop_budget` — stop if budget exhausted
-4. Check `checkpoint.blockers` — stop if any blockers exist
-5. Check `checkpoint.open_questions` — stop if any open questions exist
-6. Run `select_next_unit.py` for authoritative next unit
-7. Compare selector output against `checkpoint.next_action`
-8. If they **agree** and all conditions pass → return `followup_message` to continue the loop
-9. If they **disagree** → stop (disagreement = ambiguity)
+2. **Cursor:** Check if status is "completed" (only continues on completed)
+3. **Claude Code:** Check `stop_hook_active` (built-in loop guard; stops if true to prevent infinite loops)
+4. Read `state.json` for loop budget, blockers, open questions
+5. Run `select_next_unit.py` for authoritative next unit
+6. Compare selector output against `checkpoint.next_action`
+7. If they **agree** and all conditions pass → continue the loop
+8. If they **disagree** → stop (disagreement = ambiguity)
+
+**Cursor:** Hook returns `{"followup_message": "..."}` to continue or `{}` to stop.
+**Claude Code:** Hook exits with code 2 + `{"decision": "block"}` to continue, or exits with code 0 to stop.
 
 When the hook decides to stop, it deletes `.harness/.invoke-active` to reset the gate for the next session.
 
@@ -291,11 +308,11 @@ Update `checkpoint.md` and `state.json` to signal a stop when any of these occur
 
 ## Skills Integration
 
-At the start of execution, check for installed Cursor skills:
+At the start of execution, check for installed skills:
 
 ```bash
-ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null
-ls ~/.cursor/skills/code-review/SKILL.md 2>/dev/null || ls .cursor/skills/code-review/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/code-review/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/code-review/SKILL.md 2>/dev/null
 ```
 
 - **commit-agent-changes**: If available, use it for Step 11 (commit/PR workflow)

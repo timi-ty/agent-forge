@@ -6,6 +6,32 @@ This command bootstraps the entire development harness in the target workspace. 
 
 ---
 
+## Phase 0: Detect Host Tool
+
+Determine whether you are running in **Cursor** or **Claude Code**.
+
+**Detection method:**
+- If your system prompt identifies you as Claude Code, or you have access to the `AskUserQuestion` tool (not `AskQuestion`), you are in **Claude Code**.
+- Otherwise, you are in **Cursor**.
+
+Set the following variables based on the detected tool:
+
+| Variable | Cursor | Claude Code |
+|----------|--------|-------------|
+| `$TOOL` | `cursor` | `claude-code` |
+| `$TOOL_DIR` | `.cursor` | `.claude` |
+| `$GLOBAL_SKILLS_DIR` | `~/.cursor/skills` | `~/.claude/commands` |
+| `$WORKSPACE_SKILLS_DIR` | `.cursor/skills` | `.claude/commands` |
+| `$COMMANDS_DIR` | `.cursor/commands` | `.claude/commands` |
+| `$RULES_DIR` | `.cursor/rules` | `.claude/rules` |
+| `$HOOKS_DIR` | `.cursor/hooks` | `.claude/hooks` |
+| `$RULE_EXT` | `.mdc` | `.md` |
+| `$HOOK_CONFIG` | `.cursor/hooks.json` | `.claude/settings.local.json` |
+
+Use these variables throughout all subsequent phases. Never hardcode tool-specific paths.
+
+---
+
 ## Phase 1: Inspect the Repo
 
 Detect the following automatically. Do NOT ask the user for anything detectable from the repo.
@@ -22,7 +48,7 @@ Detect the following automatically. Do NOT ask the user for anything detectable 
 | Existing tests | `tests/`, `__tests__/`, `*.test.*`, `*.spec.*`, test config files (jest.config.*, vitest.config.*, pytest.ini, etc.) |
 | Existing deployment config | vercel.json, netlify.toml, fly.toml, Dockerfile, docker-compose.yml, serverless.yml, etc. |
 | Git state | Current branch, default remote, remote URL |
-| Installed Cursor skills | Check `~/.cursor/skills/` and `.cursor/skills/` for `commit-agent-changes` and `code-review` skills |
+| Installed skills | Check `$GLOBAL_SKILLS_DIR/` and `$WORKSPACE_SKILLS_DIR/` for `commit-agent-changes` and `code-review` skills |
 
 ### Pre-existing artifact checks
 
@@ -31,8 +57,8 @@ Detect the following automatically. Do NOT ask the user for anything detectable 
 | `ROADMAP.md` | Note it exists; will use in Phase 3 |
 | `.harness/` | **Warn the user.** Ask whether to reinitialize (wipes harness-owned files) or abort. If reinitializing, run `clear_harness.py` first to cleanly remove harness-owned artifacts. |
 | `AGENTS.md` | Note it exists; will use managed-block insertion instead of creating a new file |
-| `.cursor/rules/` | Note existing rules; harness rules will be added alongside them |
-| `.cursor/hooks.json` | Note it exists; will merge the stop hook entry rather than overwriting |
+| `$RULES_DIR/` | Note existing rules; harness rules will be added alongside them |
+| `$HOOK_CONFIG` | Note it exists; will merge the stop hook entry rather than overwriting |
 
 Compile all findings into a detection summary. Present it to the user for confirmation before proceeding.
 
@@ -141,20 +167,20 @@ Create every file listed below. Use schemas from `schemas/` and templates from `
 
 | File | Content |
 |------|---------|
-| `config.json` | Populate from Phase 1 detection + Phase 2 answers. Follow `schemas/config.json` structure. Include `schema_version`, `skill_version`, `project`, `stack`, `deployment`, `git`, `testing`, `quality`, and `execution_mode` fields. |
-| `manifest.json` | List ALL generated files with correct ownership classes. CI/CD scaffolding and E2E scaffolding are **product-owned**. Everything else the harness creates is **harness-owned**. Pre-existing files that get managed blocks are **managed-block**. Follow `schemas/manifest.json` structure. |
+| `config.json` | Populate from Phase 1 detection + Phase 2 answers. Follow `schemas/config.json` structure. Include `schema_version`, `skill_version`, `tool` (cursor or claude-code), `project`, `stack`, `deployment`, `git`, `testing`, `quality`, and `execution_mode` fields. |
+| `manifest.json` | List ALL generated files with correct ownership classes. Use `$TOOL_DIR` prefix for tool-specific paths. CI/CD scaffolding and E2E scaffolding are **product-owned**. Everything else the harness creates is **harness-owned**. Pre-existing files that get managed blocks are **managed-block**. Follow `schemas/manifest.json` structure. |
 | `state.json` | Initial state with first active phase and first unit. Follow `schemas/state.json` structure. Set `session_count: 0`, `loop_budget: 10`, empty issues and drift. |
 | `phase-graph.json` | Already generated in Phase 4. Verify it is in place. |
 | `checkpoint.md` | Initial checkpoint from `templates/checkpoint-template.md`. Fill in: last completed = "Harness created", next = first unit description, no blockers, no evidence yet. |
-| `ARCHITECTURE.md` | Generate from `references/architecture.md`, adapted to this specific project. Replace generic references with project-specific paths, stack names, and conventions. |
+| `ARCHITECTURE.md` | Generate from `references/architecture.md`, adapted to this specific project. Replace generic references with project-specific paths, stack names, and conventions. Use `$TOOL_DIR` for tool-specific paths. |
 | `plans/` | Create empty directory. |
 | `issues/` | Create empty directory. |
 | `.gitignore` | Contains `.invoke-active` — the transient session flag must not be committed. |
 | `scripts/` | Copy ALL Python scripts from this skill's `scripts/` directory: `compile_roadmap.py`, `validate_harness.py`, `select_next_unit.py`, `sync_harness.py`, `clear_harness.py`, `normalize_issues.py`, `harness_utils.py`. |
 
-### .cursor/commands/ -- workspace slash commands
+### $COMMANDS_DIR/ -- workspace slash commands
 
-Generate 7 workspace command files. Each file must:
+Generate 7 workspace command files in `$COMMANDS_DIR/`. Each file must:
 
 1. State its purpose in a one-line comment at the top
 2. Tell the agent to read `.harness/ARCHITECTURE.md` for context
@@ -174,9 +200,11 @@ Use the templates from this skill's `templates/workspace-commands/` directory. T
 | `clear-development-harness.md` | Remove all harness artifacts |
 | `inject-harness-issues.md` | Report problems or inject issues |
 
-### .cursor/hooks.json
+### Hook configuration
 
-Generate the hooks configuration:
+**If `$TOOL` is `cursor`:**
+
+Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
 
 ```json
 {
@@ -191,23 +219,51 @@ Generate the hooks configuration:
 }
 ```
 
-**If `.cursor/hooks.json` already exists**, read it, parse the JSON, and MERGE the stop hook entry into the existing `hooks.stop` array. Do not overwrite other hooks. Do not duplicate the entry if it already exists.
+If `.cursor/hooks.json` already exists, read it, parse the JSON, and MERGE the stop hook entry into the existing `hooks.stop` array. Do not overwrite other hooks. Do not duplicate the entry if it already exists.
 
-### .cursor/hooks/continue-loop.py
+Copy the hook script from `templates/hooks/continue-loop.py` to `.cursor/hooks/continue-loop.py`.
 
-Copy from this skill's `templates/hooks/continue-loop.py`.
+**If `$TOOL` is `claude-code`:**
 
-### .cursor/rules/ -- harness rule files
+Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
 
-Generate from the corresponding templates in this skill's `templates/rules/` directory:
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/continue-loop.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+If `.claude/settings.local.json` already exists, read it, parse the JSON, and deep-merge the `hooks.Stop` entry. Do not overwrite other settings or hooks.
+
+Copy the hook script from `templates/claude-code/hooks/continue-loop.py` to `.claude/hooks/continue-loop.py`.
+
+### $RULES_DIR/ -- harness rule files
+
+Generate rule files in `$RULES_DIR/` using the appropriate templates:
+
+**If `$TOOL` is `cursor`:** Use `templates/rules/harness-*.mdc`
+**If `$TOOL` is `claude-code`:** Use `templates/claude-code/rules/harness-*.md`
 
 | Rule File | Source Template |
 |-----------|---------------|
-| `harness-core.mdc` | `templates/rules/harness-core.mdc` |
-| `harness-validation.mdc` | `templates/rules/harness-validation.mdc` |
-| `harness-git.mdc` | `templates/rules/harness-git.mdc` -- customize with project's git policy from config |
-| `harness-deployment.mdc` | `templates/rules/harness-deployment.mdc` |
-| `harness-testing.mdc` | `templates/rules/harness-testing.mdc` |
+| `harness-core$RULE_EXT` | `templates/[claude-code/]rules/harness-core$RULE_EXT` |
+| `harness-validation$RULE_EXT` | `templates/[claude-code/]rules/harness-validation$RULE_EXT` |
+| `harness-git$RULE_EXT` | `templates/[claude-code/]rules/harness-git$RULE_EXT` -- customize with project's git policy from config |
+| `harness-deployment$RULE_EXT` | `templates/[claude-code/]rules/harness-deployment$RULE_EXT` |
+| `harness-testing$RULE_EXT` | `templates/[claude-code/]rules/harness-testing$RULE_EXT` |
 
 ### .harness/pr-review-checklist.md
 
@@ -284,10 +340,11 @@ Update `.harness/phase-graph.json`:
 
 Output a summary to the user covering:
 
-1. **Files created** -- full list with ownership class
-2. **Active phase** -- ID, slug, objective
-3. **First unit** -- ID, description, validation method
-4. **Open questions** -- anything unresolved from Q&A
-5. **Risks** -- anything detected that might cause problems (missing deploy config, no CI, etc.)
-6. **Installed skills** -- which Cursor skills were detected and how they integrate (commit-agent-changes for git commits, code-review for PR reviews)
-7. **Next step** -- tell the user to run `/invoke-development-harness` to begin execution
+1. **Tool detected** -- Cursor or Claude Code
+2. **Files created** -- full list with ownership class
+3. **Active phase** -- ID, slug, objective
+4. **First unit** -- ID, description, validation method
+5. **Open questions** -- anything unresolved from Q&A
+6. **Risks** -- anything detected that might cause problems (missing deploy config, no CI, etc.)
+7. **Installed skills** -- which skills were detected and how they integrate (commit-agent-changes for git commits, code-review for PR reviews)
+8. **Next step** -- tell the user to run `/invoke-development-harness` to begin execution

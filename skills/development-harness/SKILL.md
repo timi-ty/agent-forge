@@ -5,13 +5,13 @@ description: A project-local development harness that compiles a ROADMAP.md into
 
 # Development Harness
 
-A project-local control plane that compiles product intent (ROADMAP.md) into a dependency-ordered set of validator-backed phase contracts, then executes them one bounded unit at a time.
+A project-local control plane that compiles product intent (ROADMAP.md) into a dependency-ordered set of validator-backed phase contracts, then executes them one bounded unit at a time. Works with both Cursor and Claude Code.
 
 ## How It Works
 
 1. The user runs "create development harness" to bootstrap the harness in a workspace
-2. The harness asks questions, reads ROADMAP.md, and generates all artifacts
-3. After creation, 7 workspace slash commands are available in `.cursor/commands/`
+2. The harness detects the host tool (Cursor or Claude Code) and generates tool-appropriate artifacts
+3. After creation, 7 workspace slash commands are available in the tool's commands directory
 4. The user runs `/invoke-development-harness` to execute work
 5. A stop hook keeps the agent iterating until a verifiable goal is reached or ambiguity is encountered
 6. Between sessions, the user can check state, sync, inject issues, or update the harness

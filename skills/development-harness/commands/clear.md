@@ -44,7 +44,7 @@ Show the dry-run results to the user in a readable format:
 
 ### Step 5 — Ask for confirmation
 
-Use the AskQuestion tool with these options:
+Ask the user with these options:
 
 1. **"Yes, clear the harness"** — proceed with deletion
 2. **"No, cancel"** — abort immediately

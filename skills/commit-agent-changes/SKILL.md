@@ -37,7 +37,9 @@ Review your own conversation history (already in your context window). List ever
 
 This is the primary source of truth.
 
-#### Step 2: Parse transcript for validation
+#### Step 2: Parse transcript for validation (Cursor only)
+
+> **Skip this step if running in Claude Code.** Claude Code does not maintain agent transcripts. The conversation context (Step 1) and git state (Step 3) provide sufficient coverage.
 
 Find the agent-transcripts folder. Its path follows the pattern:
 
@@ -122,7 +124,7 @@ Record three pieces of state per repo for use in later phases:
 
 #### Step 2: Present the situation and confirm
 
-Present the change list from Phase 1 to the user, along with the detected branch state. Use `AskQuestion` to confirm.
+Present the change list from Phase 1 to the user, along with the detected branch state. Ask the user to confirm.
 
 The prompt varies by situation:
 
@@ -356,7 +358,7 @@ git worktree remove --force ../$REPO_NAME-wt-commit
 
 The agent's changes still exist as uncommitted modifications in the user's original working directory. Since they are now committed and pushed in the PR, ask the user whether to revert them locally.
 
-Use `AskQuestion` with these options:
+Ask the user with these options:
 
 - **Clean up** -- revert the agent's changes in the working directory (recommended). This restores the working directory to a clean state.
 - **Keep locally** -- leave the changes in the working directory as-is. Useful if the user wants to keep iterating on them.

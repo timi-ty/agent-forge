@@ -1,6 +1,7 @@
 ---
 description: Git, PR, and merge policy for harness-managed work
-globs: ["**/*"]
+paths:
+  - "**/*"
 ---
 
 # Git & PR Policy

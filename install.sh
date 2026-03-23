@@ -6,18 +6,23 @@ SKILLS_DIR="$SCRIPT_DIR/skills"
 
 usage() {
   cat <<EOF
-Usage: ./install.sh <skill-name> [--global|--workspace]
-       ./install.sh --all [--global|--workspace]
+Usage: ./install.sh <skill-name> [--global|--workspace] [--tool cursor|claude-code]
+       ./install.sh --all [--global|--workspace] [--tool cursor|claude-code]
 
 Options:
-  --global      Install to ~/.cursor/skills/ (default)
-  --workspace   Install to .cursor/skills/ in the current directory
+  --global      Install globally (default)
+  --workspace   Install to the current directory
+  --tool        Target tool: cursor (default) or claude-code
   --all         Install every skill in the catalog
+
+Paths:
+  Cursor:      ~/.cursor/skills/     (global)  .cursor/skills/     (workspace)
+  Claude Code: ~/.claude/commands/   (global)  .claude/commands/   (workspace)
 
 Examples:
   ./install.sh code-review --global
-  ./install.sh commit-agent-changes --workspace
-  ./install.sh --all --global
+  ./install.sh commit-agent-changes --workspace --tool claude-code
+  ./install.sh --all --global --tool claude-code
 EOF
   exit 1
 }
@@ -42,17 +47,33 @@ install_skill() {
 
 skill_name=""
 scope="global"
+tool="cursor"
 install_all=false
 
 for arg in "$@"; do
   case "$arg" in
-    --global)    scope="global" ;;
-    --workspace) scope="workspace" ;;
-    --all)       install_all=true ;;
-    --help|-h)   usage ;;
-    -*)          echo "Unknown option: $arg" >&2; usage ;;
-    *)           skill_name="$arg" ;;
+    --global)      scope="global" ;;
+    --workspace)   scope="workspace" ;;
+    --tool)        : ;;  # handled below
+    cursor)        tool="cursor" ;;
+    claude-code)   tool="claude-code" ;;
+    --all)         install_all=true ;;
+    --help|-h)     usage ;;
+    -*)            echo "Unknown option: $arg" >&2; usage ;;
+    *)             skill_name="$arg" ;;
   esac
+done
+
+# Re-parse to handle --tool <value> pairs
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+  if [[ "${args[$i]}" == "--tool" ]] && (( i+1 < ${#args[@]} )); then
+    tool="${args[$((i+1))]}"
+    if [[ "$tool" != "cursor" && "$tool" != "claude-code" ]]; then
+      echo "Error: --tool must be 'cursor' or 'claude-code'" >&2
+      exit 1
+    fi
+  fi
 done
 
 if [ "$install_all" = false ] && [ -z "$skill_name" ]; then
@@ -60,10 +81,19 @@ if [ "$install_all" = false ] && [ -z "$skill_name" ]; then
   usage
 fi
 
-if [ "$scope" = "global" ]; then
-  dest="$HOME/.cursor/skills"
+# Determine destination based on tool and scope
+if [ "$tool" = "claude-code" ]; then
+  if [ "$scope" = "global" ]; then
+    dest="$HOME/.claude/commands"
+  else
+    dest="$(pwd)/.claude/commands"
+  fi
 else
-  dest="$(pwd)/.cursor/skills"
+  if [ "$scope" = "global" ]; then
+    dest="$HOME/.cursor/skills"
+  else
+    dest="$(pwd)/.cursor/skills"
+  fi
 fi
 
 if [ "$install_all" = true ]; then

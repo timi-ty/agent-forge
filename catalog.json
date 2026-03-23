@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Machine-readable catalog of portable Cursor agent skills. AI agents: parse this file to find a skill matching a user's task, then follow the installation instructions in README.md.",
+  "description": "Machine-readable catalog of portable agent skills for Cursor and Claude Code. AI agents: parse this file to find a skill matching a user's task, then follow the installation instructions in README.md.",
   "skills": [
     {
       "name": "code-review",
@@ -16,12 +16,24 @@
       ],
       "files": ["SKILL.md", "checklist.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file (gitignored; not committed)."
+      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file (gitignored; not committed).",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/code-review",
+          "install_path_workspace": ".cursor/skills/code-review",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/code-review",
+          "install_path_workspace": ".claude/commands/code-review",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "commit-agent-changes",
       "path": "skills/commit-agent-changes",
-      "description": "Identify the current agent's code changes, push them to a remote-only branch, and open a PR -- all without ever leaving the base branch. Use when the user says 'commit my changes', 'commit agent changes', 'create a PR from this session', 'push what you changed', or wants to turn the current agent's work into a pull request.",
+      "description": "Identify the current agent's code changes, create a branch, group changes into logical commits, and open a PR. Use when the user says 'commit my changes', 'commit agent changes', 'create a PR from this session', 'push what you changed', or wants to turn the current agent's work into a pull request.",
       "triggers": [
         "commit my changes",
         "commit agent changes",
@@ -33,7 +45,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["gh CLI (GitHub CLI)", "git"],
-      "notes": "5-phase branchless workflow: identify agent changes (introspect context + parse transcript + cross-reference git), confirm with user and determine remote branch, group and commit with pathspec-scoped conventional commits, push to remote-only branch and reset local base, optional post-push cleanup. Never leaves the base branch -- safe for parallel agents. Handles multi-repo workspaces."
+      "notes": "5-phase branchless workflow: identify agent changes (introspect context + parse transcript + cross-reference git), confirm with user and determine remote branch, group and commit with pathspec-scoped conventional commits, push to remote-only branch and reset local base, optional post-push cleanup. Never leaves the base branch -- safe for parallel agents. Handles multi-repo workspaces.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/commit-agent-changes",
+          "install_path_workspace": ".cursor/skills/commit-agent-changes",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/commit-agent-changes",
+          "install_path_workspace": ".claude/commands/commit-agent-changes",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "redeploy-frontend",
@@ -47,7 +71,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["git", "Vercel (connected to the repo)"],
-      "notes": "Works with any Node.js frontend deployed on Vercel. Auto-detects package manager (pnpm/yarn/bun/npm) from lock files, deploy branch from current git branch, and timestamp target file by searching for an existing '// redeploy:' comment or falling back to common entry points. Auto-fixes prettier formatting issues before pushing."
+      "notes": "Works with any Node.js frontend deployed on Vercel. Auto-detects package manager (pnpm/yarn/bun/npm) from lock files, deploy branch from current git branch, and timestamp target file by searching for an existing '// redeploy:' comment or falling back to common entry points. Auto-fixes prettier formatting issues before pushing.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/redeploy-frontend",
+          "install_path_workspace": ".cursor/skills/redeploy-frontend",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/redeploy-frontend",
+          "install_path_workspace": ".claude/commands/redeploy-frontend",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "issue-resolution-report",
@@ -63,12 +99,24 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "4-step workflow: gather proof (test output, build result, command output), write report using strict skeleton (root cause, per-change entries, verification block), apply non-negotiable writing rules (no self-reference, no evolution language, present tense, explicit impact radius), then post via gh CLI commands. Includes a self-review checklist before posting."
+      "notes": "4-step workflow: gather proof (test output, build result, command output), write report using strict skeleton (root cause, per-change entries, verification block), apply non-negotiable writing rules (no self-reference, no evolution language, present tense, explicit impact radius), then post via gh CLI commands. Includes a self-review checklist before posting.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/issue-resolution-report",
+          "install_path_workspace": ".cursor/skills/issue-resolution-report",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/issue-resolution-report",
+          "install_path_workspace": ".claude/commands/issue-resolution-report",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "sync-skills",
       "path": "skills/sync-skills",
-      "description": "Sync locally installed Cursor agent skills to match a branch of the cursor-forge repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
+      "description": "Sync locally installed agent skills to match a branch of the cursor-forge repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
       "triggers": [
         "user pastes a github.com/timi-ty/cursor-forge URL",
         "install skills",
@@ -79,7 +127,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["gh CLI (GitHub CLI)", "git"],
-      "notes": "Fetches catalog.json from the target branch, diffs against all locally installed skills (global and workspace scopes), presents a grouped summary of new/updated/removed skills, confirms with user before applying, then clones the branch to a temp dir and copies skill folders. Separate confirmation for destructive removals."
+      "notes": "Fetches catalog.json from the target branch, diffs against all locally installed skills (global and workspace scopes), presents a grouped summary of new/updated/removed skills, confirms with user before applying, then clones the branch to a temp dir and copies skill folders. Separate confirmation for destructive removals.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/sync-skills",
+          "install_path_workspace": ".cursor/skills/sync-skills",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/sync-skills",
+          "install_path_workspace": ".claude/commands/sync-skills",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "btw",
@@ -92,7 +152,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": [],
-      "notes": "Slash-command skill (disable-model-invocation: true). Launches a background subagent via the Task tool with run_in_background: true, then resumes the main task. Multiple /btw commands stack. Collects all subagent results after the main task completes and flags file conflicts."
+      "notes": "Slash-command skill (disable-model-invocation: true). Launches a background subagent via the Task tool (Cursor) or Agent tool (Claude Code) with run_in_background: true, then resumes the main task. Multiple /btw commands stack. Collects all subagent results after the main task completes and flags file conflicts.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/btw",
+          "install_path_workspace": ".cursor/skills/btw",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/btw",
+          "install_path_workspace": ".claude/commands/btw",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "aws-cli",
@@ -113,7 +185,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["AWS CLI v2"],
-      "notes": "Discovers credentials and region at runtime from ~/.aws/config. Safety-first: confirms destructive ops and warns about cost-incurring resources before execution. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager."
+      "notes": "Discovers credentials and region at runtime from ~/.aws/config. Safety-first: confirms destructive ops and warns about cost-incurring resources before execution. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/aws",
+          "install_path_workspace": ".cursor/skills/aws",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/aws",
+          "install_path_workspace": ".claude/commands/aws",
+          "entry_file": "SKILL.md"
+        }
+      }
     },
     {
       "name": "development-harness",
@@ -142,7 +226,19 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["git", "python3"],
-      "notes": "One globally-installed skill that bootstraps a workspace-local control plane. After creation, 7 slash commands are available in .cursor/commands/. Uses a stop hook (continue-loop.py) for invoke loop continuation. Deterministic Python scripts handle the data plane (validation, unit selection, drift detection, manifest-based clearing). All scripts use stdlib only -- no pip dependencies."
+      "notes": "One globally-installed skill that bootstraps a workspace-local control plane. After creation, 7 slash commands are available in the tool's commands directory (.cursor/commands/ or .claude/commands/). Uses a stop hook (continue-loop.py) for invoke loop continuation. Deterministic Python scripts handle the data plane (validation, unit selection, drift detection, manifest-based clearing). All scripts use stdlib only -- no pip dependencies.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/development-harness",
+          "install_path_workspace": ".cursor/skills/development-harness",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/development-harness",
+          "install_path_workspace": ".claude/commands/development-harness",
+          "entry_file": "SKILL.md"
+        }
+      }
     }
   ]
 }
