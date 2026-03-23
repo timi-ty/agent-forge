@@ -1,5 +1,5 @@
 ---
-name: aws-cli
+name: aws
 description: Perform AWS operations via the CLI. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.
 ---
 

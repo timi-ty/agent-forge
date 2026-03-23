@@ -2,6 +2,21 @@
 
 Read `.harness/ARCHITECTURE.md` before doing anything.
 
+## Step 0: Resolve tool paths
+
+Read `.harness/config.json` and check the `tool` field (`cursor` or `claude-code`). Set variables:
+
+| Variable | cursor | claude-code |
+|----------|--------|-------------|
+| `$TOOL_DIR` | `.cursor` | `.claude` |
+| `$COMMANDS_DIR` | `.cursor/commands` | `.claude/commands` |
+| `$RULES_DIR` | `.cursor/rules` | `.claude/rules` |
+| `$HOOKS_DIR` | `.cursor/hooks` | `.claude/hooks` |
+| `$RULE_EXT` | `.mdc` | `.md` |
+| `$HOOK_CONFIG` | `.cursor/hooks.json` | `.claude/settings.local.json` |
+
+If `config.json` does not exist yet (fresh create), detect the tool from your system prompt (see the global skill's `commands/create.md` Phase 0).
+
 ## Context
 
 Read these files to understand current harness state:

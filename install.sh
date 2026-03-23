@@ -68,9 +68,15 @@ for arg in "$@"; do
 done
 
 # Parse --tool <value> pairs
+tool_seen=false
 args=("$@")
 for ((i=0; i<${#args[@]}; i++)); do
-  if [[ "${args[$i]}" == "--tool" ]] && (( i+1 < ${#args[@]} )); then
+  if [[ "${args[$i]}" == "--tool" ]]; then
+    tool_seen=true
+    if (( i+1 >= ${#args[@]} )); then
+      echo "Error: --tool requires a value ('cursor' or 'claude-code')" >&2
+      exit 1
+    fi
     tool="${args[$((i+1))]}"
     if [[ "$tool" != "cursor" && "$tool" != "claude-code" ]]; then
       echo "Error: --tool must be 'cursor' or 'claude-code'" >&2

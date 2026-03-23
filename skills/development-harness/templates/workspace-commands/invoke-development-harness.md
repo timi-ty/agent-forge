@@ -6,6 +6,15 @@ description: "Execute the next unit of work from the development harness"
 
 Read `.harness/ARCHITECTURE.md` for project context.
 
+## 0. Resolve tool paths
+
+Read `.harness/config.json` and check the `tool` field. Set variables:
+
+| Variable | cursor | claude-code |
+|----------|--------|-------------|
+| `$GLOBAL_SKILLS_DIR` | `~/.cursor/skills` | `~/.claude/commands` |
+| `$WORKSPACE_SKILLS_DIR` | `.cursor/skills` | `.claude/commands` |
+
 ## 1. Activate Invoke Session
 
 Create the invoke session flag so the stop hook knows this is a harness session:

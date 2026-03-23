@@ -70,8 +70,9 @@ cp -r skills/code-review .claude/commands/code-review
 To install everything at once:
 
 ```bash
-./install.sh --all --global                    # Cursor (default)
-./install.sh --all --global --tool claude-code  # Claude Code
+./install.sh --all --global                    # Cursor, globally (default)
+./install.sh --all --workspace                 # Cursor, workspace-local
+./install.sh --all --global --tool claude-code  # Claude Code, globally
 ```
 
 ## For AI Agents
