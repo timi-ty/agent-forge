@@ -18,7 +18,7 @@ You are modifying the development harness itself. Use Plan Mode — research, pl
    - Validation policy (required layers, quality gates)
    - Loop behavior (budget, stop conditions, hooks)
    - Schema migration (v1 handles same-version only)
-   - Hook changes (add/modify/remove `.cursor/hooks/` files)
+   - Hook changes (add/modify/remove `$HOOKS_DIR/` files)
 4. Check `.harness/manifest.json` for ownership of all affected files.
    - Harness-owned → proceed.
    - Product-owned → explain, list files, get explicit approval.

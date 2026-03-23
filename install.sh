@@ -49,14 +49,17 @@ skill_name=""
 scope="global"
 tool="cursor"
 install_all=false
+skip_next=false
 
 for arg in "$@"; do
+  if [ "$skip_next" = true ]; then
+    skip_next=false
+    continue
+  fi
   case "$arg" in
     --global)      scope="global" ;;
     --workspace)   scope="workspace" ;;
-    --tool)        : ;;  # handled below
-    cursor)        tool="cursor" ;;
-    claude-code)   tool="claude-code" ;;
+    --tool)        skip_next=true ;;
     --all)         install_all=true ;;
     --help|-h)     usage ;;
     -*)            echo "Unknown option: $arg" >&2; usage ;;
@@ -64,7 +67,7 @@ for arg in "$@"; do
   esac
 done
 
-# Re-parse to handle --tool <value> pairs
+# Parse --tool <value> pairs
 args=("$@")
 for ((i=0; i<${#args[@]}; i++)); do
   if [[ "${args[$i]}" == "--tool" ]] && (( i+1 < ${#args[@]} )); then

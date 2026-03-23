@@ -55,9 +55,9 @@ Switch to Plan Mode. Save plan to `.harness/plans/`.
 
 ### 4. Update workspace artifacts
 
-- Regenerate `.cursor/commands/` workspace commands if needed
-- Regenerate `.cursor/rules/harness-*.mdc` if config changed
-- Merge `.cursor/hooks.json` stop hook (do not overwrite other hooks)
+- Regenerate `$COMMANDS_DIR/` workspace commands if needed
+- Regenerate `$RULES_DIR/harness-*$RULE_EXT` if config changed
+- Merge `$HOOK_CONFIG` stop hook (do not overwrite other hooks)
 
 ### 5. Validate
 

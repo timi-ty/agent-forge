@@ -25,15 +25,14 @@ def main():
     input_data = json.load(sys.stdin)
     cwd = input_data.get("cwd", os.getcwd())
 
-    # Respect Claude Code's built-in loop guard
-    if input_data.get("stop_hook_active", False):
-        _stop(cwd)
-        return
-
     # Session gate: only harness invoke sessions set this flag
     invoke_flag = os.path.join(cwd, ".harness", ".invoke-active")
     if not os.path.exists(invoke_flag):
         sys.exit(0)  # Not a harness session, allow stop
+
+    # Respect Claude Code's built-in loop guard
+    if input_data.get("stop_hook_active", False):
+        _stop(cwd)
         return
 
     state_path = os.path.join(cwd, ".harness", "state.json")

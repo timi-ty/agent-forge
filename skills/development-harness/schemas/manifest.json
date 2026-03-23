@@ -131,6 +131,13 @@
       "removable": true
     },
     {
+      "path": "$HOOK_CONFIG",
+      "ownership": "harness-owned",
+      "type": "hook-config",
+      "removable": true,
+      "note": "Cursor: .cursor/hooks.json (harness-owned). Claude Code: .claude/settings.local.json (shared -- treat as managed-block if other settings exist)."
+    },
+    {
       "path": "$TOOL_DIR/hooks/continue-loop.py",
       "ownership": "harness-owned",
       "type": "hook-script",

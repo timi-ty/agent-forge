@@ -90,7 +90,7 @@ Update all three files:
 
 Check for `commit-agent-changes` skill:
 ```bash
-ls ~/.cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null || ls .cursor/skills/commit-agent-changes/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null
 ```
 
 If found, delegate to the skill. Otherwise, commit directly following `.harness/config.json` git policy:

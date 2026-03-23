@@ -281,7 +281,7 @@ Using `git commit -- <files>` stages and commits only the listed files. Even tho
 - `type` matches the branch prefix (feat, fix, refactor, chore, docs)
 - `scope` is the module or area affected (e.g., `telemetry`, `mqtt`, `auth`)
 - Body is optional; include only if the "why" isn't obvious from the subject
-- Never reference the agent, AI, or Cursor in commit messages
+- Never reference the agent, AI, Cursor, or Claude Code in commit messages
 
 ---
 
@@ -389,7 +389,7 @@ Run `git status` in the original working directory to confirm the expected state
 
 - **Only commit agent changes**: Never commit files the agent didn't touch, even if they have uncommitted changes.
 - **Atomic commits**: Each commit should compile and make sense on its own. Don't commit half a refactor.
-- **No AI references**: Commit messages, PR titles, and PR bodies should read as if a human wrote them. Never mention "agent", "AI", "Cursor", or "automated".
+- **No AI references**: Commit messages, PR titles, and PR bodies should read as if a human wrote them. Never mention "agent", "AI", "Cursor", "Claude Code", or "automated".
 - **Respect existing conventions**: If the repo has a commit message convention or PR template, follow it instead of the defaults above.
 - **Ask before acting**: Always confirm the file list and base branch before creating any commits.
 - **Never disturb the user's branch**: When on a default branch, use a worktree to create the feature branch. The user's working directory stays on its original branch throughout.
