@@ -11,7 +11,7 @@ This skill manages multiple AWS accounts (static IAM keys and SAML SSO) with saf
 
 ---
 
-## 1. Active Account Check (MANDATORY — run on EVERY invocation)
+## Active Account Check (MANDATORY — run on EVERY invocation)
 
 Before doing anything else, determine the active account and verify credentials:
 
@@ -32,14 +32,14 @@ AWS_PROFILE=<profile> aws sts get-caller-identity --output json
 ```
 
 - If creds work → show the banner to the user and proceed.
-- If creds fail and `auth_method` is `saml2aws` → auto-refresh (see §5).
+- If creds fail and `auth_method` is `saml2aws` → auto-refresh (see the SAML SSO Credential Refresh section).
 - If creds fail and `auth_method` is `static_keys` → tell the user their keys are invalid and suggest `aws configure --profile <profile>`.
 
-If `~/.aws/account-registry.json` does not exist → run First-Time Setup (§6).
+If `~/.aws/account-registry.json` does not exist → run First-Time Setup (the First-Time Setup section).
 
 ---
 
-## 2. Account Management
+## Account Management
 
 ### List accounts
 
@@ -80,7 +80,7 @@ print('Added.')
 
 ### Register a new account — SAML SSO (saml2aws)
 
-**Prerequisites**: `saml2aws` must be installed. Check with `saml2aws --version`. If missing, tell the user to run `choco install saml2aws -y` in an elevated PowerShell (the agent cannot elevate).
+**Prerequisites**: `saml2aws` must be installed. Check with `saml2aws --version`. If missing, tell the user to install it: `choco install saml2aws -y` (Windows, elevated PowerShell) or `brew install saml2aws` (macOS). The agent cannot elevate privileges.
 
 1. Ask the user for: friendly name, description, SAML IDP URL, AWS profile name, IAM role ARN, region, session duration (default 3600).
 2. Create the storage state directory:
@@ -157,13 +157,13 @@ else:
 
 ---
 
-## 3. Account Switching
+## Account Switching
 
 When the user asks to switch accounts (e.g., "switch to dnn-dev", "use my personal account"):
 
 1. Verify the target account exists in the registry.
 2. Test credentials: `AWS_PROFILE=<target_profile> aws sts get-caller-identity`.
-3. If expired and `auth_method` is `saml2aws` → refresh (see §5).
+3. If expired and `auth_method` is `saml2aws` → refresh (see the SAML SSO Credential Refresh section).
 4. Update registry:
 
 ```bash
@@ -181,7 +181,7 @@ print('Switched to <target_name>.')
 
 ---
 
-## 4. Safety Rules
+## Safety Rules
 
 ### Destructive operations require confirmation
 
@@ -213,7 +213,7 @@ Do not print access keys, secret keys, passwords, or tokens. Use `--query` to fi
 
 ---
 
-## 5. SAML SSO Credential Refresh
+## SAML SSO Credential Refresh
 
 When `sts get-caller-identity` fails for a `saml2aws` account, read the account's `saml2aws_idp_account` and `aws_profile` from the registry and refresh:
 
@@ -223,11 +223,11 @@ saml2aws login --idp-account=<saml2aws_idp_account> --profile=<aws_profile> --do
 
 This opens Chromium for the user to re-authenticate. After successful login, retry the original command.
 
-If `saml2aws` is not installed, tell the user to run `choco install saml2aws -y` in an elevated PowerShell.
+If `saml2aws` is not installed, tell the user to install it: `choco install saml2aws -y` (Windows, elevated PowerShell) or `brew install saml2aws` (macOS).
 
 ---
 
-## 6. First-Time Setup
+## First-Time Setup
 
 Auto-detected when `~/.aws/account-registry.json` does not exist:
 
@@ -259,7 +259,7 @@ print('Registry created with personal account.')
 
 ---
 
-## 7. Output and Filtering
+## Output and Filtering
 
 Default output is JSON. Use `--output table` for human-readable display, or `--query` for JMESPath filtering:
 
@@ -271,7 +271,7 @@ Use `--no-cli-pager` when output is long and you want it inline.
 
 ---
 
-## 8. Common Workflows
+## Common Workflows
 
 All commands below must be prefixed with `AWS_PROFILE=<active_profile>` from the registry.
 
@@ -293,91 +293,131 @@ aws ec2 terminate-instances --instance-ids i-xxxxx
 ### S3
 
 ```bash
+# List buckets
 aws s3 ls
+
+# Sync local directory to bucket
 aws s3 sync ./local-dir s3://bucket-name/prefix
+
+# Copy file
 aws s3 cp file.txt s3://bucket-name/
+
+# Presigned URL (1 hour)
 aws s3 presign s3://bucket-name/file.txt --expires-in 3600
 ```
 
 ### IAM
 
 ```bash
+# List users
 aws iam list-users --output table
+
+# List attached policies for a user
 aws iam list-attached-user-policies --user-name <username>
+
+# Create a new role
 aws iam create-role --role-name MyRole --assume-role-policy-document file://trust-policy.json
 ```
 
 ### Lambda
 
 ```bash
+# List functions
 aws lambda list-functions --query 'Functions[*].[FunctionName,Runtime,LastModified]' --output table
+
+# Invoke function
 aws lambda invoke --function-name my-function --payload '{"key":"value"}' response.json
+
+# Update function code
 aws lambda update-function-code --function-name my-function --zip-file fileb://function.zip
 ```
 
 ### CloudFormation
 
 ```bash
+# List stacks
 aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --output table
+
+# Deploy stack
 aws cloudformation deploy --template-file template.yaml --stack-name my-stack --capabilities CAPABILITY_IAM
+
+# Delete stack (confirm first)
 aws cloudformation delete-stack --stack-name my-stack
 ```
 
 ### RDS
 
 ```bash
+# List DB instances
 aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus,Endpoint.Address]' --output table
 ```
 
 ### Route53
 
 ```bash
+# List hosted zones
 aws route53 list-hosted-zones --output table
+
+# List records in a zone
 aws route53 list-resource-record-sets --hosted-zone-id Z1234567890
 ```
 
 ### CloudWatch
 
 ```bash
+# List alarms
 aws cloudwatch describe-alarms --state-value ALARM --output table
+
+# Get metrics
 aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=i-xxxxx --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z --period 3600 --statistics Average
 ```
 
 ### Lightsail
 
 ```bash
+# List instances
 aws lightsail get-instances --query 'instances[*].[name,state.name,publicIpAddress,blueprintId]' --output table
+
+# Get instance details
 aws lightsail get-instance --instance-name MyInstance
 ```
 
 ### ECS
 
 ```bash
+# List clusters
 aws ecs list-clusters
+
+# List services in a cluster
 aws ecs list-services --cluster my-cluster
+
+# Describe service
 aws ecs describe-services --cluster my-cluster --services my-service
 ```
 
 ### Secrets Manager
 
 ```bash
+# List secrets
 aws secretsmanager list-secrets --query 'SecretList[*].[Name,LastChangedDate]' --output table
+
+# Get secret value (be careful with output)
 aws secretsmanager get-secret-value --secret-id my-secret --query 'SecretString' --output text
 ```
 
 ---
 
-## 9. Error Handling
+## Error Handling
 
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `AccessDenied` / `UnauthorizedAccess` | Missing IAM permission | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies` |
-| `ExpiredTokenException` | Credentials expired | For SSO: refresh via §5. For static keys: re-run `aws configure --profile=<profile>` |
+| `ExpiredTokenException` | Credentials expired | For SSO: refresh via the SAML SSO Credential Refresh section. For static keys: re-run `aws configure --profile=<profile>` |
 | `ThrottlingException` | API rate limit hit | Wait and retry with exponential backoff |
 | `ResourceNotFoundException` | Resource doesn't exist or wrong region | Verify region with `--region` flag |
 | `InvalidParameterValue` | Bad input | Check AWS docs for the correct parameter format |
 
-## 10. Multi-Region Operations
+## Multi-Region Operations
 
 Use the region from the active account in the registry. For resources in other regions, pass `--region`:
 
