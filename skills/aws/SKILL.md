@@ -218,7 +218,7 @@ Do not print access keys, secret keys, passwords, or tokens. Use `--query` to fi
 
 ### Refresh by auth method
 
-Read the active account's `auth_method` from the registry and follow the matching procedure:
+Read the account's `auth_method` from the registry and follow the matching procedure:
 
 #### `saml2aws`
 
@@ -235,7 +235,7 @@ After successful login, retry the command that failed. If `saml2aws` is not inst
 Static IAM keys do not expire on a timer, but they can be rotated or revoked. When `sts get-caller-identity` fails for a static-keys account, re-run the same configuration command used during initial setup:
 
 ```bash
-aws configure --profile <aws_profile>
+aws configure --profile <aws_profile>  # or write to ~/.aws/credentials directly
 ```
 
 Prompt the user to enter their new Access Key ID and Secret Access Key, then verify with `AWS_PROFILE=<profile> aws sts get-caller-identity`.
@@ -436,7 +436,7 @@ aws secretsmanager get-secret-value --secret-id my-secret --query 'SecretString'
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `AccessDenied` / `UnauthorizedAccess` | Missing IAM permission | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies` |
-| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` | Credentials expired | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
+| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
 | `ThrottlingException` | API rate limit hit | Wait and retry with exponential backoff |
 | `ResourceNotFoundException` | Resource doesn't exist or wrong region | Verify region with `--region` flag |
 | `InvalidParameterValue` | Bad input | Check AWS docs for the correct parameter format |
