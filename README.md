@@ -1,4 +1,4 @@
-# cursor-forge
+# agent-forge
 
 Portable collection of AI agent skills and a development harness for AI-native engineering. Works with both [Cursor](https://cursor.com) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Paste the repo URL into an agent chat to install battle-tested skills on any machine -- globally or per-workspace.
 
