@@ -200,6 +200,24 @@ Ask a follow-up question to determine scope. Offer these options:
 
 Once the scope is determined, switch to plan mode and create a plan with one actionable todo per selected issue, referencing the file path and fix description from the review report. Do **not** apply the PR verdict (no approve or request-changes is posted) -- the user can re-run the review or manually apply the verdict after fixes are made.
 
+**Applying fixes to the PR branch**: When you exit plan mode and implement the fixes, use a worktree checked out to the PR's **head branch** (not the base branch):
+
+```bash
+git worktree add ../$REPO_NAME-wt-fix-pr<N> <headRefName>
+```
+
+Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Then do a **regular push** (not force push):
+
+```bash
+git -C ../$REPO_NAME-wt-fix-pr<N> push
+```
+
+This is safe because the branch already exists on the remote and you are only adding commits. After pushing, remove the worktree:
+
+```bash
+git worktree remove ../$REPO_NAME-wt-fix-pr<N>
+```
+
 ### Phase 8 -- Apply Verdict
 
 Two paths depending on the final confirmed verdict:
