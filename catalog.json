@@ -184,8 +184,8 @@
         "AWS infrastructure"
       ],
       "files": ["SKILL.md"],
-      "dependencies": ["AWS CLI v2"],
-      "notes": "Discovers credentials and region at runtime from ~/.aws/config. Safety-first: confirms destructive ops and warns about cost-incurring resources before execution. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager.",
+      "dependencies": ["AWS CLI v2", "saml2aws (optional, for SAML SSO accounts)"],
+      "notes": "Multi-account support with an account registry (~/.aws/account-registry.json). Handles static IAM keys and SAML SSO via saml2aws (Browser provider). Safety-first: confirms destructive ops with account context and warns about cost-incurring resources. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager.",
       "platforms": {
         "cursor": {
           "install_path_global": "~/.cursor/skills/aws",
