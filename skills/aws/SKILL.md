@@ -32,8 +32,7 @@ AWS_PROFILE=<profile> aws sts get-caller-identity --output json
 ```
 
 - If creds work → show the banner to the user and proceed.
-- If creds fail and `auth_method` is `saml2aws` → auto-refresh (see the SAML SSO Credential Refresh section).
-- If creds fail and `auth_method` is `static_keys` → tell the user their keys are invalid and suggest `aws configure --profile <profile>`.
+- If creds fail → run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section).
 
 If `~/.aws/account-registry.json` does not exist → run First-Time Setup (the First-Time Setup section).
 
@@ -163,7 +162,7 @@ When the user asks to switch accounts (e.g., "switch to dnn-dev", "use my person
 
 1. Verify the target account exists in the registry.
 2. Test credentials: `AWS_PROFILE=<target_profile> aws sts get-caller-identity`.
-3. If expired and `auth_method` is `saml2aws` → refresh (see the SAML SSO Credential Refresh section).
+3. If expired → run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section).
 4. Update registry:
 
 ```bash
@@ -213,17 +212,42 @@ Do not print access keys, secret keys, passwords, or tokens. Use `--query` to fi
 
 ---
 
-## SAML SSO Credential Refresh
+## Credential Refresh
 
-When `sts get-caller-identity` fails for a `saml2aws` account, read the account's `saml2aws_idp_account` and `aws_profile` from the registry and refresh:
+**Principle**: When credentials expire or fail, refresh them using the same method that was originally used to obtain them. This applies at invocation start (the mandatory Active Account Check) AND mid-operation if any `aws` command returns `ExpiredTokenException`, `ExpiredToken`, `RequestExpired`, or an `InvalidIdentityToken` error.
+
+### Refresh by auth method
+
+Read the account's `auth_method` from the registry and follow the matching procedure:
+
+#### `saml2aws`
+
+Re-run the same login command used during initial registration — this opens the browser for the user to re-authenticate, exactly as they did the first time:
 
 ```bash
 saml2aws login --idp-account=<saml2aws_idp_account> --profile=<aws_profile> --download-browser-driver --skip-prompt
 ```
 
-This opens Chromium for the user to re-authenticate. After successful login, retry the original command.
+After successful login, retry the command that failed. If `saml2aws` is not installed, tell the user to install it: `choco install saml2aws -y` (Windows, elevated PowerShell) or `brew install saml2aws` (macOS).
 
-If `saml2aws` is not installed, tell the user to install it: `choco install saml2aws -y` (Windows, elevated PowerShell) or `brew install saml2aws` (macOS).
+#### `static_keys`
+
+Static IAM keys do not expire on a timer, but they can be rotated or revoked. When `sts get-caller-identity` fails for a static-keys account, re-run the same configuration command used during initial setup:
+
+```bash
+aws configure --profile <aws_profile>  # or write to ~/.aws/credentials directly
+```
+
+Prompt the user to enter their new Access Key ID and Secret Access Key, then verify with `AWS_PROFILE=<profile> aws sts get-caller-identity`.
+
+### Mid-operation expiry
+
+If any `aws` command fails with a credential-expiry error during a multi-step operation:
+
+1. Pause the operation.
+2. Run the refresh procedure for the active account's `auth_method` (above).
+3. Verify with `AWS_PROFILE=<profile> aws sts get-caller-identity`.
+4. Retry the failed command and continue the operation.
 
 ---
 
@@ -412,7 +436,7 @@ aws secretsmanager get-secret-value --secret-id my-secret --query 'SecretString'
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `AccessDenied` / `UnauthorizedAccess` | Missing IAM permission | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies` |
-| `ExpiredTokenException` | Credentials expired | For SSO: refresh via the SAML SSO Credential Refresh section. For static keys: re-run `aws configure --profile=<profile>` |
+| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
 | `ThrottlingException` | API rate limit hit | Wait and retry with exponential backoff |
 | `ResourceNotFoundException` | Resource doesn't exist or wrong region | Verify region with `--region` flag |
 | `InvalidParameterValue` | Bad input | Check AWS docs for the correct parameter format |
