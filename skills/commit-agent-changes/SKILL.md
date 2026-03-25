@@ -202,6 +202,29 @@ If the worktree path already exists (from a previous interrupted commit), remove
 git worktree remove ../$REPO_NAME-wt-commit --force
 ```
 
+#### Sync build-essential non-tracked files
+
+Copy non-version-controlled files needed for builds from the main repo to the worktree. These files are gitignored and therefore absent from a fresh worktree. This ensures pre-commit hooks that depend on environment files will work correctly.
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+for f in .env .env.local .env.production .env.development .env.production.local .env.development.local .env.test .env.test.local; do
+  [ -f "$REPO_ROOT/$f" ] && cp "$REPO_ROOT/$f" "$COMMIT_DIR/$f"
+done
+```
+
+For monorepos, also check subdirectories:
+
+```bash
+find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+  rel="${src#$REPO_ROOT/}"
+  mkdir -p "$COMMIT_DIR/$(dirname "$rel")"
+  cp "$src" "$COMMIT_DIR/$rel"
+done
+```
+
+**Do not log or display the contents of these files** — they may contain secrets.
+
 #### Step 3: Transfer the agent's changes to the worktree
 
 Only the agent's changes (from the Phase 1 change list) are transferred. The user's working directory is not modified.

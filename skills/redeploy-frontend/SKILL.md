@@ -82,6 +82,30 @@ Do NOT use `git -C $DEPLOY_DIR checkout $BRANCH` -- git forbids the same branch 
 
 If no, continue with the worktree at `origin/$BRANCH`.
 
+#### Sync build-essential non-tracked files
+
+Copy non-version-controlled files needed for builds from the main repo to the worktree. These files are gitignored and therefore absent from a fresh worktree.
+
+```bash
+for f in .env .env.local .env.production .env.development .env.production.local .env.development.local .env.test .env.test.local; do
+  [ -f "$REPO_ROOT/$f" ] && cp "$REPO_ROOT/$f" "$DEPLOY_DIR/$f"
+done
+```
+
+For monorepos, also check subdirectories — find all `.env*` files (excluding `node_modules` and `.git`) in `$REPO_ROOT` and copy them to the same relative paths in `$DEPLOY_DIR`:
+
+```bash
+find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+  rel="${src#$REPO_ROOT/}"
+  mkdir -p "$DEPLOY_DIR/$(dirname "$rel")"
+  cp "$src" "$DEPLOY_DIR/$rel"
+done
+```
+
+If the project has a `.env.example` or `.env.template` in the repo root but no `.env`, warn the user: "No `.env` file found. The build may fail if environment variables are required."
+
+**Do not log or display the contents of these files** — they may contain secrets.
+
 ### Step 2: Install dependencies
 
 Install dependencies in the worktree so the build step works:
