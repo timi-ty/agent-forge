@@ -86,17 +86,19 @@ for f in .env .env.local .env.production .env.development .env.production.local 
 done
 ```
 
-For monorepos, also check subdirectories — find all `.env*` files (excluding `node_modules` and `.git`) in `$REPO_ROOT` and copy them to the same relative paths in the worktree:
+For monorepos, also check subdirectories -- find all `.env*` files (excluding `node_modules` and `.git`) in `$REPO_ROOT` and copy them to the same relative paths in the worktree:
 
 ```bash
-find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+find "$REPO_ROOT" -mindepth 2 -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
   rel="${src#$REPO_ROOT/}"
   mkdir -p "$REVIEW_BASE/$(dirname "$rel")"
   cp "$src" "$REVIEW_BASE/$rel"
 done
 ```
 
-**Do not log or display the contents of these files** — they may contain secrets.
+If the project has a `.env.example` or `.env.template` in the repo root but no `.env`, warn the user: "No `.env` file found. The build may fail if environment variables are required."
+
+**Do not log or display the contents of these files** -- they may contain secrets.
 
 #### Optional: Check out the PR head branch
 
@@ -109,7 +111,9 @@ git worktree add ../$REPO_NAME-wt-review-pr<N>-head pr-<N>
 
 This is not required for every review. Use it when deeper verification (running builds/tests) is needed.
 
-If the PR head worktree was created, also sync build-essential non-tracked files to it:
+#### Sync build-essential non-tracked files
+
+If the PR head worktree was created, copy non-version-controlled files needed for builds from the main repo to the worktree. These files are gitignored and therefore absent from a fresh worktree. Set `$HEAD_WT` to the PR head worktree path.
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
@@ -117,12 +121,21 @@ HEAD_WT=../$REPO_NAME-wt-review-pr<N>-head
 for f in .env .env.local .env.production .env.development .env.production.local .env.development.local .env.test .env.test.local; do
   [ -f "$REPO_ROOT/$f" ] && cp "$REPO_ROOT/$f" "$HEAD_WT/$f"
 done
-find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+```
+
+For monorepos, also check subdirectories -- find all `.env*` files (excluding `node_modules` and `.git`) in `$REPO_ROOT` and copy them to the same relative paths in the worktree:
+
+```bash
+find "$REPO_ROOT" -mindepth 2 -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
   rel="${src#$REPO_ROOT/}"
   mkdir -p "$HEAD_WT/$(dirname "$rel")"
   cp "$src" "$HEAD_WT/$rel"
 done
 ```
+
+If the project has a `.env.example` or `.env.template` in the repo root but no `.env`, warn the user: "No `.env` file found. The build may fail if environment variables are required."
+
+**Do not log or display the contents of these files** -- they may contain secrets.
 
 ---
 
@@ -244,7 +257,9 @@ Once the scope is determined, switch to plan mode and create a plan with one act
 git worktree add ../$REPO_NAME-wt-fix-pr<N> <headRefName>
 ```
 
-Sync build-essential non-tracked files to the fix worktree:
+#### Sync build-essential non-tracked files
+
+Copy non-version-controlled files needed for builds from the main repo to the fix worktree. These files are gitignored and therefore absent from a fresh worktree. Set `$FIX_WT` to the fix worktree path.
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
@@ -252,12 +267,21 @@ FIX_WT=../$REPO_NAME-wt-fix-pr<N>
 for f in .env .env.local .env.production .env.development .env.production.local .env.development.local .env.test .env.test.local; do
   [ -f "$REPO_ROOT/$f" ] && cp "$REPO_ROOT/$f" "$FIX_WT/$f"
 done
-find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+```
+
+For monorepos, also check subdirectories -- find all `.env*` files (excluding `node_modules` and `.git`) in `$REPO_ROOT` and copy them to the same relative paths in the worktree:
+
+```bash
+find "$REPO_ROOT" -mindepth 2 -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
   rel="${src#$REPO_ROOT/}"
   mkdir -p "$FIX_WT/$(dirname "$rel")"
   cp "$src" "$FIX_WT/$rel"
 done
 ```
+
+If the project has a `.env.example` or `.env.template` in the repo root but no `.env`, warn the user: "No `.env` file found. The build may fail if environment variables are required."
+
+**Do not log or display the contents of these files** -- they may contain secrets.
 
 Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Then do a **regular push** (not force push):
 

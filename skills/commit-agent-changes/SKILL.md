@@ -216,14 +216,16 @@ done
 For monorepos, also check subdirectories:
 
 ```bash
-find "$REPO_ROOT" -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
+find "$REPO_ROOT" -mindepth 2 -name '.env*' -not -path '*/node_modules/*' -not -path '*/.git/*' | while read src; do
   rel="${src#$REPO_ROOT/}"
   mkdir -p "$COMMIT_DIR/$(dirname "$rel")"
   cp "$src" "$COMMIT_DIR/$rel"
 done
 ```
 
-**Do not log or display the contents of these files** — they may contain secrets.
+If the project has a `.env.example` or `.env.template` in the repo root but no `.env`, warn the user: "No `.env` file found. The build may fail if environment variables are required."
+
+**Do not log or display the contents of these files** -- they may contain secrets.
 
 #### Step 3: Transfer the agent's changes to the worktree
 
