@@ -162,7 +162,7 @@ const POOL_TOOLS = [
     description:
       'Acquire an isolated browser session from the pool. ' +
       'Returns a session_id that MUST be passed to every subsequent browser_* call. ' +
-      'If all browsers are busy the call will queue and wait up to acquireTimeoutMs milliseconds. ' +
+      'A warm browser is kept on standby for instant acquisition. If maxConcurrent is set and reached, the call queues and waits up to acquireTimeoutMs milliseconds. ' +
       'Always call browser_pool_release when finished — even if an error occurred.',
     inputSchema: {
       type:       'object',
