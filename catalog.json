@@ -200,6 +200,35 @@
       }
     },
     {
+      "name": "playwright-pool",
+      "path": "skills/playwright-pool",
+      "description": "Playwright browser pool for multi-agent browser automation. Installs a pooling MCP proxy that gives each agent an isolated browser session. Prevents state contamination and blocking when multiple agents automate browsers simultaneously.",
+      "triggers": [
+        "set up playwright pool",
+        "install playwright pool",
+        "browser pool",
+        "multi-agent browser automation",
+        "playwright pool",
+        "parallel browser sessions"
+      ],
+      "files": ["SKILL.md", "server/index.js", "server/package.json"],
+      "dependencies": ["node.js >= 18", "Playwright browser binaries (installed during setup via npx playwright install)"],
+      "notes": "Works with both Cursor and Claude Code. After file installation, the setup wizard (run automatically by sync-skills) asks configuration preferences, installs browser binaries, deploys the server, and registers it via the appropriate MCP config for the detected tool. Requires a window reload (Claude Code) or full restart (Cursor) to activate.",
+      "setup_required": true,
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/playwright-pool",
+          "install_path_workspace": ".cursor/skills/playwright-pool",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/playwright-pool",
+          "install_path_workspace": ".claude/commands/playwright-pool",
+          "entry_file": "SKILL.md"
+        }
+      }
+    },
+    {
       "name": "development-harness",
       "path": "skills/development-harness",
       "description": "A project-local development harness that compiles a ROADMAP.md into phased, validator-backed autonomous execution. One skill with 7 commands: create, invoke, update, state, sync, clear, inject-issues. Bootstraps workspace-local slash commands, a stop hook for bounded continuation, and deterministic Python helpers.",
