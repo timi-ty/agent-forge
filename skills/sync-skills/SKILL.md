@@ -47,7 +47,7 @@ gh api "repos/$OWNER/$REPO/contents/catalog.json?ref=$BRANCH" \
   --jq '.content | @base64d | fromjson'
 ```
 
-Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`, `dependencies`, `notes`, `platforms`.
+Parse the `skills` array. Each entry has: `name`, `path`, `description`, `files`, `dependencies`, `notes`, `platforms`, and optionally `setup_required`.
 
 The `platforms` object contains tool-specific install paths. Use the paths matching your detected tool.
 

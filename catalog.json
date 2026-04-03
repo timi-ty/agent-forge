@@ -213,9 +213,14 @@
       ],
       "files": ["SKILL.md", "server/index.js", "server/package.json"],
       "dependencies": ["node.js >= 18", "Playwright browser binaries (installed during setup via npx playwright install)"],
-      "notes": "Claude Code only — requires MCP support. After file installation, the setup wizard (run automatically by sync-skills) deploys the server to ~/.claude/mcp-servers/playwright-pool/, writes config.json with user preferences, and registers it via claude mcp add. Requires Claude Code window reload to activate.",
+      "notes": "Works with both Cursor and Claude Code. After file installation, the setup wizard (run automatically by sync-skills) asks configuration preferences, installs browser binaries, deploys the server, and registers it via the appropriate MCP config for the detected tool. Requires a window reload (Claude Code) or full restart (Cursor) to activate.",
       "setup_required": true,
       "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/playwright-pool",
+          "install_path_workspace": ".cursor/skills/playwright-pool",
+          "entry_file": "SKILL.md"
+        },
         "claude-code": {
           "install_path_global": "~/.claude/commands/playwright-pool",
           "install_path_workspace": ".claude/commands/playwright-pool",

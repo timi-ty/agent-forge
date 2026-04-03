@@ -52,7 +52,7 @@ async function spawnChild(index) {
     shell:  true,
   });
 
-  proc.stderr.on('data', () => {}); // silence Playwright's startup noise
+  proc.stderr.on('data', d => process.stderr.write(`[child-${index}] ${d}`));
 
   const child = {
     index,
@@ -391,6 +391,7 @@ async function main() {
     try { msg = JSON.parse(line); } catch { return; }
     handleMessage(msg); // intentionally fire-and-forget (async)
   });
+  rl.on('close', shutdown);
 
   function shutdown() {
     process.stderr.write('[playwright-pool] Shutting down...\n');

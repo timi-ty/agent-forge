@@ -1,6 +1,6 @@
 ---
 name: playwright-pool
-description: Set up and use the Playwright browser pool MCP server. Enables multiple Claude Code agents to run isolated browser sessions simultaneously without contention. TRIGGER on "set up playwright pool", "install playwright pool", "browser pool", or any browser automation task where session isolation is needed. Also triggered automatically by sync-skills after first install.
+description: Set up and use the Playwright browser pool MCP server. Enables multiple agents to run isolated browser sessions simultaneously without contention. Works with both Cursor and Claude Code. TRIGGER on "set up playwright pool", "install playwright pool", "browser pool", or any browser automation task where session isolation is needed. Also triggered automatically by sync-skills after first install.
 ---
 
 # Playwright Pool
@@ -15,8 +15,6 @@ Run this section when:
 - sync-skills just installed this skill and directed you here
 - The user says "set up playwright pool", "install playwright pool", or similar
 - The user wants to reconfigure the pool
-
-**Claude Code only.** This skill installs a Node.js MCP server and is not compatible with Cursor.
 
 ---
 
@@ -38,61 +36,37 @@ npx --version
 
 If this fails, tell the user to reinstall Node.js (npx is bundled with it).
 
-**Playwright browser binaries — required for browsers to launch:**
+---
 
-The pool server fetches `@playwright/mcp` automatically via npx at runtime, but the actual browser executables must be installed separately. Tell the user:
+### Step 2: Detect host tool
 
-> "Playwright needs to download the Chromium browser binary (~150 MB). This is a one-time download and will be stored in Playwright's local cache. Proceed?"
+Determine whether you are running in **Cursor** or **Claude Code**:
 
-Wait for confirmation before continuing. If the user declines, tell them:
-> "You can run `npx playwright install chromium` manually whenever you're ready, then re-run this setup."
-> Then stop.
+- **Cursor**: Your system prompt identifies you as a Cursor agent, or you have access to the `AskQuestion` tool.
+- **Claude Code**: Your system prompt identifies you as Claude Code, or you have access to the `AskUserQuestion` tool.
 
-Once confirmed, run:
-```bash
-npx playwright install chromium
-```
-
-Safe to re-run — skips the download if Chromium is already installed.
-
-If the install fails:
-- On Linux: system dependencies may be missing — run `npx playwright install-deps chromium` first, then retry
-- Behind a corporate proxy: set the `HTTPS_PROXY` environment variable
+Set `$TOOL` to `cursor` or `claude-code` for use in all remaining steps.
 
 ---
 
-### Step 2: Check if already installed
+### Step 3: Check if already installed
 
+**Claude Code:**
 ```bash
 claude mcp list 2>&1 | grep playwright-pool
 ```
+If output shows `playwright-pool ... ✓ Connected`, it is already registered.
 
-If output shows `playwright-pool ... ✓ Connected`:
+**Cursor:**
+```bash
+cat ~/.cursor/mcp.json 2>/dev/null | python -c "import json,sys; d=json.load(sys.stdin); print('found' if 'playwright-pool' in d.get('mcpServers',{}) else 'not found')"
+```
+If output is `found`, it is already registered.
+
+If already registered:
 - Ask: "playwright-pool is already registered. Do you want to (1) reconfigure it, or (2) skip to usage docs?"
-- If reconfigure → continue from Step 3
+- If reconfigure → continue from Step 4
 - If skip → jump to the USAGE section below
-
----
-
-### Step 3: Locate the server source files
-
-The server source files were installed alongside this SKILL.md by sync-skills. Find them:
-
-**macOS/Linux:**
-```bash
-ls ~/.claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at global"
-ls .claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
-```
-
-**Windows (Git Bash):**
-```bash
-ls "$USERPROFILE/.claude/commands/playwright-pool/server/index.js" 2>/dev/null && echo "found at global"
-ls .claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
-```
-
-Use whichever location has the files. If neither is found, tell the user: "Server source files are missing. Please re-run sync-skills to reinstall playwright-pool."
-
-Set `$SKILL_SERVER_DIR` to the directory containing `index.js` (`~/.claude/commands/playwright-pool/server/` or equivalent).
 
 ---
 
@@ -104,34 +78,96 @@ Ask the user these questions one at a time. Accept Enter for defaults:
 2. **Browser** — chromium, firefox, or webkit? *(default: chromium)*
 3. **Acquire timeout** — Seconds to wait for a free slot before erroring? *(default: 30)*
 
-If the user chose firefox or webkit in question 2, install those binaries now before continuing:
+---
 
+### Step 5: Install browser binaries
+
+Now that the browser choice is known, tell the user:
+
+> "Playwright needs to download the **[chosen browser]** binary (~150 MB). This is a one-time download stored in Playwright's local cache. Proceed?"
+
+Wait for confirmation before continuing. If the user declines:
+> "You can run `npx playwright install [browser]` manually whenever you're ready, then re-run this setup."
+> Then stop.
+
+Once confirmed:
 ```bash
-npx playwright install firefox    # if firefox was chosen
-npx playwright install webkit     # if webkit was chosen
+npx playwright install <chosen-browser>
 ```
+
+Safe to re-run — skips the download if the binary is already installed.
+
+If the install fails:
+- On Linux: system dependencies may be missing — run `npx playwright install-deps <browser>` first, then retry
+- Behind a corporate proxy: set the `HTTPS_PROXY` environment variable
 
 ---
 
-### Step 5: Deploy the server files
+### Step 6: Locate the server source files
 
-Create the MCP server directory and copy the files:
+The server source files were installed alongside this SKILL.md by sync-skills. Find them based on `$TOOL`:
 
-**macOS/Linux:**
+**Claude Code — macOS/Linux:**
+```bash
+ls ~/.claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at global"
+ls .claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
+```
+
+**Claude Code — Windows (Git Bash):**
+```bash
+ls "$USERPROFILE/.claude/commands/playwright-pool/server/index.js" 2>/dev/null && echo "found at global"
+ls .claude/commands/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
+```
+
+**Cursor — macOS/Linux:**
+```bash
+ls ~/.cursor/skills/playwright-pool/server/index.js 2>/dev/null && echo "found at global"
+ls .cursor/skills/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
+```
+
+**Cursor — Windows (Git Bash):**
+```bash
+ls "$USERPROFILE/.cursor/skills/playwright-pool/server/index.js" 2>/dev/null && echo "found at global"
+ls .cursor/skills/playwright-pool/server/index.js 2>/dev/null && echo "found at workspace"
+```
+
+Use whichever location has the files. If neither is found: "Server source files are missing. Please re-run sync-skills to reinstall playwright-pool."
+
+Set `$SKILL_SERVER_DIR` to the directory containing `index.js`.
+
+---
+
+### Step 7: Deploy the server files
+
+**Claude Code — macOS/Linux:**
 ```bash
 mkdir -p ~/.claude/mcp-servers/playwright-pool
 cp "$SKILL_SERVER_DIR/index.js"     ~/.claude/mcp-servers/playwright-pool/index.js
 cp "$SKILL_SERVER_DIR/package.json" ~/.claude/mcp-servers/playwright-pool/package.json
 ```
 
-**Windows (Git Bash):**
+**Claude Code — Windows (Git Bash):**
 ```bash
 mkdir -p "$USERPROFILE/.claude/mcp-servers/playwright-pool"
 cp "$SKILL_SERVER_DIR/index.js"     "$USERPROFILE/.claude/mcp-servers/playwright-pool/index.js"
 cp "$SKILL_SERVER_DIR/package.json" "$USERPROFILE/.claude/mcp-servers/playwright-pool/package.json"
 ```
 
-Then write `config.json` with the user's chosen preferences from Step 4:
+**Cursor — macOS/Linux:**
+```bash
+mkdir -p ~/.cursor/mcp-servers/playwright-pool
+cp "$SKILL_SERVER_DIR/index.js"     ~/.cursor/mcp-servers/playwright-pool/index.js
+cp "$SKILL_SERVER_DIR/package.json" ~/.cursor/mcp-servers/playwright-pool/package.json
+```
+
+**Cursor — Windows (Git Bash):**
+```bash
+mkdir -p "$USERPROFILE/.cursor/mcp-servers/playwright-pool"
+cp "$SKILL_SERVER_DIR/index.js"     "$USERPROFILE/.cursor/mcp-servers/playwright-pool/index.js"
+cp "$SKILL_SERVER_DIR/package.json" "$USERPROFILE/.cursor/mcp-servers/playwright-pool/package.json"
+```
+
+Then write `config.json` with the user's preferences from Step 4:
 
 ```json
 {
@@ -141,42 +177,70 @@ Then write `config.json` with the user's chosen preferences from Step 4:
 }
 ```
 
-Write to `~/.claude/mcp-servers/playwright-pool/config.json` (or `$USERPROFILE` equivalent on Windows).
+**Claude Code:** write to `~/.claude/mcp-servers/playwright-pool/config.json`
+**Cursor:** write to `~/.cursor/mcp-servers/playwright-pool/config.json`
 
 ---
 
-### Step 6: Register the MCP server
+### Step 8: Register the MCP server
 
-**macOS/Linux:**
+**Claude Code — macOS/Linux:**
 ```bash
 claude mcp add playwright-pool --scope user -- node "$HOME/.claude/mcp-servers/playwright-pool/index.js"
 ```
 
-**Windows (Git Bash):**
+**Claude Code — Windows (Git Bash):**
 ```bash
 claude mcp add playwright-pool --scope user -- node "$USERPROFILE/.claude/mcp-servers/playwright-pool/index.js"
 ```
 
-Verify it registered:
+**Cursor (all platforms)** — use Python to safely merge into `~/.cursor/mcp.json`, creating the file if it doesn't exist:
+
+```bash
+python -c "
+import json, pathlib
+home = pathlib.Path.home()
+p = home / '.cursor' / 'mcp.json'
+cfg = json.loads(p.read_text()) if p.exists() else {}
+cfg.setdefault('mcpServers', {})['playwright-pool'] = {
+    'command': 'node',
+    'args': [str(home / '.cursor' / 'mcp-servers' / 'playwright-pool' / 'index.js')]
+}
+p.write_text(json.dumps(cfg, indent=2))
+print('Registered playwright-pool in ~/.cursor/mcp.json')
+"
+```
+
+Verify registration:
+
+**Claude Code:**
 ```bash
 claude mcp list 2>&1 | grep playwright-pool
 ```
 
+**Cursor:** re-run the check from Step 3 and confirm output is `found`.
+
 ---
 
-### Step 7: Confirm and instruct
+### Step 9: Confirm and instruct
 
 Report what was configured:
+- Tool: Claude Code or Cursor
 - Pool size, browser, and timeout chosen
-- Server deployed to: `~/.claude/mcp-servers/playwright-pool/`
-- Config at: `~/.claude/mcp-servers/playwright-pool/config.json`
+- Server deployed to: `~/.claude/mcp-servers/playwright-pool/` or `~/.cursor/mcp-servers/playwright-pool/`
+- Config at: `[server dir]/config.json`
 
 Then tell the user:
 
+**Claude Code:**
 > **Reload your Claude Code window to activate playwright-pool.**
 > After reloading, `browser_pool_acquire`, `browser_navigate`, and all other browser tools will appear in your agent's tool list.
->
-> To change pool size later: edit `~/.claude/mcp-servers/playwright-pool/config.json` and reload the window.
+> To change pool size later: edit the `config.json` above and reload the window.
+
+**Cursor:**
+> **Fully restart Cursor** (not just reload window) to activate playwright-pool.
+> After restarting, browser pool tools will appear. You can verify in Cursor Settings > Tools and MCP.
+> To change pool size later: edit the `config.json` above and restart Cursor.
 
 ---
 
@@ -186,7 +250,7 @@ Use this section when an agent needs browser automation in a multi-agent or para
 
 ### Why sessions are required
 
-All Claude Code agents share one MCP connection. Without the pool, every agent's browser calls go to the same browser instance — causing state contamination and blocking. The pool proxy manages **N isolated `@playwright/mcp` processes** and routes each agent's calls to its own dedicated browser.
+All agents share one MCP connection. Without the pool, every agent's browser calls go to the same browser instance — causing state contamination and blocking. The pool proxy manages **N isolated `@playwright/mcp` processes** and routes each agent's calls to its own dedicated browser.
 
 ### Mandatory workflow
 
@@ -226,7 +290,7 @@ browser_pool_release({ session_id: "s2-..." })
 
 ### Scaling the pool
 
-Edit `~/.claude/mcp-servers/playwright-pool/config.json` and reload the window:
+Edit the `config.json` in your MCP servers directory and reload/restart:
 
 ```json
 {
