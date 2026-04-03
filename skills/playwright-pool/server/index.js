@@ -10,9 +10,14 @@
  *   3. Agent calls browser_pool_release({ session_id }) when done
  *
  * Configuration: edit config.json in this directory.
- *   poolSize          — number of browser processes to keep ready (default: 4)
- *   playwrightArgs    — CLI args forwarded to @playwright/mcp (default: ["--isolated"])
- *   acquireTimeoutMs  — ms to wait for a free slot before erroring (default: 30000)
+ *   maxConcurrent    — optional cap on simultaneous browser processes (default: unlimited)
+ *   playwrightArgs   — CLI args forwarded to @playwright/mcp (default: ["--isolated"])
+ *   acquireTimeoutMs — ms to wait when at maxConcurrent before erroring (default: 30000)
+ *
+ * The pool keeps exactly one idle browser as a warm standby. On acquire the standby
+ * is handed out and a replacement is spawned immediately. On release, if a standby
+ * already exists the released browser is killed — so idle memory is always just one
+ * process. Total live processes = active sessions + 1 (the standby).
  */
 
 import { spawn }          from 'child_process';
@@ -29,8 +34,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(__dirname, 'config.json'), 'utf8'));
 
 const {
-  poolSize        = 4,
-  playwrightArgs  = ['--isolated'],
+  maxConcurrent    = Infinity,
+  playwrightArgs   = ['--isolated'],
   acquireTimeoutMs = 30000,
 } = config;
 
@@ -40,7 +45,8 @@ const {
 
 const pool = [];          // ChildEntry[]
 const acquireQueue = [];  // { label, resolve, reject, timer }[]
-let   mergedTools  = [];  // built after all children are ready
+let   mergedTools  = [];  // built from probe child at startup
+let   nextIndex    = 0;   // ever-incrementing child index counter
 
 // ---------------------------------------------------------------------------
 // Child process management
@@ -116,6 +122,16 @@ async function initHandshake(child) {
   const result  = await requestChild(child, 'tools/list');
   child.tools   = result.tools || [];
   child.state   = 'available';
+
+  // If a caller was queued waiting for a slot, hand this child directly to them.
+  if (acquireQueue.length > 0) {
+    const next = acquireQueue.shift();
+    clearTimeout(next.timer);
+    child.state     = 'busy';
+    child.sessionId = `s${child.index}-${Date.now()}`;
+    child.label     = next.label || null;
+    next.resolve(child);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +162,7 @@ const POOL_TOOLS = [
     description:
       'Acquire an isolated browser session from the pool. ' +
       'Returns a session_id that MUST be passed to every subsequent browser_* call. ' +
-      'If all browsers are busy the call will queue and wait up to acquireTimeoutMs milliseconds. ' +
+      'A warm browser is kept on standby for instant acquisition. If maxConcurrent is set and reached, the call queues and waits up to acquireTimeoutMs milliseconds. ' +
       'Always call browser_pool_release when finished — even if an error occurred.',
     inputSchema: {
       type:       'object',
@@ -188,6 +204,7 @@ function poolStatus() {
     total:     pool.length,
     available: pool.filter(c => c.state === 'available').length,
     busy:      pool.filter(c => c.state === 'busy').length,
+    spawning:  pool.filter(c => c.state === 'initializing').length,
     queued:    acquireQueue.length,
   };
 }
@@ -203,7 +220,8 @@ function tryAcquire(label) {
 }
 
 // Release a session. If there are waiters, hand the child directly to the
-// next one without going through 'available'.
+// next one without going through 'available'. Otherwise keep it as the warm
+// standby — or kill it if a standby already exists.
 function doRelease(sessionId) {
   const child = pool.find(c => c.sessionId === sessionId);
   if (!child) return false;
@@ -216,11 +234,28 @@ function doRelease(sessionId) {
     // state stays 'busy'
     next.resolve(child);
   } else {
-    child.state     = 'available';
-    child.sessionId = null;
-    child.label     = null;
+    const hasStandby = pool.some(c => c.state === 'available' || c.state === 'initializing');
+    if (hasStandby) {
+      // Standby already covered — kill this one instead of idling it.
+      try { child.process.kill(); } catch {}
+      pool.splice(pool.indexOf(child), 1);
+    } else {
+      child.state     = 'available';
+      child.sessionId = null;
+      child.label     = null;
+    }
   }
   return true;
+}
+
+// Spawn a warm standby if none exists, so the next acquire is instant.
+function ensureWarmStandby() {
+  const hasStandby = pool.some(c => c.state === 'available' || c.state === 'initializing');
+  if (hasStandby) return;
+  if (pool.length >= maxConcurrent) return;
+  spawnChild(nextIndex++).catch(err => {
+    process.stderr.write(`[playwright-pool] Standby spawn failed: ${err.message}\n`);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -254,25 +289,42 @@ async function handleAcquire(id, args) {
   let child = tryAcquire(label);
 
   if (!child) {
-    // All browsers busy — queue with timeout.
-    try {
-      child = await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          const i = acquireQueue.findIndex(q => q.resolve === resolve);
-          if (i !== -1) acquireQueue.splice(i, 1);
-          reject(new Error(
-            `All ${pool.length} browser(s) are busy. ` +
-            `Timed out after ${acquireTimeoutMs}ms. ` +
-            `Call browser_pool_status() to inspect current usage.`
-          ));
-        }, acquireTimeoutMs);
-        acquireQueue.push({ label, resolve, reject, timer });
-      });
-    } catch (err) {
-      respondError(id, -32000, err.message);
-      return;
+    if (pool.length < maxConcurrent) {
+      // No standby ready yet (still spawning or first call) — spawn one now and wait.
+      try {
+        await spawnChild(nextIndex++);
+        child = tryAcquire(label);
+      } catch (err) {
+        respondError(id, -32000, `Failed to spawn browser: ${err.message}`);
+        return;
+      }
+    }
+
+    if (!child) {
+      // At maxConcurrent cap — queue with timeout.
+      try {
+        child = await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            const i = acquireQueue.findIndex(q => q.resolve === resolve);
+            if (i !== -1) acquireQueue.splice(i, 1);
+            reject(new Error(
+              `All ${pool.filter(c => c.state === 'busy').length} browser(s) are busy ` +
+              `and maxConcurrent (${maxConcurrent}) is reached. ` +
+              `Timed out after ${acquireTimeoutMs}ms. ` +
+              `Call browser_pool_status() to inspect current usage.`
+            ));
+          }, acquireTimeoutMs);
+          acquireQueue.push({ label, resolve, reject, timer });
+        });
+      } catch (err) {
+        respondError(id, -32000, err.message);
+        return;
+      }
     }
   }
+
+  // Kick off a warm standby replacement so the next acquire is instant.
+  ensureWarmStandby();
 
   respond(id, mcpContent({ session_id: child.sessionId, pool_status: poolStatus() }));
 }
@@ -364,21 +416,22 @@ async function handleMessage(msg) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  process.stderr.write(`[playwright-pool] Starting ${poolSize} browser(s)...\n`);
+  process.stderr.write('[playwright-pool] Bootstrapping...\n');
 
-  await Promise.all(
-    Array.from({ length: poolSize }, (_, i) => spawnChild(i))
-  );
-
-  // Build the merged tool list from the first child's schemas.
-  // All children expose the same tools, so one is enough.
-  const patchedBrowserTools = pool[0].tools.map(t =>
+  // Spawn a probe child solely to discover the tools list, then kill it.
+  const probe = await spawnChild(nextIndex++);
+  const patchedBrowserTools = probe.tools.map(t =>
     t.name.startsWith('browser_') ? patchTool(t) : t
   );
   mergedTools = [...POOL_TOOLS, ...patchedBrowserTools];
+  try { probe.process.kill(); } catch {}
+  pool.splice(pool.indexOf(probe), 1);
+
+  // Spawn the initial warm standby.
+  await spawnChild(nextIndex++);
 
   process.stderr.write(
-    `[playwright-pool] Ready. Pool: ${poolStatus().available} available, ` +
+    `[playwright-pool] Ready. 1 warm standby, ` +
     `${patchedBrowserTools.length} browser tools + ${POOL_TOOLS.length} pool tools.\n`
   );
 

@@ -85,9 +85,9 @@ If already registered:
 
 Ask the user these questions one at a time. Accept Enter for defaults:
 
-1. **Pool size** — How many parallel browser instances? *(default: 4)*
-2. **Browser** — chromium, firefox, or webkit? *(default: chromium)*
-3. **Acquire timeout** — Seconds to wait for a free slot before erroring? *(default: 30)*
+1. **Browser** — chromium, firefox, or webkit? *(default: chromium)*
+2. **Acquire timeout** — Seconds to wait when at capacity before erroring? *(default: 30)*
+3. **Max concurrent** — Hard cap on simultaneous browser processes? *(default: unlimited — the pool grows with demand and shrinks back to 1 idle when sessions are released)*
 
 ---
 
@@ -182,7 +182,15 @@ Then write `config.json` with the user's preferences from Step 4:
 
 ```json
 {
-  "poolSize": <pool size>,
+  "playwrightArgs": ["--isolated", "--browser=<browser>"],
+  "acquireTimeoutMs": <timeout seconds * 1000>
+}
+```
+
+If the user specified a `maxConcurrent` value, add it:
+```json
+{
+  "maxConcurrent": <max concurrent>,
   "playwrightArgs": ["--isolated", "--browser=<browser>"],
   "acquireTimeoutMs": <timeout seconds * 1000>
 }
@@ -246,7 +254,7 @@ Then tell the user:
 **Claude Code:**
 > **Reload your Claude Code window to activate playwright-pool.**
 > After reloading, `browser_pool_acquire`, `browser_navigate`, and all other browser tools will appear in your agent's tool list.
-> To change pool size later: edit the `config.json` above and reload the window.
+> To change settings later: edit the `config.json` above and reload the window.
 
 **Cursor:**
 > **Fully restart Cursor** (not just reload window) to activate playwright-pool.
@@ -270,10 +278,10 @@ Every agent that needs a browser **must** follow this three-step pattern:
 **1. Acquire a session**
 ```
 browser_pool_acquire({ label: "agent-name-or-task" })
-→ { session_id: "s2-1719000000000", pool_status: { total: 4, available: 3, busy: 1, queued: 0 } }
+→ { session_id: "s2-1719000000000", pool_status: { total: 2, available: 1, busy: 1, spawning: 0, queued: 0 } }
 ```
 
-If all browsers are busy, this call **blocks and queues** (up to `acquireTimeoutMs`). Do not poll — just await the result.
+A warm browser is always kept on standby, so this returns instantly. If the standby is still spawning (rare: burst of concurrent acquires), the call waits for it. If `maxConcurrent` is set and reached, this call **blocks and queues** (up to `acquireTimeoutMs`). Do not poll — just await the result.
 
 **2. Use the browser — pass `session_id` to every call**
 ```
@@ -295,23 +303,25 @@ browser_pool_release({ session_id: "s2-..." })
 
 | Tool | Purpose |
 |------|---------|
-| `browser_pool_acquire({ label? })` | Get a free browser. Queues if pool is full. |
+| `browser_pool_acquire({ label? })` | Get a free browser. Spawns on demand; queues only if `maxConcurrent` is reached. |
 | `browser_pool_release({ session_id })` | Return browser to pool. |
-| `browser_pool_status()` | Check available/busy/queued counts. |
+| `browser_pool_status()` | Check available/busy/spawning/queued counts. |
 
-### Scaling the pool
+### Pool sizing
 
-Edit the `config.json` in your MCP servers directory and reload/restart:
+The pool is self-sizing: it keeps exactly **1 idle browser** (the warm standby) and grows as needed. At any moment, total processes = active sessions + 1. You never configure a pool size.
+
+To add an optional hard cap (e.g. prevent runaway parallelism), set `maxConcurrent` in `config.json`:
 
 ```json
 {
-  "poolSize": 4,
+  "maxConcurrent": 8,
   "playwrightArgs": ["--isolated", "--browser=chromium"],
   "acquireTimeoutMs": 30000
 }
 ```
 
-Each pool slot is one OS-level browser process. `poolSize: 8` means 8 parallel Chromium instances.
+Without `maxConcurrent`, the pool is unbounded.
 
 ### Error reference
 
@@ -319,4 +329,4 @@ Each pool slot is one OS-level browser process. `poolSize: 8` means 8 parallel C
 |-------|-------|-----|
 | `session_id is required` | Called `browser_*` without a session | Call `browser_pool_acquire` first |
 | `No active session for session_id "..."` | Session released or never acquired | Re-acquire a new session |
-| `All N browsers are busy. Timed out after Xms` | Pool exhausted | Increase `poolSize` or ensure agents release promptly |
+| `All N browsers are busy and maxConcurrent (M) is reached. Timed out after Xms` | Hard cap hit | Increase `maxConcurrent` or ensure agents release promptly |
