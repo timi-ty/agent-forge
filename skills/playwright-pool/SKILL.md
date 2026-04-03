@@ -36,6 +36,17 @@ npx --version
 
 If this fails, tell the user to reinstall Node.js (npx is bundled with it).
 
+**@playwright/mcp — the MCP server package:**
+
+The pool server fetches this at runtime via `npx @playwright/mcp@latest`. Pre-cache it now so the first server startup doesn't trigger a silent download:
+
+```bash
+npx @playwright/mcp@latest --version
+```
+
+This downloads and caches `@playwright/mcp` and its dependencies. If it fails (network error, proxy issue), stop and tell the user:
+> "Could not reach the npm registry. Ensure you have internet access (or `HTTPS_PROXY` set if behind a proxy) and re-run setup."
+
 ---
 
 ### Step 2: Detect host tool
