@@ -305,7 +305,7 @@ browser_pool_release({ session_id: "s2-..." })
 |------|---------|
 | `browser_pool_acquire({ label? })` | Get a free browser. Queues if pool is full. |
 | `browser_pool_release({ session_id })` | Return browser to pool. |
-| `browser_pool_status()` | Check available/busy/queued counts. |
+| `browser_pool_status()` | Check available/busy/spawning/queued counts. |
 
 ### Pool sizing
 

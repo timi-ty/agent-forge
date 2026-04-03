@@ -122,6 +122,16 @@ async function initHandshake(child) {
   const result  = await requestChild(child, 'tools/list');
   child.tools   = result.tools || [];
   child.state   = 'available';
+
+  // If a caller was queued waiting for a slot, hand this child directly to them.
+  if (acquireQueue.length > 0) {
+    const next = acquireQueue.shift();
+    clearTimeout(next.timer);
+    child.state     = 'busy';
+    child.sessionId = `s${child.index}-${Date.now()}`;
+    child.label     = next.label || null;
+    next.resolve(child);
+  }
 }
 
 // ---------------------------------------------------------------------------
