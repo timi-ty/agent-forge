@@ -77,12 +77,12 @@ For each scope independently, classify every skill:
 
 ```bash
 gh api "repos/$OWNER/$REPO/contents/{skill-path}/{file}?ref=$BRANCH" \
-  --jq '.content | @base64d'
+  --jq '.content' | python -c "import sys,base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))"
 ```
 
 If any file differs (or does not exist locally), classify the skill as UPDATED.
 
-> **Note:** On Windows, local files may use CRLF line endings while the decoded remote content uses LF. Normalize line endings (strip `\r`) from both sides before comparing to avoid false-positive UPDATED classifications.
+> **Note on comparison:** Do NOT use `jq`'s `@base64d` to decode the content — it appends a trailing `\n` to its output, making every file appear 1 byte larger than the real content and causing all skills to always show as UPDATED. Use Python's `base64.b64decode` (as shown above) for byte-exact output. On Windows, also strip `\r` from both sides before comparing, since local files may use CRLF while remote content is LF.
 
 **REMOVED** — skill folder exists locally in this scope but is NOT present in the remote catalog.
 
