@@ -2,6 +2,6 @@
   "name": "playwright-pool",
   "version": "1.0.0",
   "type": "module",
-  "description": "Pooling MCP proxy for @playwright/mcp — enables multiple Claude Code agents to each get an isolated browser session.",
+  "description": "Pooling MCP proxy for @playwright/mcp — enables multiple agents to each get an isolated browser session.",
   "main": "index.js"
 }

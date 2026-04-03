@@ -202,7 +202,7 @@
     {
       "name": "playwright-pool",
       "path": "skills/playwright-pool",
-      "description": "Playwright browser pool for multi-agent browser automation. Installs a pooling MCP proxy that gives each Claude Code agent an isolated browser session. Prevents state contamination and blocking when multiple agents automate browsers simultaneously.",
+      "description": "Playwright browser pool for multi-agent browser automation. Installs a pooling MCP proxy that gives each agent an isolated browser session. Prevents state contamination and blocking when multiple agents automate browsers simultaneously.",
       "triggers": [
         "set up playwright pool",
         "install playwright pool",

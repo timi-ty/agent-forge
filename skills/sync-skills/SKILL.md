@@ -175,7 +175,7 @@ If any changes were skipped (user declined), list them as skipped.
 After reporting, check the catalog entries for every **newly installed** skill (not updated, not removed). For any skill where the catalog entry includes `"setup_required": true`:
 
 1. Say: "**[skill-name]** requires additional setup to activate. Running its setup wizard now..."
-2. Read the installed SKILL.md — at `$GLOBAL_SKILLS_DIR/{skill-name}/SKILL.md` if installed globally, or `.claude/commands/{skill-name}/SKILL.md` if workspace-local.
+2. Read the installed SKILL.md — at `$GLOBAL_SKILLS_DIR/{skill-name}/SKILL.md` if installed globally, or `$WORKSPACE_SKILLS_DIR/{skill-name}/SKILL.md` if workspace-local.
 3. Find the **`## SETUP WIZARD`** section of that SKILL.md and follow it step by step within this same conversation.
 
 This keeps the full install-and-configure flow in a single session without requiring the user to trigger anything else.
