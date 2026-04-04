@@ -1,16 +1,16 @@
 ---
 name: figma
-description: Set up Figma integration for Claude Code. Provisions credentials, links a Figma file to the current project, and provides direct API query tools for fetching design specs and images. TRIGGER on "set up figma", "configure figma", "link figma", "connect figma", "figma setup". Also handles sub-commands: "change figma file", "reconfigure figma", "remove figma from this project".
+description: Set up Figma integration for AI coding agents. Provisions credentials, links a Figma file to the current project, and provides direct API query tools for fetching design specs and images. Works with both Cursor and Claude Code. TRIGGER on "set up figma", "configure figma", "link figma", "connect figma", "figma setup". Also handles sub-commands: "change figma file", "reconfigure figma", "remove figma from this project".
 ---
 
 # Figma Integration
 
-Connects Claude Code to Figma so you can query designs directly from the IDE during frontend development — no need to open Figma at all.
+Connects your AI coding agent to Figma so you can query designs directly from the IDE during frontend development — no need to open Figma at all. Works with both Cursor and Claude Code.
 
 **How it works once set up:**
-- A local query helper (`~/.claude/commands/figma/query/index.mjs`) provides direct Figma API access
-- You give Claude a task (e.g. "implement the consumer billing page")
-- Claude calls the query helper to browse the file structure, find the matching frame, fetch full design specs, and generate code from them
+- A local query helper provides direct Figma API access
+- You give the agent a task (e.g. "implement the consumer billing page")
+- The agent calls the query helper to browse the file structure, find the matching frame, fetch full design specs, and generate code from them
 - No MCP server, no external dependencies — just Node.js and the Figma REST API
 
 ---
@@ -34,7 +34,16 @@ Run this full flow when the user invokes the skill without a more specific inten
 
 ---
 
-### Step 0: Resolve paths
+### Step 0: Detect platform and resolve paths
+
+**Detect the host tool:**
+
+- **Cursor**: Your system prompt identifies you as a Cursor agent, or you have access to the `AskQuestion` tool.
+- **Claude Code**: Your system prompt identifies you as Claude Code, or you have access to the `AskUserQuestion` tool.
+
+Set `$TOOL` to `cursor` or `claude-code`.
+
+**Resolve the skill install path:**
 
 ```bash
 node -p "require('os').homedir()"
@@ -42,11 +51,18 @@ node -p "require('os').homedir()"
 
 Set `$NATIVE_HOME` to the output.
 
-Set these derived paths:
-- `$FIGMA_ENV_FILE` = `$NATIVE_HOME/.figma/.env`
-- `$SETUP_SCRIPT` = `$NATIVE_HOME/.claude/commands/figma/setup/index.mjs`
+Set paths based on `$TOOL`:
 
-Resolve the project root:
+| Variable | Cursor | Claude Code |
+|----------|--------|-------------|
+| `$SKILL_DIR` | `$NATIVE_HOME/.cursor/skills/figma` | `$NATIVE_HOME/.claude/commands/figma` |
+| `$FIGMA_ENV_FILE` | `$NATIVE_HOME/.figma/.env` | `$NATIVE_HOME/.figma/.env` |
+| `$SETUP_SCRIPT` | `$SKILL_DIR/setup/index.mjs` | `$SKILL_DIR/setup/index.mjs` |
+| `$QUERY_SCRIPT` | `$SKILL_DIR/query/index.mjs` | `$SKILL_DIR/query/index.mjs` |
+
+Also check the workspace-local path (`.cursor/skills/figma` or `.claude/commands/figma`). If the skill exists there, prefer it over the global path.
+
+**Resolve the project root:**
 
 ```bash
 git rev-parse --show-toplevel
@@ -200,7 +216,7 @@ Figma is configured for this project.
     File:        {CHOSEN_FILE_NAME}
     Key:         {CHOSEN_FILE_KEY}
     Credentials: {FIGMA_ENV_FILE}
-    Query tool:  ~/.claude/commands/figma/query/index.mjs
+    Query tool:  {QUERY_SCRIPT}
 
 From now on, when working on UI tasks, I will automatically query
 Figma to get accurate design specs before writing code.
@@ -256,8 +272,12 @@ are implementing UI, always check the design first without being asked.
 All Figma data is fetched via the query helper:
 
 ```bash
-node "$HOME/.claude/commands/figma/query/index.mjs" <command> [args...]
+node "$QUERY_SCRIPT" <command> [args...]
 ```
+
+Where `$QUERY_SCRIPT` is the path resolved in Step 0:
+- **Cursor**: `~/.cursor/skills/figma/query/index.mjs`
+- **Claude Code**: `~/.claude/commands/figma/query/index.mjs`
 
 The helper automatically reads credentials from `~/.figma/.env` and the file key
 from the nearest CLAUDE.md. All output is JSON on stdout.
@@ -337,12 +357,13 @@ After examining both Figma and the codebase, assess alignment:
 ### Rate limiting
 
 The helper retries automatically on 429 with exponential backoff (up to 3 retries).
-If you get persistent rate limit errors, space out calls or wait 60 seconds.
+If Figma returns a Retry-After longer than 60 seconds, it fails fast with an actionable error message — this typically means the file is in a Starter-plan workspace.
 
 ### Example
 
 ```bash
-Q="$HOME/.claude/commands/figma/query/index.mjs"
+# Resolve the query script path for your platform first (see Step 0)
+Q="$QUERY_SCRIPT"
 
 # 1. See file structure
 node "$Q" pages

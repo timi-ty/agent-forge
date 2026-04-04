@@ -14,16 +14,47 @@
 const [, , command, ...args] = process.argv;
 
 const FIGMA_API_BASE = "https://api.figma.com/v1";
+const MAX_RETRIES = 3;
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function figmaGet(path, apiKey) {
-  const res = await fetch(`${FIGMA_API_BASE}${path}`, {
-    headers: { "X-Figma-Token": apiKey },
-  });
-  if (!res.ok) {
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(`${FIGMA_API_BASE}${path}`, {
+      headers: { "X-Figma-Token": apiKey },
+    });
+
+    if (res.ok) return res.json();
+
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("retry-after");
+      const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN;
+      const waitSec = !isNaN(parsed) ? parsed : Math.pow(2, attempt);
+
+      if (waitSec > 60) {
+        const hours = Math.round(waitSec / 3600);
+        const msg = `Rate limit exceeded. Figma requires a ${hours > 0 ? hours + " hour" : waitSec + " second"} wait. ` +
+          "Ensure the file is in a Professional+ team workspace (not Drafts). " +
+          "See: https://developers.figma.com/docs/rest-api/rate-limits/";
+        throw Object.assign(new Error(msg), { status: 429 });
+      }
+
+      if (attempt < MAX_RETRIES) {
+        const waitMs = Math.max(waitSec * 1000, 1000);
+        process.stderr.write(`Rate limited (429). Retry ${attempt + 1}/${MAX_RETRIES} in ${waitMs}ms...\n`);
+        await sleep(waitMs);
+        continue;
+      }
+    }
+
     const text = await res.text().catch(() => "");
-    throw Object.assign(new Error(`Figma API ${res.status}: ${text}`), { status: res.status });
+    lastError = { status: res.status, text };
+    break;
   }
-  return res.json();
+
+  const { status, text } = lastError;
+  throw Object.assign(new Error(`Figma API ${status}: ${text}`), { status });
 }
 
 async function validatePat(apiKey) {

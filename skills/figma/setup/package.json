@@ -2,5 +2,7 @@
   "name": "figma-setup",
   "version": "1.0.0",
   "type": "module",
+  "description": "Figma credential provisioning and file linking helper.",
+  "main": "index.mjs",
   "private": true
 }
