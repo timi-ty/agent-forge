@@ -3,6 +3,5 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Figma REST API query helper with rate limiting, caching, and response simplification.",
-  "main": "index.mjs",
-  "private": true
+  "main": "index.mjs"
 }
