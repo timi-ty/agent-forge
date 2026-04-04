@@ -268,6 +268,39 @@
           "entry_file": "SKILL.md"
         }
       }
+    },
+    {
+      "name": "figma",
+      "path": "skills/figma",
+      "description": "Set up Figma integration for AI coding agents. Provisions credentials, links a Figma file to the current project, and provides direct API query tools for fetching design specs, layout data, and images. During frontend implementation, cross-references Figma designs with the existing codebase architecture.",
+      "triggers": [
+        "set up figma",
+        "configure figma",
+        "link figma",
+        "connect figma",
+        "figma setup",
+        "change figma file",
+        "reconfigure figma",
+        "remove figma from this project",
+        "implement design from figma",
+        "check figma design"
+      ],
+      "files": ["SKILL.md", "setup/package.json", "setup/index.mjs", "query/package.json", "query/index.mjs"],
+      "dependencies": ["node.js >= 18", "Figma Personal Access Token (File content read + File metadata read scopes)"],
+      "notes": "Two-phase skill: setup (credential provisioning, file linking via URL parsing or team browsing, CLAUDE.md integration) and runtime (direct Figma REST API queries with rate limiting, 30-min caching, response simplification to CSS-ready properties, and image download). During frontend work, cross-references Figma designs with the project's existing component architecture — Figma is source of truth for visuals, codebase is source of truth for architecture. No MCP server, no external npm dependencies.",
+      "setup_required": true,
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/figma",
+          "install_path_workspace": ".cursor/skills/figma",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/figma",
+          "install_path_workspace": ".claude/commands/figma",
+          "entry_file": "SKILL.md"
+        }
+      }
     }
   ]
 }

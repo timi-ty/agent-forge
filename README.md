@@ -14,6 +14,7 @@ Portable collection of AI agent skills and a development harness for AI-native e
 | **[redeploy-frontend](skills/redeploy-frontend/)** | Trigger a Vercel redeploy by pushing a timestamp comment. Auto-detects package manager, branch, and target file. Auto-fixes prettier issues. | `redeploy`, `redeploy frontend`, `trigger vercel deploy` | `git`, Vercel |
 | **[playwright-pool](skills/playwright-pool/)** | Playwright browser pool for multi-agent automation. Installs a pooling MCP proxy so multiple agents each get an isolated browser session — no contention, no shared state. Works with Cursor and Claude Code. | `set up playwright pool`, `install playwright pool`, `browser pool`, `multi-agent browser automation` | `node.js >= 18`, `@playwright/mcp` (via npx) |
 | **[sync-skills](skills/sync-skills/)** | Sync locally installed skills to match a branch of this repo. Handles first-time installs and updates in one flow. | paste a `github.com/timi-ty/cursor-forge` URL, `install skills`, `update skills`, `sync skills` | `gh` CLI, `git` |
+| **[figma](skills/figma/)** | Figma design integration. Direct API queries for design specs, images, and layout data. Cross-references Figma visuals with existing codebase architecture during implementation. | `set up figma`, `configure figma`, `link figma`, `implement design from figma` | `node.js >= 18`, Figma PAT |
 | **[btw](skills/btw/)** | Interrupt the current task with a side-task that runs in a background subagent. | `/btw`, `btw`, `by the way` | — |
 
 ## Development Harness
