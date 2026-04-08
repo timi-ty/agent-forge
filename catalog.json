@@ -270,6 +270,34 @@
       }
     },
     {
+      "name": "create-issue",
+      "path": "skills/create-issue",
+      "description": "Analyze the current conversation to identify a problem worth tracking, ask the user filtering questions, then create a well-structured GitHub issue with appropriate labels, assignee, and project settings.",
+      "triggers": [
+        "create an issue",
+        "open an issue",
+        "file an issue",
+        "create github issue",
+        "log this as an issue",
+        "track this as an issue"
+      ],
+      "files": ["SKILL.md"],
+      "dependencies": ["gh CLI (GitHub CLI)"],
+      "notes": "6-phase workflow: analyze conversation, determine target repo, ask filtering questions (title, scope, labels, assignee, milestone), draft structured issue body, show draft and get explicit user confirmation, create via gh CLI. Never uses # shorthand — all cross-references use full GitHub URLs.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/create-issue",
+          "install_path_workspace": ".cursor/skills/create-issue",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/create-issue",
+          "install_path_workspace": ".claude/commands/create-issue",
+          "entry_file": "SKILL.md"
+        }
+      }
+    },
+    {
       "name": "figma",
       "path": "skills/figma",
       "description": "Set up Figma integration for AI coding agents. Provisions credentials, links a Figma file to the current project, and provides direct API query tools for fetching design specs, layout data, and images. During frontend implementation, cross-references Figma designs with the existing codebase architecture.",
