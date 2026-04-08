@@ -39,7 +39,7 @@ Example instruction to the user:
 Every resolution report uses this skeleton, in order:
 
 ```
-**PR:** <owner>/<repo>#<number>
+**PR:** https://github.com/<owner>/<repo>/pull/<number>
 **Branch:** `<branch-name>`
 **Verified:** <one-line proof summary>
 
@@ -92,6 +92,8 @@ These are non-negotiable:
 
 5. **Proof block uses actual output.** Never paraphrase test results. Paste the real terminal lines.
 
+6. **No `#` shorthand for references.** Never write `#123` or `owner/repo#123`. Always use full URLs: `https://github.com/owner/repo/issues/123` or `https://github.com/owner/repo/pull/456`. GitHub auto-links `#N` to the current repo, which produces wrong or broken links in cross-repo contexts.
+
 ## Posting commands
 
 ```bash
@@ -115,7 +117,7 @@ gh api --method PATCH repos/<owner>/<repo>/issues/comments/<comment-id> \
 gh api --method DELETE repos/<owner>/<repo>/issues/comments/<comment-id>
 ```
 
-To find a comment ID: `gh api repos/<owner>/<repo>/issues/<number>/comments | python3 -c "import sys,json; [print(c['id'], c['body'][:60]) for c in json.load(sys.stdin)]"`
+To find a comment ID: `gh api repos/<owner>/<repo>/issues/<number>/comments --jq '.[] | "\(.id) \(.body[0:60])"'`
 
 ## Self-review checklist
 
@@ -127,3 +129,4 @@ Before posting, scan the full text:
 - [ ] Impact radius explicitly states production vs test-only
 - [ ] Proof block contains actual output from the real verification step, not a paraphrase
 - [ ] Tense is present throughout (bugs described as current code state)
+- [ ] No `#123` or `owner/repo#123` shorthand — all references use full GitHub URLs
