@@ -126,7 +126,7 @@ The ROADMAP is the source of product intent. Everything downstream flows from it
 Run `compile_roadmap.py` from the skill's `scripts/` directory:
 
 ```
-python3 {SKILL_DIR}/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
+$PY {SKILL_DIR}/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
 ```
 
 This produces a **skeleton only** -- phase IDs, slugs, and empty unit arrays parsed from ROADMAP.md headings.
@@ -212,7 +212,7 @@ Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
   "hooks": {
     "stop": [
       {
-        "command": "python3 .cursor/hooks/continue-loop.py"
+        "command": ".cursor/hooks/continue-loop.py"
       }
     ]
   }
@@ -236,7 +236,7 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/continue-loop.py",
+            "command": ".claude/hooks/continue-loop.py",
             "timeout": 15
           }
         ]
@@ -320,7 +320,7 @@ If E2E tests already exist, skip this step entirely.
 Run `validate_harness.py` from `.harness/scripts/`:
 
 ```
-python3 .harness/scripts/validate_harness.py --root .
+$PY .harness/scripts/validate_harness.py --root .
 ```
 
 If validation fails, fix the errors and re-run until it passes. Do not proceed with errors.

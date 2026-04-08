@@ -85,7 +85,7 @@ If ownership changed (new files added, files removed, ownership class changed):
 Run `validate_harness.py` to confirm structural integrity:
 
 ```
-python3 .harness/scripts/validate_harness.py
+$PY .harness/scripts/validate_harness.py
 ```
 
 If validation fails, fix the issues before continuing.

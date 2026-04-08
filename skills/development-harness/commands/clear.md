@@ -28,7 +28,7 @@ If `manifest.json` does not exist or cannot be parsed as valid JSON:
 Run `clear_harness.py` in dry-run mode (no `--execute` flag):
 
 ```
-python3 .harness/scripts/clear_harness.py
+$PY .harness/scripts/clear_harness.py
 ```
 
 This prints a JSON report of what will happen. Parse the report.
@@ -57,7 +57,7 @@ Do not proceed without explicit user confirmation.
 On confirmation, run `clear_harness.py` with execute and force flags:
 
 ```
-python3 .harness/scripts/clear_harness.py --execute --force
+$PY .harness/scripts/clear_harness.py --execute --force
 ```
 
 ### Step 7 — Show git status

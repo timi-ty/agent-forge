@@ -58,7 +58,7 @@ Switch to Plan Mode. Save plan to `.harness/plans/`.
 2. Re-read `ROADMAP.md` for updated product intent
 3. Run the roadmap compiler:
    ```
-   python3 .harness/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
+   $PY .harness/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
    ```
 4. Interrogate the skeleton: refine phase boundaries, add units with validators, set dependencies
 5. Regenerate phase documents in `PHASES/`
@@ -77,7 +77,7 @@ Switch to Plan Mode. Save plan to `.harness/plans/`.
 ### 5. Validate
 
 ```
-python3 .harness/scripts/validate_harness.py --root .
+$PY .harness/scripts/validate_harness.py --root .
 ```
 
 Fix any errors. Re-run until validation passes.

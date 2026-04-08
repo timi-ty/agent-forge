@@ -9,7 +9,7 @@ You are reporting the state of the development harness. This is read-only — do
 ## Procedure
 
 1. Read `.harness/ARCHITECTURE.md` for file layout context.
-2. Run: `python3 .harness/scripts/validate_harness.py`
+2. Run: `$PY .harness/scripts/validate_harness.py`
    - If it fails, report errors and continue with readable data.
 3. Read these files:
    - `.harness/state.json`

@@ -9,7 +9,7 @@ You are reconciling the development harness with the actual state of the codebas
 ## Procedure
 
 1. Read `.harness/ARCHITECTURE.md` for data authority rules.
-2. Run: `python3 .harness/scripts/validate_harness.py`
+2. Run: `$PY .harness/scripts/validate_harness.py`
    - Fix structural issues if possible. If unfixable, report and stop.
 3. Gather workspace ground truth:
    - File tree (exclude `.harness/`, `.git/`, `node_modules/`, `dist/`, `build/`)
@@ -17,7 +17,7 @@ You are reconciling the development harness with the actual state of the codebas
    - CI config (`.github/workflows/`)
    - Deployment config (`vercel.json`, `Dockerfile`, etc.)
    - `git log --oneline -20`
-4. Run: `python3 .harness/scripts/sync_harness.py`
+4. Run: `$PY .harness/scripts/sync_harness.py`
    - Review output. It uses `present-but-unverified` for anything without evidence. Follow the same rule.
 5. For each phase in `.harness/phase-graph.json`:
    - Read `PHASES/PHASE_XXX_slug.md`

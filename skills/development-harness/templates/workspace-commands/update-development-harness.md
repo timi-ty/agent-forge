@@ -31,7 +31,7 @@ Read `.harness/config.json` and check the `tool` field. Set `$HOOKS_DIR` to `.cu
    - Present to user and wait for approval.
 6. After approval, execute the changes.
 7. Update `.harness/manifest.json` if ownership changed (new/removed/reclassified files).
-8. Run: `python3 .harness/scripts/validate_harness.py`
+8. Run: `$PY .harness/scripts/validate_harness.py`
    - Fix any failures before continuing.
 9. Update `.harness/state.json` (timestamp, execution pointers) and `.harness/checkpoint.md`.
 

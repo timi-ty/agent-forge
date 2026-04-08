@@ -28,7 +28,7 @@ This flag is checked by `continue-loop.py`. Without it, the hook is a no-op.
 ## 2. Validate
 
 ```bash
-python3 .harness/scripts/validate_harness.py
+$PY .harness/scripts/validate_harness.py
 ```
 
 If invalid, report errors and stop.
@@ -43,7 +43,7 @@ Read these files:
 ## 4. Select Next Unit
 
 ```bash
-python3 .harness/scripts/select_next_unit.py
+$PY .harness/scripts/select_next_unit.py
 ```
 
 - If `found: false` and `all_complete: true` → report completion, stop

@@ -17,7 +17,7 @@ Read `.harness/ARCHITECTURE.md` to confirm file layout and data authority rules.
 Run `validate_harness.py`:
 
 ```
-python3 .harness/scripts/validate_harness.py
+$PY .harness/scripts/validate_harness.py
 ```
 
 If critical errors exist, fix structural issues before proceeding. If unfixable, report and stop.
@@ -35,7 +35,7 @@ Gather ground truth about the workspace:
 ### 4. Run Automated Drift Detection
 
 ```
-python3 .harness/scripts/sync_harness.py
+$PY .harness/scripts/sync_harness.py
 ```
 
 Review its output carefully. Remember its evidence-only claiming rule: the script uses `present-but-unverified` and `unknown` for anything without test/build/CI evidence. Follow the same discipline.

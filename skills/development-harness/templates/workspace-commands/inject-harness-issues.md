@@ -7,8 +7,8 @@ description: Inject issues into the development harness — normalizes descripti
 1. Read `.harness/ARCHITECTURE.md` for project context.
 2. Accept issue descriptions from the user (inline text, file path, or conversational list). If none provided yet, ask now.
 3. Run the normalizer:
-   - Inline: `python3 .harness/scripts/normalize_issues.py --text "USER_TEXT" --output-dir .harness/issues/`
-   - File: `python3 .harness/scripts/normalize_issues.py --input PATH --output-dir .harness/issues/`
+   - Inline: `$PY .harness/scripts/normalize_issues.py --text "USER_TEXT" --output-dir .harness/issues/`
+   - File: `$PY .harness/scripts/normalize_issues.py --input PATH --output-dir .harness/issues/`
 4. For each normalized issue, refine missing fields (ask the user when unclear):
    - severity (`critical` | `high` | `medium` | `low`)
    - expected vs. observed behavior
