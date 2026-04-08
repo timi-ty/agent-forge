@@ -42,6 +42,17 @@ Based on the user's request, read the corresponding command file from this skill
 
 For full architecture details, see `references/architecture.md`.
 
+## Python Detection
+
+All harness scripts require Python 3. Before running any harness script, detect the available Python command:
+
+```bash
+PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+[ -z "$PY" ] && { echo "Error: Python 3 is required but neither python3 nor python was found"; exit 1; }
+```
+
+All command files use `$PY` to invoke Python scripts. Run this detection once per shell session before calling any harness command.
+
 ## Key Principle
 
 The harness builds a task-closing machine, not a project-finishing fantasy. Every unit of work must have a validator. Every completed unit must have evidence. Every phase completion must pass an internal review checklist. Deployment truth gates block deploy-affecting phases until verification passes.

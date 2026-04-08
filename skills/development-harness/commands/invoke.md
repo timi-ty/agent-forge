@@ -38,7 +38,7 @@ This flag is checked by `continue-loop.py`. Without it, the hook is a no-op and 
 Run the harness validator:
 
 ```bash
-python3 .harness/scripts/validate_harness.py
+$PY .harness/scripts/validate_harness.py
 ```
 
 If validation fails, report the errors to the user and **stop**. Do not proceed with invalid harness state.
@@ -62,7 +62,7 @@ Parse `state.json` into memory. Note `execution.active_phase`, `execution.active
 Run the authoritative unit selector:
 
 ```bash
-python3 .harness/scripts/select_next_unit.py
+$PY .harness/scripts/select_next_unit.py
 ```
 
 Interpret the JSON output:

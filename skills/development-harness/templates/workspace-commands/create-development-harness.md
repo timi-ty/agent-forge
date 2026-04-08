@@ -50,7 +50,14 @@ These files are NEVER deleted or overwritten:
 - Application source code
 - `ROADMAP.md`
 
-### 3. Re-run creation process
+### 3. Detect Python
+
+```bash
+PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+[ -z "$PY" ] && { echo "Error: Python 3 is required but neither python3 nor python was found"; exit 1; }
+```
+
+### 4. Re-run creation process
 
 Switch to Plan Mode. Save plan to `.harness/plans/`.
 
@@ -58,7 +65,7 @@ Switch to Plan Mode. Save plan to `.harness/plans/`.
 2. Re-read `ROADMAP.md` for updated product intent
 3. Run the roadmap compiler:
    ```
-   python3 .harness/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
+   $PY .harness/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
    ```
 4. Interrogate the skeleton: refine phase boundaries, add units with validators, set dependencies
 5. Regenerate phase documents in `PHASES/`
@@ -68,21 +75,21 @@ Switch to Plan Mode. Save plan to `.harness/plans/`.
 9. Regenerate `.harness/ARCHITECTURE.md`
 10. Update `.harness/manifest.json` to reflect all current files
 
-### 4. Update workspace artifacts
+### 5. Update workspace artifacts
 
 - Regenerate `$COMMANDS_DIR/` workspace commands if needed
 - Regenerate `$RULES_DIR/harness-*$RULE_EXT` if config changed
 - Merge `$HOOK_CONFIG` stop hook (do not overwrite other hooks)
 
-### 5. Validate
+### 6. Validate
 
 ```
-python3 .harness/scripts/validate_harness.py --root .
+$PY .harness/scripts/validate_harness.py --root .
 ```
 
 Fix any errors. Re-run until validation passes.
 
-### 6. Report
+### 7. Report
 
 Output summary: what changed, active phase, first unit, next steps.
 Tell the user to run `/invoke-development-harness` to begin.

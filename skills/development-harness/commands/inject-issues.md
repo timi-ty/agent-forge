@@ -30,12 +30,12 @@ Run `normalize_issues.py` to parse the raw text into structured JSON records.
 
 **With inline text:**
 ```
-python3 .harness/scripts/normalize_issues.py --text "USER_TEXT" --output-dir .harness/issues/
+$PY .harness/scripts/normalize_issues.py --text "USER_TEXT" --output-dir .harness/issues/
 ```
 
 **With a file:**
 ```
-python3 .harness/scripts/normalize_issues.py --input PATH --output-dir .harness/issues/
+$PY .harness/scripts/normalize_issues.py --input PATH --output-dir .harness/issues/
 ```
 
 The script auto-detects the next `ISSUE_NNN` number from existing files in the output directory. Review the JSON output it prints to confirm the issues were parsed correctly.

@@ -126,7 +126,7 @@ The ROADMAP is the source of product intent. Everything downstream flows from it
 Run `compile_roadmap.py` from the skill's `scripts/` directory:
 
 ```
-python3 {SKILL_DIR}/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
+$PY {SKILL_DIR}/scripts/compile_roadmap.py --roadmap ROADMAP.md --output .harness/phase-graph.json
 ```
 
 This produces a **skeleton only** -- phase IDs, slugs, and empty unit arrays parsed from ROADMAP.md headings.
@@ -212,7 +212,7 @@ Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
   "hooks": {
     "stop": [
       {
-        "command": "python3 .cursor/hooks/continue-loop.py"
+        "command": ".cursor/hooks/continue-loop.py"
       }
     ]
   }
@@ -221,7 +221,11 @@ Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
 
 If `.cursor/hooks.json` already exists, read it, parse the JSON, and MERGE the stop hook entry into the existing `hooks.stop` array. Do not overwrite other hooks. Do not duplicate the entry if it already exists.
 
-Copy the hook script from `templates/hooks/continue-loop.py` to `.cursor/hooks/continue-loop.py`.
+Copy the hook script from `templates/hooks/continue-loop.py` to `.cursor/hooks/continue-loop.py`. Make it executable:
+
+```bash
+chmod +x .cursor/hooks/continue-loop.py
+```
 
 **If `$TOOL` is `claude-code`:**
 
@@ -236,7 +240,7 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/continue-loop.py",
+            "command": ".claude/hooks/continue-loop.py",
             "timeout": 15
           }
         ]
@@ -248,7 +252,11 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
 
 If `.claude/settings.local.json` already exists, read it, parse the JSON, and deep-merge the `hooks.Stop` entry. Do not overwrite other settings or hooks.
 
-Copy the hook script from `templates/claude-code/hooks/continue-loop.py` to `.claude/hooks/continue-loop.py`.
+Copy the hook script from `templates/claude-code/hooks/continue-loop.py` to `.claude/hooks/continue-loop.py`. Make it executable:
+
+```bash
+chmod +x .claude/hooks/continue-loop.py
+```
 
 ### $RULES_DIR/ -- harness rule files
 
@@ -320,7 +328,7 @@ If E2E tests already exist, skip this step entirely.
 Run `validate_harness.py` from `.harness/scripts/`:
 
 ```
-python3 .harness/scripts/validate_harness.py --root .
+$PY .harness/scripts/validate_harness.py --root .
 ```
 
 If validation fails, fix the errors and re-run until it passes. Do not proceed with errors.

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Perform a senior-engineer code review of a pull request. Checks that new code conforms to existing codebase patterns, introduces no bugs, is maximally efficient, and contains no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
+description: Perform a senior-engineer code review of a pull request. Checks that changes are scoped to the PR's stated goal, conform to existing codebase patterns, introduce no bugs, are maximally efficient, and contain no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
 ---
 
 # Code Review
@@ -9,10 +9,11 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 
 ## Review Goals
 
-1. **Conformance** -- New code must match the patterns, conventions, and architecture of the existing codebase exactly.
-2. **Correctness** -- No new bugs, no missing edge cases, no logic errors.
-3. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
-4. **No dead code** -- Every import, variable, function, and branch is used.
+1. **Scope** -- Every changed file must relate to the PR's stated purpose. No unrelated changes, no scope creep, no accidental inclusions from a dirty branch.
+2. **Conformance** -- New code must match the patterns, conventions, and architecture of the existing codebase exactly.
+3. **Correctness** -- No new bugs, no missing edge cases, no logic errors.
+4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
+5. **No dead code** -- Every import, variable, function, and branch is used.
 
 ---
 
@@ -22,15 +23,16 @@ Copy this checklist and track progress:
 
 ```
 Review Progress:
-- [ ] Phase 1: Gather PR context
-- [ ] Phase 2: Understand existing codebase patterns (via worktree)
-- [ ] Phase 3: File-by-file diff review
-- [ ] Phase 4: Cross-cutting analysis
-- [ ] Phase 5: Deliver structured report
-- [ ] Phase 6: Determine verdict
-- [ ] Phase 7: Confirm verdict with user
-- [ ] Phase 8: Apply verdict
-- [ ] Phase 9: Cleanup worktrees
+- [ ] Phase 1: Gather PR context (metadata, diff, linked issues)
+- [ ] Phase 2: PR scope & hygiene check
+- [ ] Phase 3: Understand existing codebase patterns (via worktree)
+- [ ] Phase 4: File-by-file diff review
+- [ ] Phase 5: Cross-cutting analysis
+- [ ] Phase 6: Deliver structured report
+- [ ] Phase 7: Determine verdict
+- [ ] Phase 8: Confirm verdict with user
+- [ ] Phase 9: Apply verdict
+- [ ] Phase 10: Cleanup worktrees
 ```
 
 ### Phase 1 -- Gather PR Context
@@ -54,7 +56,44 @@ If the system prompt also contains an `<attached_pull_requests>` section with a 
 
 After gathering, list every changed file and categorize each as **added**, **modified**, or **deleted**.
 
-### Phase 2 -- Understand Existing Codebase Patterns
+#### Fetch linked issues
+
+Parse the PR body for linked issues. Look for:
+- Keywords: `Fixes #N`, `Closes #N`, `Resolves #N` (and their variations)
+- Issue URLs: `https://github.com/owner/repo/issues/N`
+- Any `#N` or `owner/repo#N` references
+
+For each linked issue, fetch its context:
+
+```bash
+gh issue view <N> --repo <owner/repo> --json title,body,labels
+```
+
+Store the issue title, body, and labels. This defines the **intended scope** of the PR and is used in Phase 2 for scope validation.
+
+If no linked issue is found, note this as a potential PR hygiene concern (PRs should link to their motivating issue).
+
+### Phase 2 -- PR Scope & Hygiene Check
+
+Before reading any code, evaluate whether the PR's changes match its stated purpose. This phase catches problems that no amount of code-level review can detect: unrelated files, scope creep, and accidental inclusions from a dirty branch.
+
+1. **Title-diff alignment**: Read the PR title and body. Read the list of changed files. Ask: does every changed file plausibly relate to what the title and body describe? Flag files that appear unrelated (e.g., packaging files in a CI/CD PR, config changes in a feature PR).
+
+2. **Issue-scope alignment**: If a linked issue was fetched in Phase 1, compare the issue's description against the changed files. Flag changes that fall outside the issue's stated scope.
+
+3. **PR body completeness**: Check that the PR body exists and is non-empty. A PR with no description is a hygiene issue.
+
+4. **Accidental inclusion detection**: Look for patterns that suggest dirty-branch contamination:
+   - Files in completely unrelated directories
+   - Changes to files the PR description never mentions or implies
+   - A mix of unrelated concerns (e.g., a feature PR that also modifies unrelated infrastructure)
+
+Record all findings. Scope issues are reported in Phase 6 and contribute to the verdict:
+- **High**: Files that clearly don't belong (accidental inclusions from a wrong branch) -- these would ship unreviewed, unintended changes if merged.
+- **Medium**: Missing PR description, no linked issue, weak title-diff alignment, missing test coverage for behavioral changes.
+- **Low**: Minor scope concerns that are judgment calls.
+
+### Phase 3 -- Understand Existing Codebase Patterns
 
 #### Step 0: Create a worktree for the base branch
 
@@ -155,9 +194,9 @@ For each changed file:
 
 For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR.
 
-Take notes on the patterns you discover. You will use these as the baseline for Phase 3.
+Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
 
-### Phase 3 -- File-by-File Diff Review
+### Phase 4 -- File-by-File Diff Review
 
 For each changed file, read its individual diff and review against the detailed checklist.
 
@@ -165,7 +204,8 @@ For the full review checklist, see [checklist.md](checklist.md).
 
 Key review areas (summarized):
 
-- **Pattern conformance**: Does the new code follow the exact same patterns found in Phase 2? Naming, structure, error handling, types, imports?
+- **Scope**: Does this file belong in this PR? (Cross-reference against Phase 2 findings.)
+- **Pattern conformance**: Does the new code follow the exact same patterns found in Phase 3? Naming, structure, error handling, types, imports?
 - **Correctness**: Any bugs? Missing null checks? Off-by-one errors? Unhandled promise rejections? Race conditions?
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
@@ -173,7 +213,7 @@ Key review areas (summarized):
 
 When you find an issue, note the exact file path and line number from the diff.
 
-### Phase 4 -- Cross-Cutting Analysis
+### Phase 5 -- Cross-Cutting Analysis
 
 After reviewing individual files, check for issues that span the whole PR:
 
@@ -182,9 +222,11 @@ After reviewing individual files, check for issues that span the whole PR:
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?
-- **Missing changes**: Are there files that *should* have been changed but weren't? (e.g., updating an interface without updating its consumers)
+- **Missing changes (interface consumers)**: Are there files that *should* have been changed but weren't? (e.g., updating an interface without updating its consumers)
+- **Missing changes (test coverage)**: Do behavioral changes have corresponding test additions or modifications?
+- **Unrelated changes**: Confirm any files flagged in Phase 2 as potentially out-of-scope. After reading the code, do they genuinely relate to the PR's purpose, or are they accidental inclusions?
 
-### Phase 5 -- Output
+### Phase 6 -- Output
 
 Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. `pr-32-review.md`).
 
@@ -220,7 +262,7 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 
 After writing the file, display the contents to the user as well.
 
-### Phase 6 -- Verdict
+### Phase 7 -- Verdict
 
 Based on the review report, determine your verdict:
 
@@ -229,7 +271,7 @@ Based on the review report, determine your verdict:
 
 State the verdict clearly to the user along with a one-sentence rationale (e.g., "Requesting changes because there are 2 High-priority bugs and 1 Medium-priority pattern deviation." or "Approving -- no blocking issues found, only minor Low-priority suggestions.").
 
-### Phase 7 -- Confirm Verdict with User
+### Phase 8 -- Confirm Verdict with User
 
 Ask the user to confirm or override the verdict. Offer these options:
 
@@ -295,7 +337,7 @@ This is safe because the branch already exists on the remote and you are only ad
 git worktree remove ../$REPO_NAME-wt-fix-pr<N>
 ```
 
-### Phase 8 -- Apply Verdict
+### Phase 9 -- Apply Verdict
 
 Two paths depending on the final confirmed verdict:
 
@@ -327,7 +369,7 @@ EOF
 )"
 ```
 
-### Phase 9 -- Cleanup Worktrees
+### Phase 10 -- Cleanup Worktrees
 
 After the review is complete (verdict applied or user chose "Plan to address issues"), remove all worktrees created during the review:
 

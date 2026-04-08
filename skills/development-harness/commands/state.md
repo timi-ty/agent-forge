@@ -13,7 +13,7 @@ Read-only analysis. No modifications to any files.
 Run `validate_harness.py` from `.harness/scripts/`:
 
 ```
-python3 .harness/scripts/validate_harness.py
+$PY .harness/scripts/validate_harness.py
 ```
 
 If validation fails, report errors prominently and continue with whatever data is readable.
