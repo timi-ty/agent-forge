@@ -221,7 +221,11 @@ Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
 
 If `.cursor/hooks.json` already exists, read it, parse the JSON, and MERGE the stop hook entry into the existing `hooks.stop` array. Do not overwrite other hooks. Do not duplicate the entry if it already exists.
 
-Copy the hook script from `templates/hooks/continue-loop.py` to `.cursor/hooks/continue-loop.py`.
+Copy the hook script from `templates/hooks/continue-loop.py` to `.cursor/hooks/continue-loop.py`. Make it executable:
+
+```bash
+chmod +x .cursor/hooks/continue-loop.py
+```
 
 **If `$TOOL` is `claude-code`:**
 
@@ -248,7 +252,11 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
 
 If `.claude/settings.local.json` already exists, read it, parse the JSON, and deep-merge the `hooks.Stop` entry. Do not overwrite other settings or hooks.
 
-Copy the hook script from `templates/claude-code/hooks/continue-loop.py` to `.claude/hooks/continue-loop.py`.
+Copy the hook script from `templates/claude-code/hooks/continue-loop.py` to `.claude/hooks/continue-loop.py`. Make it executable:
+
+```bash
+chmod +x .claude/hooks/continue-loop.py
+```
 
 ### $RULES_DIR/ -- harness rule files
 
