@@ -1,8 +1,17 @@
 # Code Review Checklist
 
-Detailed review criteria for Phase 3. Check each item for every changed file.
+Detailed review criteria for Phase 4. Check each item for every changed file.
 
 ---
+
+## Scope
+
+- [ ] **PR description exists**: The PR has a non-empty body that describes what it does and why.
+- [ ] **Linked issue**: The PR links to a motivating issue. If no issue is linked, flag as a hygiene concern.
+- [ ] **Title-diff coherence**: Every changed file relates to the goal stated in the PR title and description. No unrelated files.
+- [ ] **Issue-scope alignment**: If a linked issue exists, changes stay within the issue's stated scope. No scope creep.
+- [ ] **No accidental inclusions**: No files that appear to come from an unrelated branch or a dirty working directory.
+- [ ] **Test coverage for behavioral changes**: If the PR changes runtime behavior (not just config/docs), corresponding tests exist or are added.
 
 ## Pattern Conformance
 
