@@ -155,7 +155,19 @@ function extractLineHeight(style) {
   if (!style?.lineHeightPx) return undefined;
   if (style.lineHeightUnit === "PIXELS") return `${style.lineHeightPx}px`;
   if (style.lineHeightUnit === "FONT_SIZE_%") return `${style.lineHeightPercentFontSize}%`;
-  return style.lineHeightPx;
+  if (style.lineHeightUnit === "INTRINSIC") return "normal";
+  return `${style.lineHeightPx}px`;
+}
+
+function mapTextCase(textCase) {
+  switch (textCase) {
+    case "UPPER": return { textTransform: "uppercase" };
+    case "LOWER": return { textTransform: "lowercase" };
+    case "TITLE": return { textTransform: "capitalize" };
+    case "SMALL_CAPS": return { fontVariant: "small-caps" };
+    case "SMALL_CAPS_FORCED": return { fontVariant: "all-small-caps" };
+    default: return {};
+  }
 }
 
 function extractColor(fill) {
@@ -209,6 +221,56 @@ function extractEffect(effect) {
   return null;
 }
 
+function extractTextSegments(node) {
+  const overrides = node.characterStyleOverrides;
+  if (!overrides?.length) return undefined;
+
+  const table = node.styleOverrideTable ?? {};
+  const chars = node.characters ?? "";
+
+  // Run-length encode: group contiguous characters sharing the same override key
+  const runs = [];
+  let runStart = 0;
+  let runKey = overrides[0] ?? 0;
+  for (let i = 1; i <= overrides.length; i++) {
+    const key = overrides[i] ?? 0;
+    if (key !== runKey || i === overrides.length) {
+      runs.push({ start: runStart, end: i, key: runKey });
+      runStart = i;
+      runKey = key;
+    }
+  }
+
+  // Build segments — only include style props that differ from base
+  const segments = runs.map(({ start, end, key }) => {
+    const seg = { text: chars.slice(start, end) };
+    if (key !== 0 && table[key]) {
+      const s = table[key];
+      const style = {};
+      if (s.fontFamily) style.font = s.fontFamily;
+      if (s.fontWeight) style.weight = s.fontWeight;
+      if (s.fontSize) style.size = s.fontSize;
+      if (s.italic) style.fontStyle = "italic";
+      if (s.textDecoration === "UNDERLINE") style.textDecoration = "underline";
+      if (s.textDecoration === "STRIKETHROUGH") style.textDecoration = "line-through";
+      if (s.letterSpacing) style.letterSpacing = s.letterSpacing;
+      if (s.lineHeightPx) style.lineHeight = extractLineHeight(s);
+      const caseProps = mapTextCase(s.textCase);
+      Object.assign(style, caseProps);
+      if (s.fills?.length) {
+        const visible = s.fills.filter((f) => f.visible !== false);
+        if (visible.length) style.color = extractColor(visible[0]);
+      }
+      if (Object.keys(style).length) seg.style = style;
+    }
+    return seg;
+  });
+
+  // Skip if all segments are base-style (no actual overrides)
+  if (segments.every((s) => !s.style)) return undefined;
+  return segments;
+}
+
 function simplifyNode(node, depth = 0, maxDepth = Infinity) {
   const out = { id: node.id, name: node.name, type: node.type };
 
@@ -251,12 +313,45 @@ function simplifyNode(node, depth = 0, maxDepth = Infinity) {
       lineHeight: extractLineHeight(node.style),
       align: node.style?.textAlignHorizontal?.toLowerCase(),
     };
+
+    // Italic
+    if (node.style?.italic) out.text.fontStyle = "italic";
+
+    // Letter spacing (only if non-zero)
     const ls = node.style?.letterSpacing;
     if (ls != null && ls !== 0) out.text.letterSpacing = ls;
+
+    // Text decoration (underline / strikethrough)
+    const td = node.style?.textDecoration;
+    if (td === "UNDERLINE") out.text.textDecoration = "underline";
+    else if (td === "STRIKETHROUGH") out.text.textDecoration = "line-through";
+
+    // Text case → textTransform or fontVariant
+    Object.assign(out.text, mapTextCase(node.style?.textCase));
+
+    // Vertical alignment
+    const va = node.style?.textAlignVertical;
+    if (va && va !== "TOP") out.text.verticalAlign = va.toLowerCase();
+
+    // Paragraph spacing & indent (only if non-zero)
+    const ps = node.style?.paragraphSpacing;
+    if (ps != null && ps !== 0) out.text.paragraphSpacing = ps;
+    const pi = node.style?.paragraphIndent;
+    if (pi != null && pi !== 0) out.text.paragraphIndent = pi;
+
+    // Text overflow / truncation
+    if (node.textAutoResize) out.text.autoResize = node.textAutoResize;
+    if (node.maxLines != null) out.text.maxLines = node.maxLines;
+
+    // Text color from fills
     if (node.fills?.length) {
       const visible = node.fills.filter((f) => f.visible !== false);
       if (visible.length) out.text.color = extractColor(visible[0]);
     }
+
+    // Mixed-style segments (e.g., one bold word in a sentence)
+    const segments = extractTextSegments(node);
+    if (segments) out.text.segments = segments;
   }
 
   // Fills (non-text nodes)
