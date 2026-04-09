@@ -299,7 +299,7 @@ Node IDs contain colons (e.g. `9134:18785`). Pass them as-is — the helper enco
 
 The query helper strips raw Figma API bloat and returns CSS-ready properties:
 - **Layout**: flex mode, gap, padding, justify, align, sizing mode (FIXED/FILL/HUG)
-- **Text**: content, font, weight, size, line-height, letter-spacing, color, alignment
+- **Text**: content, font, weight, size, line-height, letter-spacing, color, alignment (horizontal + vertical), font-style (italic), text-decoration (underline/strikethrough), text-transform (uppercase/lowercase/capitalize), font-variant (small-caps), paragraph-spacing, paragraph-indent, auto-resize mode, max-lines, and mixed-style segments for text with per-character formatting
 - **Fills**: solid colors as hex/rgba, gradients with stops, image refs
 - **Strokes**: color, weight, alignment (inside/outside/center)
 - **Effects**: box-shadow and blur as ready-to-use CSS strings
