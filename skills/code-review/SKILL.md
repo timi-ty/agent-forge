@@ -32,7 +32,8 @@ Review Progress:
 - [ ] Phase 7: Determine verdict
 - [ ] Phase 8: Confirm verdict with user
 - [ ] Phase 9: Apply verdict
-- [ ] Phase 10: Cleanup worktrees
+- [ ] Phase 10: Offer to merge (approve path only)
+- [ ] Phase 11: Cleanup worktrees
 ```
 
 ### Phase 1 -- Gather PR Context
@@ -275,7 +276,7 @@ State the verdict clearly to the user along with a one-sentence rationale (e.g.,
 
 Ask the user to confirm or override the verdict. Offer these options:
 
-- **Go ahead** -- apply the verdict as-is.
+- **Go ahead** -- post the review verdict (approve or request-changes) to GitHub. This does **not** merge the PR.
 - **Plan to address issues** -- (only shown when verdict is Request Changes) switch to plan mode and create a plan to fix the issues found in the review.
 - **Switch to Approve** -- (only shown when verdict is Request Changes) override and approve instead.
 - **Switch to Request Changes** -- (only shown when verdict is Approve) override and request changes instead.
@@ -345,16 +346,12 @@ Two paths depending on the final confirmed verdict:
 
 1. **Post a short approval comment** highlighting the best parts of the PR (concise, 2-4 bullet points on what was done well -- good patterns, clean logic, etc.).
 2. **Approve the PR** via `gh`.
-3. **Squash merge** the PR.
-4. **Delete the source branch**.
 
 ```bash
 gh pr review <PR> --repo <owner/repo> --approve --body "$(cat <<'EOF'
 <approval comment body>
 EOF
 )"
-
-gh pr merge <PR> --repo <owner/repo> --squash --delete-branch
 ```
 
 #### Path B: Request Changes
@@ -369,7 +366,23 @@ EOF
 )"
 ```
 
-### Phase 10 -- Cleanup Worktrees
+### Phase 10 -- Offer to Merge
+
+This phase only applies when Phase 9 Path A (Approve) was executed. Skip this phase entirely for Path B (Request Changes) or when the user chose "Plan to address issues" in Phase 8.
+
+After the approval is posted, explicitly ask the user:
+
+> "PR approved. Would you like me to squash-merge it and delete the source branch?"
+
+Do not proceed until the user responds. If the user confirms, merge the PR:
+
+```bash
+gh pr merge <PR> --repo <owner/repo> --squash --delete-branch
+```
+
+If the user declines, do not merge. Proceed to Phase 11 (cleanup).
+
+### Phase 11 -- Cleanup Worktrees
 
 After the review is complete (verdict applied or user chose "Plan to address issues"), remove all worktrees created during the review:
 
