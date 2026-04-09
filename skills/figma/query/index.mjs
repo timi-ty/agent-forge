@@ -240,6 +240,9 @@ function extractTextSegments(node) {
       runKey = key;
     }
   }
+  if (overrides.length < chars.length) {
+    runs.push({ start: overrides.length, end: chars.length, key: 0 });
+  }
 
   // Build segments — only include style props that differ from base
   const segments = runs.map(({ start, end, key }) => {
