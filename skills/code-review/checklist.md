@@ -69,3 +69,25 @@ Detailed review criteria for Phase 4. Check each item for every changed file.
 - [ ] **Generic correctness**: Generic type parameters are constrained appropriately.
 - [ ] **Null safety**: Optional values are checked before use. Strict null checks are respected.
 - [ ] **Return types**: Functions have explicit return types where the codebase convention requires them.
+
+## Semantic Verification — Test Code
+
+Shift from "does this test follow patterns?" to "does this test actually prove what it claims?" For each test, ask: **if the feature this test covers were broken, would this test fail?**
+
+- [ ] **Subject identity**: The test instantiates and exercises the *real* implementation, not a hand-written stub, re-implementation, or test-local subclass defined in the test file. If the test defines its own version of the class/function it claims to test, every assertion passes against the fake — proving nothing about the application.
+- [ ] **Data preconditions**: Tests that query, filter, or aggregate data first create data with sufficient variety that the operation is meaningfully exercised. A filter test against an empty table always returns `success: true` with zero results — it cannot distinguish a working filter from a broken one.
+- [ ] **Assertion strength**: Assertions verify specific expected values, not just structural existence. Flag weak assertions that would pass on almost any response: `toBeDefined()`, `toBeTruthy()`, `toHaveProperty('x')` without a value check, `expect(data).toBeDefined()` on an endpoint that always returns a (possibly empty) data wrapper.
+- [ ] **Mock boundaries**: Mocks replace *dependencies* of the subject under test, not the subject itself. If a test fully mocks the component it claims to test, it is testing mock behavior. Verify that the real code path — the one with actual conditionals and logic — is exercised.
+- [ ] **Mutation verification**: Tests for create/update/delete operations verify the mutation took effect by reading back state (database query, subsequent GET, downstream side-effect check) — not just asserting the API returned a success status code.
+- [ ] **Content verification**: Tests for data export, transformation, or rendering verify the actual output content (parsed CSV rows, JSON payload field values, rendered markup). Checking only metadata (Content-Type header, Content-Disposition filename, HTTP status) is insufficient — those pass even on empty or wrong bodies.
+- [ ] **Failure possibility**: The test setup creates conditions where the assertion *could* fail if the feature were broken. If the test would pass regardless of whether the feature works (e.g., asserting a property exists on a response that always includes it as an empty default), the test is vacuous.
+- [ ] **Test independence**: Each test proves something distinct about the system. Flag suites where many tests are structural copies exercising the same underlying code path (e.g., N endpoint tests that all only verify auth middleware returns 401, inflating the test count without testing endpoint-specific behavior).
+
+## Semantic Verification — Application Code
+
+Shift from "does this code follow patterns?" to "does this code actually accomplish what it claims?" For each function, trace the data flow and verify the logic matches the intent.
+
+- [ ] **Business logic substance**: For each conditional or branching path, verify it handles a case that actually occurs. A guard clause whose condition is always true (or always false) in practice is dead logic that looks alive. Trace the data flow to confirm the branch can be reached with realistic inputs.
+- [ ] **Integration point correctness**: Where code calls external services (database queries, API calls, message brokers, Firebase, etc.), verify the call is semantically correct: right table/collection, right fields, right query conditions, right message format. Syntactically valid calls to the wrong table or with wrong conditions are bugs that compile cleanly.
+- [ ] **Error handling substance**: Error handlers do more than catch and re-throw or catch and silently swallow. Verify they provide useful diagnostic information, clean up intermediate state, or propagate errors in a way that callers can act on. A `try/catch` that transforms an error into a less informative one is a net negative.
+- [ ] **Computed value correctness**: Calculations, transformations, and derived values use the correct inputs. A pagination helper that computes `Math.ceil(total / limit)` is correct in isolation, but if `total` is sourced from the wrong query or `limit` is a stale default, the output is wrong despite the formula being right. Trace the inputs.
