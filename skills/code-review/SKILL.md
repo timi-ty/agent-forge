@@ -11,7 +11,7 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 
 1. **Scope** -- Every changed file must relate to the PR's stated purpose. No unrelated changes, no scope creep, no accidental inclusions from a dirty branch.
 2. **Conformance** -- New code must match the patterns, conventions, and architecture of the existing codebase exactly.
-3. **Correctness** -- No new bugs, no missing edge cases, no logic errors.
+3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
 
@@ -212,6 +212,14 @@ Key review areas (summarized):
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
 
+#### Semantic verification pass
+
+After checking pattern conformance, correctness, and dead code for a file, apply the Semantic Verification sections of the checklist. This requires a different mode of thinking -- shift from "does this code follow the rules?" to "does this code actually accomplish what it claims to?"
+
+For **test files**: Read each test and ask: "If the feature this test covers were broken, would this test fail?" If the answer is no or uncertain, the test has a semantic gap. Check subject identity, data preconditions, assertion strength, mock boundaries, mutation verification, content verification, and failure possibility per the checklist.
+
+For **application code**: Read each function and ask: "Does this code do what its name/context/PR description says it does, or does it just look like it does?" Trace data flows through conditionals, verify integration calls target the right resources, and confirm error handlers actually handle errors.
+
 When you find an issue, note the exact file path and line number from the diff.
 
 ### Phase 5 -- Cross-Cutting Analysis
@@ -226,6 +234,7 @@ After reviewing individual files, check for issues that span the whole PR:
 - **Missing changes (interface consumers)**: Are there files that *should* have been changed but weren't? (e.g., updating an interface without updating its consumers)
 - **Missing changes (test coverage)**: Do behavioral changes have corresponding test additions or modifications?
 - **Unrelated changes**: Confirm any files flagged in Phase 2 as potentially out-of-scope. After reading the code, do they genuinely relate to the PR's purpose, or are they accidental inclusions?
+- **Test suite substance**: Across all test files in the PR, assess whether the test suite as a whole provides meaningful coverage. Look for: inflated test counts from redundant copies (N tests that all verify the same middleware), tests that would all break or all pass together (indicating they test the same code path), and entire test files where no test creates the conditions necessary for failure.
 
 ### Phase 6 -- Output
 
