@@ -70,20 +70,20 @@ Detailed review criteria for Phase 4. Check each item for every changed file.
 - [ ] **Null safety**: Optional values are checked before use. Strict null checks are respected.
 - [ ] **Return types**: Functions have explicit return types where the codebase convention requires them.
 
-## Semantic Verification — Test Code
+## Semantic Verification -- Test Code
 
 Shift from "does this test follow patterns?" to "does this test actually prove what it claims?" For each test, ask: **if the feature this test covers were broken, would this test fail?**
 
-- [ ] **Subject identity**: The test instantiates and exercises the *real* implementation, not a hand-written stub, re-implementation, or test-local subclass defined in the test file. If the test defines its own version of the class/function it claims to test, every assertion passes against the fake — proving nothing about the application.
-- [ ] **Data preconditions**: Tests that query, filter, or aggregate data first create data with sufficient variety that the operation is meaningfully exercised. A filter test against an empty table always returns `success: true` with zero results — it cannot distinguish a working filter from a broken one.
+- [ ] **Subject identity**: The test instantiates and exercises the *real* implementation, not a hand-written stub, re-implementation, or test-local subclass defined in the test file. If the test defines its own version of the class/function it claims to test, every assertion passes against the fake -- proving nothing about the application.
+- [ ] **Data preconditions**: Tests that query, filter, or aggregate data first create data with sufficient variety that the operation is meaningfully exercised. A filter test against an empty table always returns `success: true` with zero results -- it cannot distinguish a working filter from a broken one.
 - [ ] **Assertion strength**: Assertions verify specific expected values, not just structural existence. Flag weak assertions that would pass on almost any response: `toBeDefined()`, `toBeTruthy()`, `toHaveProperty('x')` without a value check, `expect(data).toBeDefined()` on an endpoint that always returns a (possibly empty) data wrapper.
-- [ ] **Mock boundaries**: Mocks replace *dependencies* of the subject under test, not the subject itself. If a test fully mocks the component it claims to test, it is testing mock behavior. Verify that the real code path — the one with actual conditionals and logic — is exercised.
-- [ ] **Mutation verification**: Tests for create/update/delete operations verify the mutation took effect by reading back state (database query, subsequent GET, downstream side-effect check) — not just asserting the API returned a success status code.
-- [ ] **Content verification**: Tests for data export, transformation, or rendering verify the actual output content (parsed CSV rows, JSON payload field values, rendered markup). Checking only metadata (Content-Type header, Content-Disposition filename, HTTP status) is insufficient — those pass even on empty or wrong bodies.
+- [ ] **Mock boundaries**: Mocks replace *dependencies* of the subject under test, not the subject itself. If a test fully mocks the component it claims to test, it is testing mock behavior. Verify that the real code path -- the one with actual conditionals and logic -- is exercised.
+- [ ] **Mutation verification**: Tests for create/update/delete operations verify the mutation took effect by reading back state (database query, subsequent GET, downstream side-effect check) -- not just asserting the API returned a success status code.
+- [ ] **Content verification**: Tests for data export, transformation, or rendering verify the actual output content (parsed CSV rows, JSON payload field values, rendered markup). Checking only metadata (Content-Type header, Content-Disposition filename, HTTP status) is insufficient -- those pass even on empty or wrong bodies.
 - [ ] **Failure possibility**: The test setup creates conditions where the assertion *could* fail if the feature were broken. If the test would pass regardless of whether the feature works (e.g., asserting a property exists on a response that always includes it as an empty default), the test is vacuous.
 - [ ] **Test independence**: Each test proves something distinct about the system. Flag suites where many tests are structural copies exercising the same underlying code path (e.g., N endpoint tests that all only verify auth middleware returns 401, inflating the test count without testing endpoint-specific behavior).
 
-## Semantic Verification — Application Code
+## Semantic Verification -- Application Code
 
 Shift from "does this code follow patterns?" to "does this code actually accomplish what it claims?" For each function, trace the data flow and verify the logic matches the intent.
 

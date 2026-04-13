@@ -11,7 +11,7 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 
 1. **Scope** -- Every changed file must relate to the PR's stated purpose. No unrelated changes, no scope creep, no accidental inclusions from a dirty branch.
 2. **Conformance** -- New code must match the patterns, conventions, and architecture of the existing codebase exactly.
-3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do — not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
+3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
 
@@ -214,7 +214,7 @@ Key review areas (summarized):
 
 #### Semantic verification pass
 
-After checking pattern conformance, correctness, and dead code for a file, apply the Semantic Verification sections of the checklist. This requires a different mode of thinking — shift from "does this code follow the rules?" to "does this code actually accomplish what it claims to?"
+After checking pattern conformance, correctness, and dead code for a file, apply the Semantic Verification sections of the checklist. This requires a different mode of thinking -- shift from "does this code follow the rules?" to "does this code actually accomplish what it claims to?"
 
 For **test files**: Read each test and ask: "If the feature this test covers were broken, would this test fail?" If the answer is no or uncertain, the test has a semantic gap. Check subject identity, data preconditions, assertion strength, mock boundaries, mutation verification, content verification, and failure possibility per the checklist.
 
