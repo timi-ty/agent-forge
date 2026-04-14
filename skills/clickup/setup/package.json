@@ -1,0 +1,7 @@
+{
+  "name": "clickup-setup",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ClickUp credential provisioning and project linking helper.",
+  "main": "index.mjs"
+}
