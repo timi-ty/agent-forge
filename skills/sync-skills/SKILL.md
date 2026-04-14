@@ -73,16 +73,23 @@ For each scope independently, classify every skill:
 
 **NEW** — skill is in the remote catalog but not installed in this scope.
 
-**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but at least one file listed in the catalog entry's `files` array differs from its local counterpart. For each file in `files`, fetch the remote content and compare against the local file:
+**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but at least one file listed in the catalog entry's `files` array differs from its local counterpart. For each file in `files`, fetch the remote content and compare against the local file. **Always normalize line endings** on both sides before comparing — strip `\r` from both remote and local content unconditionally:
 
 ```bash
-gh api "repos/$OWNER/$REPO/contents/{skill-path}/{file}?ref=$BRANCH" \
-  --jq '.content' | python -c "import sys,base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))"
+# Fetch and normalize remote content (strip \r)
+remote=$(gh api "repos/$OWNER/$REPO/contents/{skill-path}/{file}?ref=$BRANCH" \
+  --jq '.content' | python -c "import sys,base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))" | tr -d '\r')
+
+# Normalize local content (strip \r)
+local=$(tr -d '\r' < "<local-path>/{file}")
+
+# Compare normalized content
+if [ "$remote" != "$local" ]; then ...
 ```
 
 If any file differs (or does not exist locally), classify the skill as UPDATED.
 
-> **Note on comparison:** Do NOT use `jq`'s `@base64d` to decode the content — it appends a trailing `\n` to its output, making every file appear 1 byte larger than the real content and causing all skills to always show as UPDATED. Use Python's `base64.b64decode` (as shown above) for byte-exact output. On Windows, also strip `\r` from both sides before comparing, since local files may use CRLF while remote content is LF.
+> **Note on comparison:** Do NOT use `jq`'s `@base64d` to decode the content — it appends a trailing `\n` to its output, making every file appear 1 byte larger than the real content and causing all skills to always show as UPDATED. Use Python's `base64.b64decode` (as shown above) for byte-exact output. Line-ending normalization (`tr -d '\r'`) is **mandatory on every comparison**, not just on Windows — local files may have CRLF line endings even on Linux (e.g. Windows filesystems mounted via WSL symlinks), so OS detection is not reliable for this.
 
 **REMOVED** — skill folder exists locally in this scope but is NOT present in the remote catalog.
 
