@@ -27,13 +27,14 @@ Review Progress:
 - [ ] Phase 2: PR scope & hygiene check
 - [ ] Phase 3: Understand existing codebase patterns (via worktree)
 - [ ] Phase 4: File-by-file diff review
-- [ ] Phase 5: Cross-cutting analysis
-- [ ] Phase 6: Deliver structured report
-- [ ] Phase 7: Determine verdict
-- [ ] Phase 8: Confirm verdict with user
-- [ ] Phase 9: Apply verdict
-- [ ] Phase 10: Offer to merge (approve path only)
-- [ ] Phase 11: Cleanup worktrees
+- [ ] Phase 5: Semantic verification (re-read with adversarial lens)
+- [ ] Phase 6: Cross-cutting analysis
+- [ ] Phase 7: Deliver structured report
+- [ ] Phase 8: Determine verdict
+- [ ] Phase 9: Confirm verdict with user
+- [ ] Phase 10: Apply verdict
+- [ ] Phase 11: Offer to merge (approve path only)
+- [ ] Phase 12: Cleanup worktrees
 ```
 
 ### Phase 1 -- Gather PR Context
@@ -89,7 +90,7 @@ Before reading any code, evaluate whether the PR's changes match its stated purp
    - Changes to files the PR description never mentions or implies
    - A mix of unrelated concerns (e.g., a feature PR that also modifies unrelated infrastructure)
 
-Record all findings. Scope issues are reported in Phase 6 and contribute to the verdict:
+Record all findings. Scope issues are reported in Phase 7 and contribute to the verdict:
 - **High**: Files that clearly don't belong (accidental inclusions from a wrong branch) -- these would ship unreviewed, unintended changes if merged.
 - **Medium**: Missing PR description, no linked issue, weak title-diff alignment, missing test coverage for behavioral changes.
 - **Low**: Minor scope concerns that are judgment calls.
@@ -212,17 +213,49 @@ Key review areas (summarized):
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
 
-#### Semantic verification pass
-
-After checking pattern conformance, correctness, and dead code for a file, apply the Semantic Verification sections of the checklist. This requires a different mode of thinking -- shift from "does this code follow the rules?" to "does this code actually accomplish what it claims to?"
-
-For **test files**: Read each test and ask: "If the feature this test covers were broken, would this test fail?" If the answer is no or uncertain, the test has a semantic gap. Check subject identity, data preconditions, assertion strength, mock boundaries, mutation verification, content verification, and failure possibility per the checklist.
-
-For **application code**: Read each function and ask: "Does this code do what its name/context/PR description says it does, or does it just look like it does?" Trace data flows through conditionals, verify integration calls target the right resources, and confirm error handlers actually handle errors.
+Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
 When you find an issue, note the exact file path and line number from the diff.
 
-### Phase 5 -- Cross-Cutting Analysis
+### Phase 5 -- Semantic Verification
+
+This phase is a **separate re-read** of every changed file. Do not rely on your Phase 4 notes or memory -- open each file again and read it fresh.
+
+**Why this is a separate phase**: You reviewed this code moments ago. Self-review bias means you see what you *meant* to write, not what you *actually* wrote. Code that compiles, passes linting, and follows patterns can still be semantically wrong -- tests that cannot fail, business logic that handles cases that never occur, error handlers that swallow information. This phase forces you to read as an adversary, not as the author.
+
+**How to execute**: For each changed file, re-read it from the diff. Do not skim. Apply the Semantic Verification sections of the [checklist](checklist.md) (Test Code or Application Code, as appropriate). Produce the structured notes below.
+
+#### Required output: semantic verification notes
+
+You must produce these notes before proceeding to Phase 6. They are included in Phase 7 (Output).
+
+**For each changed test file**, produce a table:
+
+| Test | Feature it claims to verify | Would it fail if the feature broke? | Evidence / reasoning |
+|------|---------------------------|-------------------------------------|---------------------|
+| `test name or describe block` | [what it tests] | Yes / No / Uncertain | [one sentence: what specific assertion catches the breakage, or why it would not] |
+
+Complete every row. "Yes" requires stating which assertion would fail and why. "No" or "Uncertain" is a finding -- it goes into the review report as High priority.
+
+**For each changed application code file**, produce a table:
+
+| Function / block | What it claims to do | What would go wrong if this logic were removed or reordered? | Verified? |
+|-----------------|---------------------|-----------------------------------------------------------|----------|
+| `function name or code block` | [stated purpose] | [concrete consequence, or "nothing -- dead logic"] | Yes / Issue found |
+
+"Nothing -- dead logic" is a finding. "Issue found" entries go into the review report.
+
+#### Anti-bias checklist
+
+Before marking Phase 5 complete, confirm you did each of these:
+
+- [ ] Re-opened and re-read every changed file (not from memory)
+- [ ] For test files: checked every item under "Semantic Verification -- Test Code" in the checklist
+- [ ] For application code: checked every item under "Semantic Verification -- Application Code" in the checklist
+- [ ] Produced the tables above with no rows skipped
+- [ ] Any "No", "Uncertain", or "Issue found" entries are recorded as review findings
+
+### Phase 6 -- Cross-Cutting Analysis
 
 After reviewing individual files, check for issues that span the whole PR:
 
@@ -236,7 +269,7 @@ After reviewing individual files, check for issues that span the whole PR:
 - **Unrelated changes**: Confirm any files flagged in Phase 2 as potentially out-of-scope. After reading the code, do they genuinely relate to the PR's purpose, or are they accidental inclusions?
 - **Test suite substance**: Across all test files in the PR, assess whether the test suite as a whole provides meaningful coverage. Look for: inflated test counts from redundant copies (N tests that all verify the same middleware), tests that would all break or all pass together (indicating they test the same code path), and entire test files where no test creates the conditions necessary for failure.
 
-### Phase 6 -- Output
+### Phase 7 -- Output
 
 Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. `pr-32-review.md`).
 
@@ -246,6 +279,7 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 - Group items under `### High`, `### Medium`, and `### Low` priority headings.
 - If a priority group has no items, omit that heading entirely.
 - Reference specific file paths (and line numbers when useful) in bold at the start of each bullet.
+- Include a `### Semantic Verification` section after the priority groups. This section is **always present**, even when no semantic issues were found. It documents that the verification was performed and summarizes the results. Semantic issues found in Phase 5 should also appear in the appropriate priority group above (they contribute to the verdict).
 
 **Priority definitions:**
 - **High** -- Bugs, data loss, security holes, dead code that misleads users, or fundamentally broken behavior. Must fix before merge.
@@ -268,11 +302,20 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 ### Low
 
 - **`path/to/file.ts`** -- [Concise description.]
+
+### Semantic Verification
+
+**Test files reviewed**: [count]
+**Application code files reviewed**: [count]
+
+[If issues were found, list them here as bullets with the same format as above. If no issues were found:]
+
+All tests verified to fail on feature breakage. All application code logic verified to match stated intent.
 ```
 
 After writing the file, display the contents to the user as well.
 
-### Phase 7 -- Verdict
+### Phase 8 -- Verdict
 
 Based on the review report, determine your verdict:
 
@@ -281,7 +324,7 @@ Based on the review report, determine your verdict:
 
 State the verdict clearly to the user along with a one-sentence rationale (e.g., "Requesting changes because there are 2 High-priority bugs and 1 Medium-priority pattern deviation." or "Approving -- no blocking issues found, only minor Low-priority suggestions.").
 
-### Phase 8 -- Confirm Verdict with User
+### Phase 9 -- Confirm Verdict with User
 
 Ask the user to confirm or override the verdict. Offer these options:
 
@@ -347,7 +390,7 @@ This is safe because the branch already exists on the remote and you are only ad
 git worktree remove ../$REPO_NAME-wt-fix-pr<N>
 ```
 
-### Phase 9 -- Apply Verdict
+### Phase 10 -- Apply Verdict
 
 Two paths depending on the final confirmed verdict:
 
@@ -375,9 +418,9 @@ EOF
 )"
 ```
 
-### Phase 10 -- Offer to Merge
+### Phase 11 -- Offer to Merge
 
-This phase only applies when Phase 9 Path A (Approve) was executed. Skip this phase entirely for Path B (Request Changes) or when the user chose "Plan to address issues" in Phase 8.
+This phase only applies when Phase 10 Path A (Approve) was executed. Skip this phase entirely for Path B (Request Changes) or when the user chose "Plan to address issues" in Phase 9.
 
 After the approval is posted, explicitly ask the user:
 
@@ -389,9 +432,9 @@ Do not proceed until the user responds. If the user confirms, merge the PR:
 gh pr merge <PR> --repo <owner/repo> --squash --delete-branch
 ```
 
-If the user declines, do not merge. Proceed to Phase 11 (cleanup).
+If the user declines, do not merge. Proceed to Phase 12 (cleanup).
 
-### Phase 11 -- Cleanup Worktrees
+### Phase 12 -- Cleanup Worktrees
 
 After the review is complete (verdict applied or user chose "Plan to address issues"), remove all worktrees created during the review:
 
