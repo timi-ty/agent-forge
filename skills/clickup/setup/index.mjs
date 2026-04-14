@@ -5,6 +5,7 @@
  * Usage:
  *   node index.mjs validate-token <token>
  *   node index.mjs get-views <team_id> <token>
+ *   node index.mjs validate-view <view_id> <token>
  *   node index.mjs parse-url <url>
  *
  * All output is JSON on stdout. Exit code 0 = success, 1 = error.
@@ -17,11 +18,11 @@ const MAX_RETRIES = 3;
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-async function clickupGet(path, apiKey) {
+async function clickupGet(path, token) {
   let lastError;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const res = await fetch(`${CLICKUP_API_BASE}${path}`, {
-      headers: { Authorization: apiKey },
+      headers: { Authorization: token },
     });
 
     if (res.ok) return res.json();
@@ -175,6 +176,24 @@ async function getViews(teamId, token) {
   }
 }
 
+async function validateView(viewId, token) {
+  try {
+    const data = await clickupGet(`/view/${viewId}/task?page=0`, token);
+    const taskCount = (data.tasks ?? []).length;
+    console.log(JSON.stringify({ ok: true, taskCount }));
+  } catch (err) {
+    const status = err.status ?? 0;
+    const message =
+      status === 404
+        ? `View '${viewId}' not found. Check the view ID or URL.`
+        : status === 401 || status === 403
+          ? `No access to view '${viewId}'. Ensure your token has access to this workspace.`
+          : `API error: ${err.message}`;
+    console.log(JSON.stringify({ ok: false, error: message, status }));
+    process.exit(1);
+  }
+}
+
 function parseUrl(url) {
   // View URL: app.clickup.com/{team_id}/v/{type}/{view_id}
   // Types: l (list), b (board), li (list alt), dc (doc), g (gantt), mn (mind map), etc.
@@ -214,11 +233,14 @@ switch (command) {
   case "get-views":
     await getViews(args[0], args[1]);
     break;
+  case "validate-view":
+    await validateView(args[0], args[1]);
+    break;
   case "parse-url":
     parseUrl(args[0]);
     break;
   default:
     console.error(`Unknown command: ${command}`);
-    console.error("Usage: node index.mjs <validate-token|get-views|parse-url> [args...]");
+    console.error("Usage: node index.mjs <validate-token|get-views|validate-view|parse-url> [args...]");
     process.exit(1);
 }

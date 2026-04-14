@@ -201,7 +201,7 @@ function simplifyTaskFull(task) {
         const field = { name: f.name, type: f.type };
         // Resolve dropdown/label values from type_config options
         if (f.type_config?.options && typeof f.value === "number") {
-          const opt = f.type_config.options[f.value];
+          const opt = f.type_config.options.find((o) => o.orderindex === f.value);
           field.value = opt?.name ?? opt?.label ?? f.value;
         } else {
           field.value = f.value;

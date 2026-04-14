@@ -150,26 +150,9 @@ node "$SETUP_SCRIPT" parse-url "<pasted_url>"
 
 **If `type: "view"`:**
 - Set `$CHOSEN_TEAM_ID` from `teamId` and `$CHOSEN_VIEW_ID` from `viewId`.
-- Verify the view is accessible by fetching one page of tasks:
+- Verify the view is accessible:
   ```bash
-  node "$QUERY_SCRIPT" tasks --fresh
-  ```
-  (This requires the CLAUDE.md section to exist already — write a temporary one first, or validate via the setup script directly.)
-  
-  Actually, validate by calling the API directly:
-  ```bash
-  node -e "
-  const res = await fetch('https://api.clickup.com/api/v2/view/' + process.argv[1] + '/task?page=0', {
-    headers: { Authorization: process.argv[2] }
-  });
-  if (res.ok) {
-    const data = await res.json();
-    const count = (data.tasks || []).length;
-    console.log(JSON.stringify({ ok: true, taskCount: count }));
-  } else {
-    console.log(JSON.stringify({ ok: false, status: res.status }));
-  }
-  " "$CHOSEN_VIEW_ID" "$CLICKUP_TOKEN"
+  node "$SETUP_SCRIPT" validate-view "$CHOSEN_VIEW_ID" "$CLICKUP_TOKEN"
   ```
 - If ok: print `View accessible ({taskCount} tasks found)`. Skip to **Step 3**.
 - If error: show error, re-ask.
