@@ -1,6 +1,6 @@
 # Code Review Checklist
 
-Detailed review criteria for Phase 4. Check each item for every changed file.
+Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic verification). Check each item for every changed file.
 
 ---
 
@@ -69,6 +69,10 @@ Detailed review criteria for Phase 4. Check each item for every changed file.
 - [ ] **Generic correctness**: Generic type parameters are constrained appropriately.
 - [ ] **Null safety**: Optional values are checked before use. Strict null checks are respected.
 - [ ] **Return types**: Functions have explicit return types where the codebase convention requires them.
+
+---
+
+The sections below are used in **Phase 5 (Semantic Verification)**, not Phase 4. During Phase 4, skip these sections -- they require a separate adversarial re-read.
 
 ## Semantic Verification -- Test Code
 
