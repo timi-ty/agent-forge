@@ -443,6 +443,7 @@ def _merge_batch_locked(
                     unit["status"] = "failed"
                     unit["conflict"] = {
                         "paths": [],
+                        "category": "post_merge_validation_failed",
                         "strategy_applied": "post_merge_validation_failed",
                     }
             fleet["mode"] = "idle"
