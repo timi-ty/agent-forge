@@ -140,10 +140,10 @@
     {
       "id": "PHASE_003",
       "slug": "intra-unit-helper-agent-delegation",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": [],
       "started": "2026-04-19T21:45:00Z",
-      "completed": null,
+      "completed": "2026-04-19T23:20:00Z",
       "units": [
         {
           "id": "unit_011",
@@ -198,8 +198,13 @@
         {
           "id": "unit_015",
           "description": "Update skills/development-harness/templates/claude-code/rules/harness-core.md and the Cursor mirror with delegate-vs-inline guidance",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/rules/harness-core.md: added a new '## Delegation (when to dispatch sub-agents)' section below 'Quality'. Consolidates the three dispatch shapes introduced by PHASE_003: Agent(Explore) before planning when unit description carries refactor/extend/fix/migrate/update; fan-out of 2-3 Agent(general-purpose) calls when >=4 independent files; parallel code-review + commit-agent-changes at phase completion. Each bullet names the Step in commands/invoke.md where the concrete prompt template lives. Section opens with 'Default to inline' and closes with 'Stay inline' fallbacks so the main agent's default remains the direct Edit/Write path",
+            "skills/development-harness/templates/rules/harness-core.mdc (Cursor mirror): added the same '## Delegation' section. Block is byte-identical to the Claude Code version; `diff` confirms the only differences between the two files remain the pre-existing frontmatter delimiter (paths: vs globs:) and the rules-directory path (.claude/rules/ vs .cursor/rules/)",
+            "Grep verification: '## Delegation (when to dispatch sub-agents)' matches exactly once in each of the two files",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         }
       ]
     },

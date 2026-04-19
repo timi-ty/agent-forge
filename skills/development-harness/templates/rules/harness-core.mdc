@@ -21,3 +21,10 @@ globs: ["**/*"]
 - Run validation (linter, tests) after every code change
 - Never mark a unit complete without validation evidence recorded in phase-graph.json
 - Never mark a deploy-affecting phase complete without deployment verification
+
+## Delegation (when to dispatch sub-agents)
+- **Default to inline.** Most units are a few files plus a test run in the main context; spawning sub-agents has a round-trip cost that only pays off above defined thresholds.
+- **Dispatch `Agent(Explore)` before planning** when the unit description contains `refactor`, `extend`, `fix`, `migrate`, or `update` — the main context plans from the Explore report instead of re-reading files itself. See `commands/invoke.md` Step 6 for the prompt template.
+- **Fan out 2–3 `Agent(general-purpose)` calls in one assistant message** when the plan touches ≥4 independent files with no read-after-write ordering (e.g., mirrored template edits). Below 4 files, edit inline. See `commands/invoke.md` Step 8.
+- **Dispatch `code-review` + `commit-agent-changes` concurrently** at phase completion when both skills are installed — one reads the branch diff, the other commits and opens or updates the PR. If only one is installed, fall back to serial. See `commands/invoke.md` Step 10.
+- **Stay inline** for any read-after-write sequence (rename + callsite updates, schema edit + consumer sync), any unit below the thresholds above, and anything ambiguous — the main agent can always choose not to fan out.
