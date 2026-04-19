@@ -1,10 +1,12 @@
 ---
-description: "Execute the next unit of work from the development harness"
+description: "Execute the next batch of work from the development harness"
 ---
 
 # Invoke Development Harness
 
 Read `.harness/ARCHITECTURE.md` for project context.
+
+**One turn = one batch.** Steps 5 and 6 are the only branch points (in-tree fast path vs worktree fan-out); every other step is single-flow and applies to both batch sizes.
 
 ## 0. Resolve tool paths
 
@@ -17,13 +19,11 @@ Read `.harness/config.json` and check the `tool` field. Set variables:
 
 ## 1. Activate Invoke Session
 
-Create the invoke session flag so the stop hook knows this is a harness session:
-
 ```bash
 touch .harness/.invoke-active
 ```
 
-This flag is checked by `continue-loop.py`. Without it, the hook is a no-op.
+Without this flag the Claude Code stop hook is a no-op (protects non-harness sessions in the same workspace).
 
 ## 2. Detect Python
 
@@ -38,131 +38,84 @@ PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
 $PY .harness/scripts/validate_harness.py
 ```
 
-If invalid, report errors and stop.
+If invalid, report errors and stop. Also: if `state.execution.fleet.mode` is **not** `"idle"` (`"dispatched"` or `"merging"`), a previous turn did not finish cleanly — stop and run `/sync` + `teardown_batch.py`.
 
-## 4. Load State
-
-Read these files:
-- `.harness/state.json` — execution pointers, loop budget, checkpoint
-- `.harness/checkpoint.md` — human-readable progress summary
-- `.harness/phase-graph.json` — canonical phase/unit status
-
-## 5. Select Next Unit
+## 4. Compute Batch
 
 ```bash
-$PY .harness/scripts/select_next_unit.py
+$PY .harness/scripts/select_next_unit.py --frontier > .harness/logs/frontier.json
+$PY .harness/scripts/compute_parallel_batch.py \
+    --input .harness/logs/frontier.json \
+    --config .harness/config.json \
+    > .harness/logs/batch.json
 ```
 
-- If `found: false` and `all_complete: true` → report completion, stop
-- If `found: false` and `all_complete: false` → report blocked, stop
-- If `phase_complete: true` → run phase completion review (step 13) before proceeding
-- If `found: true` → continue with the selected unit
+Read `batch.json` → `{batch_id, batch, excluded}`.
 
-## 6. Read Phase Context
+- `batch == []` and `all_complete: true` → all phases complete, stop.
+- `batch == []` and `all_complete: false` → frontier blocked, report `excluded` reasons, stop.
+- `batch` non-empty → proceed.
 
-Read `PHASES/PHASE_XXX_<slug>.md` for the selected unit's phase. Note the unit's acceptance criteria and validation method from the Units of Work table.
+**Pick dispatch mode** — **In-tree fast path** when `len(batch) == 1 && config.execution_mode.parallelism.enabled == false`; **Worktree fan-out** otherwise. Only Steps 5 and 6 branch on this; Steps 7–11 converge.
 
-## 7. Exploration (conditional)
+## 5. Dispatch
 
-If the selected unit's description implies modifying an **existing** system, dispatch an `Explore` sub-agent **before** planning so its output feeds the plan without filling the main context with file reads.
+**In-tree fast path.** Current working tree is the "worktree" for the single unit. No `dispatch_batch.py`; `state.execution.fleet.mode` stays `"idle"`.
 
-Trigger keywords (run exploration first): `refactor`, `extend`, `fix`, `migrate`, `update`.
-
-Skip keywords (from-scratch units; reading 1–2 sibling files during planning is sufficient): `add`, `new`, `create`, `insert`, `scaffold`.
-
-Dispatch in the same message you plan from. Thoroughness defaults to `medium`; bump to `very thorough` only for cross-cutting concerns (auth, config loading, hook integration, schema migration):
-
+**Worktree fan-out.**
+```bash
+$PY .harness/scripts/dispatch_batch.py --batch .harness/logs/batch.json --state .harness/state.json
 ```
-Agent(
-  description: "<5-word task summary>",
-  subagent_type: "Explore",
-  prompt: """
-    Explore the <area> touched by unit <unit_id>.
+Creates per-unit worktrees under `.harness/worktrees/<batch_id>/<unit_id>`, `harness/<batch_id>/<unit_id>` branches, seeds `WORKTREE_UNIT.json`; flips `state.execution.fleet.mode` to `"dispatched"`. Atomic on failure.
 
-    Unit goal: <one-line paraphrase of unit_description>.
+## 6. Execute
 
-    Report: (1) every file that currently implements the behavior,
-    (2) any nearby tests that will need to change,
-    (3) conventions the new code must match (naming, error handling, test harness),
-    (4) risks or prior-art gotchas that the plan needs to account for.
-    Under 400 words.
-  """
-)
+**In-tree fast path.** Execute the single unit inline following its row in `PHASES/PHASE_XXX_<slug>.md`. Optional `Agent(Explore)` before planning when the unit description contains `refactor`/`extend`/`fix`/`migrate`/`update`. Multi-file parallel edits: when the plan touches ≥4 independent files, fan out with 2–3 `Agent(general-purpose)` calls in one assistant message. When `config.execution_mode.agent_delegation.parallel_validation_layers == true`, fan Layer 1 + Layer 2 out as concurrent `Bash` calls in a single assistant message.
+
+**Worktree fan-out.** Dispatch one `Agent(subagent_type: "harness-unit")` call **per unit** in a **single assistant message**. The agent template at `templates/claude-code/agents/harness-unit.md` carries the full contract (tool allowlist, workflow, required JSON report schema); the briefing hands over identity only. Wait for every sub-agent to return; parse the JSON reports.
+
+## 7. Verify
+
+**In-tree:** `git diff --name-only` vs `HEAD`; any file not matching the unit's declared `touches_paths` → force `status: "failed"` with `conflict.category: "scope_violation"` and skip to section 9. The sub-agent self-report is never trusted for blast radius.
+
+**Worktree fan-out:** the scope-violation check runs inside `merge_batch.py` (section 8) — don't re-run here. Also run **report-hygiene checks** on each sub-agent report: `unit_id` matches the dispatched unit, `status` ∈ {succeeded, failed}, `failure` is null iff `succeeded`, `commits` non-empty on success. Hygiene violations → force `failed` with `category: "infrastructure"`.
+
+## 8. Merge
+
+**In-tree:** no-op. Changes are already on the current branch.
+
+**Worktree fan-out:**
+```bash
+$PY .harness/scripts/merge_batch.py --state .harness/state.json --conflict-strategy abort_batch
 ```
+Acquires `.harness/.lock`, flips `fleet.mode` to `"merging"`, runs scope-violation check + serial `git merge --no-ff` + configured `conflict_strategy` + post-merge validation + `git reset --hard <pre-merge-ref>` rollback on failure + worktree/branch cleanup per merged unit. Mode returns to `"idle"` at the end.
 
-Absorb the report into section 8's plan — specifically the files-to-modify list and dependencies. Do not re-read files the Explore agent already reported on. Exploration is a tool for the main agent, not a delegation of the implementation; the main agent still does the editing, testing, and commit.
+## 9. State Update & Phase Completion
 
-## 8. Plan Internally
+**9a. phase-graph.json.** Units that succeeded this turn → `status: "completed"` with validation evidence appended. Units that failed or had a scope violation stay `"pending"`; the failure lives in `state.json.checkpoint.blockers`.
 
-Determine files to create/modify, tests to write, and validation to run. Do not switch to Plan Mode. Do not ask the user unless requirements are genuinely ambiguous.
+**9b. state.json.** Advance `execution.active_unit`, `last_completed_unit`, `next_unit`. **Increment `session_count` by 1 (one turn, regardless of batch size).** `checkpoint.next_action` MUST include the `unit_id` that `select_next_unit.py` returns next so the Claude Code stop hook's agreement check passes.
 
-## 9. Implement
+**9c. Phase Completion Review.** If this turn marked the last unit of a phase completed: read `.harness/pr-review-checklist.md`, verify each item; if the phase is deploy-affecting run the deployment verifier from `config.json` (missing or failing verifier → blocker, stop). Only after the checklist + deploy gate pass: mark the phase `"completed"` in phase-graph.json.
 
-Write production code and tests. Match existing codebase patterns.
+**9d. checkpoint.md.** Refresh Last Completed / What Failed / What Is Next / Blocked By / Evidence / Open Questions.
 
-**Multi-file parallel edits.** When the plan from section 8 touches **≥4 independent files** whose edits do not depend on each other, fan the work out in a **single assistant message** with **2–3 `Agent(subagent_type: "general-purpose")` tool calls**. More than 3 concurrent agents creates coordination overhead; fewer than 2 means you should edit in the main context. Group by independence, not file count — any edit that reads the output of another (e.g., a rename with cascading callsite updates) belongs in one place. Below the ≥4 threshold, prefer direct `Edit` / `Write` calls in the main context.
+## 10. Commit
 
-## 10. Validate
-
-Run applicable validation layers:
-
-1. **Static checks** — linter, type checker (e.g., `pnpm lint`, `tsc --noEmit`)
-2. **Unit tests** — relevant test files (e.g., `pnpm test -- tests/foo.test.ts`)
-3. **Integration tests** — if integration points were touched
-4. **E2E tests** — if configured and user-facing flows were affected
-
-**Parallel Layer 1 + Layer 2 (when enabled).** When `config.execution_mode.agent_delegation.parallel_validation_layers == true`, fan Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) out as concurrent `Bash` tool calls in a **single assistant message** (lint, typecheck, and unit-test calls share no state). The unit passes only if every parallel call exits 0; any failure falls into the On Failure flow below and **no** Layer 3 or Layer 4 advancement. **Layers 3 and 4 stay serial** — integration + E2E commonly contend on ports, fixtures, databases, and test accounts. When the flag is `false` (default), run the four layers sequentially as listed above — flag-off behavior is unchanged from v1.
-
-On failure:
-- Attempt fix (up to 2 retries per failure type)
-- If still failing: add to `checkpoint.blockers`, update `checkpoint.md`, stop
-- Do NOT continue to the next unit on failure
-
-On success:
-- Record concrete evidence **with per-layer wall-clock timing** (e.g., `"pnpm lint exits 0 (2.1s)"`, `"tsc --noEmit exits 0 (4.8s)"`, `"tests/auth.test.ts passes (5/5, 3.2s)"`). The timing makes the parallel-layers benefit visible in checkpoint history — when Layer 1 + Layer 2 ran in a single assistant message, a reader can see the unit's validation wall-clock was `max(layer_1, layer_2)` rather than the sum.
-
-## 11. Update State
-
-Update all three files:
-
-**phase-graph.json:**
-- Unit `status` → `"completed"`, append `validation_evidence`
-
-**state.json:**
-- Advance `active_unit`, `last_completed_unit`, `next_unit`
-- Increment `session_count`, update `checkpoint` section
-- `checkpoint.next_action` MUST match what `select_next_unit.py` returns
-
-**checkpoint.md:**
-- What completed, evidence, what's next, any blockers
-
-## 12. Commit
-
-Check for `commit-agent-changes` skill:
+Check for installed skills:
 ```bash
 ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null
+ls $GLOBAL_SKILLS_DIR/code-review/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/code-review/SKILL.md 2>/dev/null
 ```
 
-If found, delegate to the skill. Otherwise, commit directly following `.harness/config.json` git policy:
-- Stage changed files
-- Write conventional commit message
-- Push if on a feature branch with a remote
+**Parallel dispatch at phase close.** When this turn closed a phase (9c marked the phase completed) AND **both** `code-review` and `commit-agent-changes` are installed, dispatch them **in one assistant message** with two `Agent(subagent_type: "general-purpose")` tool calls — one runs `code-review` read-only on the branch diff, the other runs `commit-agent-changes` to commit pending changes, push, and open or update the phase PR. Wait for both reports; resolve any High/Medium code-review findings in the main context and re-push. Disjoint state (read vs. write non-overlapping files) — they cannot conflict.
 
-At **phase completion**, this may already have been dispatched in parallel with `code-review` per section 13's parallel-dispatch paragraph; in that case skip the separate delegation above.
+**Fallback.** When no phase closed this turn or only one of the two skills is installed, delegate commit/PR creation to `commit-agent-changes` alone; `code-review` (if installed) runs after the PR exists.
 
-## 13. Phase Completion Review
+## 11. Turn Ends
 
-When all units in a phase are done:
+The stop hook (`continue-loop.py`) fires automatically. It checks `.harness/.invoke-active` first — absent ⇒ hook is a no-op. Present ⇒ it checks loop budget, blockers, open questions, and runs `select_next_unit.py` to determine whether to continue. When it decides to stop, it deletes the flag.
 
-1. Read `.harness/pr-review-checklist.md` — verify each item
-2. If phase is deploy-affecting, check deployment verifier in `config.json`
-   - If verifier configured → run it
-   - If verifier not configured → add blocker, stop
-   - If verifier fails → add blocker, stop
-3. Mark phase `"completed"` in `phase-graph.json` only after review passes
+**Claude Code note (ISSUE_002).** Claude Code's Stop hook has a one-shot `stop_hook_active` guard that caps hook-driven continuations at 1. For multi-turn autonomous runs, use **`/loop /invoke-development-harness`** instead of relying on the stop hook to chain turns. The stop hook's authority-chain checks remain useful as a per-turn precondition gate. Cursor's hook works as originally designed.
 
-**Parallel dispatch.** When **both** `code-review` and `commit-agent-changes` are installed, dispatch them concurrently at phase completion in a **single assistant message** containing **two `Agent(subagent_type: "general-purpose")` tool calls** — one running `code-review` read-only on the current branch diff, the other running `commit-agent-changes` to commit pending changes, push, and open or update the phase PR. They cannot conflict (one reads, one writes disjoint state). Wait for both reports, then resolve any High/Medium code-review findings in the main context and re-push. If only one skill is installed, fall back to serial — no parallel dispatch.
-
-## 14. Turn Ends
-
-The stop hook (`continue-loop.py`) fires automatically. It checks for the `.harness/.invoke-active` flag first -- if absent, the hook is a no-op. If present, it checks loop budget, blockers, open questions, and runs `select_next_unit.py` to determine whether to continue. When the hook decides to stop, it deletes the flag. Do not manually loop.
+Do NOT manually loop.

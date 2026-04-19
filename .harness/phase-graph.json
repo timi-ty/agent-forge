@@ -409,8 +409,20 @@
         {
           "id": "unit_030",
           "description": "Mirror the single-flow rewrite in skills/development-harness/templates/workspace-commands/invoke-development-harness.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: whole-file rewrite to mirror the unit_029 command-doc batch-driven structure in the compact-template style. 12 sections (0-11), one paragraph per section where possible. Sections 0-3 cover Detect Host Tool / Activate Invoke Session (with stop-hook no-op protection) / Detect Python / Validate (with fleet.mode!=idle guard). Section 4 pipes select_next_unit --frontier into compute_parallel_batch.py and picks dispatch mode. Sections 5 and 6 are the only top-level branches (in-tree vs worktree fan-out); sections 7-11 converge",
+            "Section 5 Dispatch: in-tree keeps fleet.mode='idle'; worktree fan-out runs dispatch_batch.py and flips fleet.mode to 'dispatched'",
+            "Section 6 Execute: in-tree carries the Exploration / multi-file parallel-edits / parallel Layer 1+Layer 2 validation guidance from units 011/013/016, condensed. Worktree fan-out dispatches one Agent(subagent_type='harness-unit') per unit in ONE assistant message and parses the returned JSON reports",
+            "Section 7 Verify: in-tree does git diff scope check against touches_paths; worktree fan-out defers the scope check to merge_batch.py (unit_022) but still runs report-hygiene checks on sub-agent reports. Hygiene violations -> category='infrastructure'",
+            "Section 8 Merge: no-op in-tree; merge_batch.py for fan-out with full flow (.harness/.lock -> merging -> scope+merge+validate -> idle)",
+            "Section 9 State Update & Phase Completion: 9a phase-graph (completed vs pending-with-blocker); 9b state.json with 'session_count += 1 per turn regardless of batch size' made explicit; 9c Phase Completion Review (checklist + deploy gate); 9d checkpoint.md refresh",
+            "Section 10 Commit: parallel code-review + commit-agent-changes dispatch at phase close in ONE assistant message; serial fallback when only one skill is installed",
+            "Section 11 Turn Ends: standard stop-hook authority chain + ISSUE_002 note pointing Claude Code users at /loop /invoke-development-harness for multi-turn runs; Cursor hook behavior preserved",
+            "Acceptance criteria met: same 12-step numbering (0 through 11) as command doc; same in-tree vs worktree fan-out branching in Steps 5/6; same fleet.mode transitions; same single-assistant-message Agent(harness-unit) dispatch pattern; same ISSUE_002 /loop workaround note in Step 11; zero 'sequential path' / 'parallel path' fork language (grep returns no matches)",
+            "Grep verification: 12 monotonic section headings (lines 11, 20, 28, 35, 43, 61, 71, 77, 83, 93, 103, 115); fleet.mode appears at sections 3/5/8 with correct transition semantics",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_031",
