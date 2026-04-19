@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T02:35:00Z",
+  "last_updated": "2026-04-20T03:00:00Z",
   "execution": {
-    "active_phase": "PHASE_005",
-    "active_unit": "unit_025",
-    "last_completed_unit": "unit_024",
-    "next_unit": "unit_025",
-    "session_count": 24,
+    "active_phase": "PHASE_006",
+    "active_unit": null,
+    "last_completed_unit": "unit_025",
+    "next_unit": "unit_026",
+    "session_count": 25,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T02:35:00Z",
+    "last_run": "2026-04-20T03:00:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on sync_harness.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_sync_harness -v passes 8/8 (2.1s); python -m unittest discover skills/development-harness/scripts/tests passes 169/169 up from 164 (35.3s)"
+    "evidence": "python -m py_compile on merge_batch.py + test_parallel_invoke.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v passes 2/2 (2.9s); python -m unittest discover skills/development-harness/scripts/tests passes 171/171 up from 169 (36.1s). PHASE_005 end-to-end green."
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_024 complete. sync_harness.py now reports three fleet-drift divergence types alongside its existing phase-report analysis: orphan_worktree (on-disk .harness/worktrees/<batch>/<unit>/ dirs with no fleet entry), stale_fleet_entry (fleet entries whose worktree_path is missing on disk), orphan_branch (harness/batch_*/<unit> branches without a matching fleet entry). Each divergence carries the batch_id + unit_id needed to feed into teardown_batch or re-dispatch. Three new private helpers: _list_on_disk_worktrees, _list_harness_branches (silently skips when git unavailable), _detect_fleet_drift. run_sync loads state.json (optional) and appends fleet-drift findings to divergences. 5 new TestFleetDriftDetection cases + 3 existing sync tests all green. Test suite 164 -> 169.",
+    "summary": "PHASE_005 complete. unit_025 added the end-to-end integration test test_parallel_invoke.py under a new tests/integration/ package, plus a _prune_empty_dir helper on merge_batch's success path so .harness/worktrees/<batch_id>/ and the shared worktrees root get cleaned up when the whole batch resolves. Two integration cases cover the happy path (3 disjoint-file units -> dispatch -> fake agents -> merge -> cleanup) and the mixed case (two good + one scope violator -> partial outcome, violator's branch/worktree preserved for inspection). All seven PHASE_005 units landed: 019 dispatch, 020 merge, 021 teardown, 022 scope-violation, 023 lock mutex, 024 sync drift, 025 integration test. Test suite 65 -> 171 across the roadmap so far.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_025 (PHASE_005): new skills/development-harness/scripts/tests/integration/test_parallel_invoke.py -- builds a fixture git repo, sets up a 3-unit phase, runs dispatch_batch then shell-scripted fake agents that commit canned files in each worktree, then merge_batch. Asserts final state, clean worktree removal, and no residual harness/batch_*/ branches. This is the PHASE_005 closing unit; after it merges, open the phase PR.",
-    "timestamp": "2026-04-20T02:35:00Z"
+    "next_action": "Run PHASE_005 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_026 in PHASE_006 (orchestrator-agent-contract: new templates/claude-code/agents/harness-unit.md with system prompt, tool allowlist, required JSON report schema).",
+    "timestamp": "2026-04-20T03:00:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

@@ -255,10 +255,10 @@
     {
       "id": "PHASE_005",
       "slug": "worktree-dispatch-and-merge-infrastructure",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_001", "PHASE_002"],
       "started": "2026-04-20T00:35:00Z",
-      "completed": null,
+      "completed": "2026-04-20T03:00:00Z",
       "units": [
         {
           "id": "unit_019",
@@ -329,8 +329,14 @@
         {
           "id": "unit_025",
           "description": "Integration test skills/development-harness/scripts/tests/integration/test_parallel_invoke.py: fixture git repo with 3-unit phase, shell-scripted fake agents, asserts final state and cleanup",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/integration/__init__.py (new empty file) + skills/development-harness/scripts/tests/integration/test_parallel_invoke.py (new 230-line integration module) under a fresh integration/ package. Each test uses its own tempdir git repo so tests are independent",
+            "TestParallelInvokeHappyPath.test_three_unit_dispatch_merge_cycle: 3-unit batch over disjoint file trees (src/a/**, src/b/**, src/c/**); dispatch_batch creates worktrees + branches + fleet; shell-scripted fake agents commit canned files inside each worktree (mirrors what a real sub-agent would do); merge_batch fans the three branches back into main. Asserts outcome='ok'; every unit status='merged' with conflict=null + ended_at stamped; fleet.mode='idle'; every unit's files are present on main via `git cat-file -e HEAD:<path>`; `harness: merge <unit_id>` subjects are present in `git log`; NO residual .harness/worktrees/<batch_id>/ dir; NO residual harness/<batch_id>/* branches",
+            "TestParallelInvokeWithScopeViolator.test_scope_violator_rejected_other_units_merge: mixed batch -- two well-scoped units (src/x/**, src/z/**) + one scope violator that declared src/y/** but committed to src/elsewhere/secrets.ts. merge_batch returns outcome='partial' with merged=['unit_good1','unit_good2'] and conflicted=['unit_bad']. unit_bad carries conflict.category='scope_violation' and conflict.paths includes src/elsewhere/secrets.ts. Asserts good units' files landed on main; violator's out-of-scope AND in-scope files did NOT (whole unit rejected); merged worktrees/branches are gone; violator's worktree + branch are preserved for operator inspection",
+            "skills/development-harness/scripts/merge_batch.py: added _prune_empty_dir helper (no-op on missing / non-empty dirs, OS-error safe); merge_batch now prunes `.harness/worktrees/<batch_id>/` and `.harness/worktrees/` on the success path after per-unit cleanup. This matches the teardown_batch pattern and keeps sync_harness output clean. A serialize_conflicted unit or a scope-violator keeps its worktree, so the batch dir only disappears when the whole batch is resolved -- verified by the scope-violator integration test which sees the batch dir persist because unit_bad's worktree is still there",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/merge_batch.py skills/development-harness/scripts/tests/integration/test_parallel_invoke.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v` passes 2/2 (2.9s); `python -m unittest discover skills/development-harness/scripts/tests` passes 171/171 up from 169 (36.1s)"
+          ]
         }
       ]
     },

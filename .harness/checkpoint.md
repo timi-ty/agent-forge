@@ -1,35 +1,33 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_024 (PHASE_005):** `sync_harness.py` now reports three fleet-drift divergence types so `/sync` and `/state` can surface broken batches.
+**PHASE_005 complete (all 7 units).** The worktree-per-unit parallel execution substrate is now fully implemented and test-covered.
 
-- **New private helpers** in [sync_harness.py](skills/development-harness/scripts/sync_harness.py):
-  - `_list_on_disk_worktrees(root)` — scans `.harness/worktrees/<batch>/<unit>/` and yields `(batch_id, unit_id, relpath)` triples.
-  - `_list_harness_branches(root)` — shells to `git branch --list --format=%(refname:short)` and filters for `harness/batch_*/<unit>` names. Silently returns `[]` when git is unavailable — sync is informational, not critical.
-  - `_detect_fleet_drift(root, state)` — cross-references `state.execution.fleet.units` against the on-disk worktrees and git branches.
-- **New divergence types** (appended to the existing `divergences` array):
-  1. **`orphan_worktree`** — `{type, worktree_path, batch_id, unit_id}` for on-disk directories not in fleet.
-  2. **`stale_fleet_entry`** — `{type, unit_id, worktree_path, branch, batch_id}` for fleet entries whose `worktree_path` is missing on disk.
-  3. **`orphan_branch`** — `{type, branch, batch_id, unit_id}` for `harness/batch_*/<unit>` branches without a matching fleet entry.
-- Each divergence carries the `batch_id` + `unit_id` needed to feed into `teardown_batch --batch-id <id>` or a re-dispatch. `run_sync()` now loads `state.json` (optional) alongside the existing `phase-graph.json` / `config.json` pair.
+- **unit_019** — [dispatch_batch.py](skills/development-harness/scripts/dispatch_batch.py): per-unit `git worktree add -b harness/<batch_id>/<unit_id>` + `WORKTREE_UNIT.json` seed + `state.execution.fleet` writes; atomic `_rollback` on any per-unit failure.
+- **unit_020** — [merge_batch.py](skills/development-harness/scripts/merge_batch.py): serial `git merge --no-ff` fan-in with `abort_batch` / `serialize_conflicted` strategies; post-merge validator hook with `git reset --hard <pre_merge_ref>` rollback on failure; cleanup of merged units' worktrees + branches.
+- **unit_021** — [teardown_batch.py](skills/development-harness/scripts/teardown_batch.py): idempotent scoped / global cleanup of harness batch worktrees + branches; tolerates every missing-state case.
+- **unit_022** — scope-violation detector in `merge_batch.py` (three helpers `_is_within_scope`, `_scope_violations`, `_read_worktree_touches_paths`): every unit's diff is checked against its declared `touches_paths` before merge; violators get `conflict.category="scope_violation"` and are hard-rejected regardless of `conflict_strategy`.
+- **unit_023** — `_MergeLock` `O_EXCL` mutex on `.harness/.lock` wraps `merge_batch()`; blocking acquire with configurable timeout / stale-after / poll interval; exception-path release; `MergeError` when fresh lock holds past `lock_timeout`.
+- **unit_024** — `sync_harness.py` now reports three fleet-drift divergence types (`orphan_worktree`, `stale_fleet_entry`, `orphan_branch`), each carrying `batch_id` + `unit_id` for downstream cleanup wiring.
+- **unit_025** — new [tests/integration/test_parallel_invoke.py](skills/development-harness/scripts/tests/integration/test_parallel_invoke.py) exercises the full pipeline end-to-end: dispatch → fake agents committing canned files in each worktree → `merge_batch` → assertions on final fleet state, files-on-main, merge-commit messages, and cleanup (no residual worktrees, no residual branches). Added a `_prune_empty_dir` helper to `merge_batch.py` so the `.harness/worktrees/<batch_id>/` parent dir is removed when the whole batch resolves.
 
-**Test coverage:** 5 new `TestFleetDriftDetection` cases in [test_sync_harness.py](skills/development-harness/scripts/tests/test_sync_harness.py) plus 3 pre-existing `TestSyncHarness` cases — 8/8 green. Helpers `_init_git_repo`, `_write_state_with_fleet`, `_minimal_phase_graph` keep the new test class lean. Cases cover: on-disk worktree without fleet entry → orphan; fleet entry without worktree → stale; git branch without fleet entry → orphan; clean state → zero fleet-drift divergences; one-of-each combined case reported separately via a by-type dict.
+**Test-suite growth across the phase:** 134 → 144 → 160 → 164 → 169 → **171** (+37 cases in PHASE_005 alone). Three new scripts (`dispatch_batch.py`, `merge_batch.py`, `teardown_batch.py`), one extended (`sync_harness.py`), one new integration package.
 
 ## What Failed (if anything)
-None.
+On the first run of the integration test, the happy-path assertion "no residual worktrees" failed because `merge_batch` left the now-empty `.harness/worktrees/<batch_id>/` parent directory behind. Fixed by adding a `_prune_empty_dir` helper that matches the pattern already in `teardown_batch.py`. Re-run: both integration cases pass, and no existing `test_merge_batch` case regresses.
 
 ## What Is Next
-**Complete unit_025 (PHASE_005):** New [skills/development-harness/scripts/tests/integration/test_parallel_invoke.py](skills/development-harness/scripts/tests/integration/test_parallel_invoke.py) — builds a fixture git repo, sets up a 3-unit phase, runs `dispatch_batch.py` then shell-scripted **fake agents** that commit canned files in each worktree, then `merge_batch.py`. Asserts final state, clean worktree removal, and no residual `harness/batch_*/` branches. **This is the PHASE_005 closing unit.** After it merges, open the PR, dispatch `code-review`, autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md).
+**Run PHASE_005 phase completion review**, open the phase PR, autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, advance to **unit_026 (PHASE_006, orchestrator-agent-contract)** — a new `templates/claude-code/agents/harness-unit.md` with system prompt, tool allowlist (no `git push`, no writes to `.harness/`, no writes outside the worktree), and the required JSON report schema.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/sync_harness.py](skills/development-harness/scripts/sync_harness.py): added `_list_on_disk_worktrees`, `_list_harness_branches`, `_detect_fleet_drift`; `run_sync()` now reads state.json and appends fleet-drift divergences.
-- [skills/development-harness/scripts/tests/test_sync_harness.py](skills/development-harness/scripts/tests/test_sync_harness.py): new `TestFleetDriftDetection` class with 5 cases, plus helpers.
-- `python -m py_compile skills/development-harness/scripts/sync_harness.py` exits 0 (~0.1s).
-- `python -m unittest skills.development-harness.scripts.tests.test_sync_harness -v` passes 8/8 (2.1s).
-- `python -m unittest discover skills/development-harness/scripts/tests` passes **169/169** (up from 164 at end of unit_023) in 35.3s.
+- 3 new scripts + 1 extended: `dispatch_batch.py` (207 LOC), `merge_batch.py` (363 LOC after unit_023 + unit_024), `teardown_batch.py` (146 LOC), extended `sync_harness.py`.
+- 5 new test modules + 1 extended: `test_dispatch_batch.py` (9 cases), `test_merge_batch.py` (16 unit_020 + 4 unit_023 = 20 cases), `test_teardown_batch.py` (10 cases), `test_scope_violation.py` (16 cases), extended `test_sync_harness.py` (+5 cases = 8 total), new integration `test_parallel_invoke.py` (2 cases).
+- `python -m py_compile` on every new/changed file exits 0 (~0.1s).
+- `python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v` passes 2/2 (2.9s).
+- `python -m unittest discover skills/development-harness/scripts/tests` passes **171/171** in 36.1s.
 
 ## Open Questions
 None.
@@ -39,15 +37,14 @@ None.
 - **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot; this session continues under `/loop /invoke-development-harness`. Skill-source fix scheduled as `unit_bugfix_002` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_005 PR opens after unit_025 (the next unit closes the phase).
-- **Branch:** `feat/phase-005-worktree-dispatch`.
+- **PR cadence:** one PR per phase. PHASE_005 PR opens now with all seven units.
+- **Branch:** `feat/phase-005-worktree-dispatch` (delete on merge).
 - **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 24 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_005 progress: **6/7 units done** (019 dispatch, 020 merge, 021 teardown, 022 scope-violation, 023 lock mutex, 024 sync drift). Remaining: 025 integration test `test_parallel_invoke.py`.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → **169** across phases so far.
+- `session_count` is 25 / `loop_budget` 12 — `/loop` remains the driver; 13 units have now been completed end-to-end under `/loop`-driven continuation this session (unit_014 through unit_025 plus the ISSUE_002 injection turn).
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → **171** across phases so far.
 
 ---
-*Updated: 2026-04-20T02:35:00Z*
+*Updated: 2026-04-20T03:00:00Z*

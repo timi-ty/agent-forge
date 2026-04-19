@@ -208,6 +208,15 @@ def _noop_validate(root, merged_unit_ids):
     return True, f"no-op validator: skipped {len(merged_unit_ids)} merged unit(s)"
 
 
+def _prune_empty_dir(path):
+    """Remove ``path`` if it exists and contains no entries. Never raises."""
+    try:
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+    except OSError:
+        pass
+
+
 def _is_within_scope(file_path, touches_paths):
     """True if ``file_path`` matches at least one glob in ``touches_paths``.
 
@@ -452,6 +461,15 @@ def _merge_batch_locked(
             _remove_worktree_and_branch(
                 root, unit["worktree_path"], unit["branch"]
             )
+
+    # Prune now-empty `.harness/worktrees/<batch_id>/` and the shared
+    # worktrees root when they have nothing left. A deferred unit
+    # (serialize_conflicted) or a scope-violator keeps its worktree,
+    # so these dirs only disappear when the whole batch is resolved.
+    batch_id_for_cleanup = fleet.get("batch_id")
+    if batch_id_for_cleanup:
+        _prune_empty_dir(Path(root) / HARNESS_DIR / "worktrees" / batch_id_for_cleanup)
+    _prune_empty_dir(Path(root) / HARNESS_DIR / "worktrees")
 
     fleet["mode"] = "idle"
     fleet["units"] = units
