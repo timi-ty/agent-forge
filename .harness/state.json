@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T03:40:00Z",
+  "last_updated": "2026-04-20T03:50:00Z",
   "execution": {
-    "active_phase": "PHASE_006",
-    "active_unit": "unit_028",
-    "last_completed_unit": "unit_027",
-    "next_unit": "unit_028",
-    "session_count": 27,
+    "active_phase": "PHASE_007",
+    "active_unit": null,
+    "last_completed_unit": "unit_028",
+    "next_unit": "unit_029",
+    "session_count": 28,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T03:40:00Z",
+    "last_run": "2026-04-20T03:50:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- PHASE_006 end-to-end green, docs-only phase"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_027 complete. Appended a new '## Orchestrator vs sub-agent boundary' section to templates/claude-code/rules/harness-core.md with the three phase-doc-required bullets: (1) only the orchestrator modifies .harness/ or runs git merge; (2) sub-agents commit only within their worktree branch and never push/rebase/reset --hard; (3) a worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment so follow the harness-unit contract exactly. Each bullet names the concrete enforcement mechanism (scope-violation check + .harness/.lock mutex; pre-created branch; sentinel-based agent self-identification). Docs-only; 171/171 tests unchanged.",
+    "summary": "PHASE_006 complete. All three units landed: unit_026 (new templates/claude-code/agents/harness-unit.md agent template), unit_027 (orchestrator/sub-agent boundary rules in Claude Code harness-core.md), unit_028 (Cursor mirror in harness-core.mdc with a preamble explaining Cursor's lack of a native agent-dispatch primitive; same three bullets with wording adjusted for 'second Cursor session' framing). The JSON report format from the Claude Code agent template is documented as tool-agnostic so Cursor sub-agent sessions emit the same structure. Docs-only phase; 171/171 tests unchanged end-to-end.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_028 (PHASE_006): mirror the three orchestrator-vs-sub-agent boundary bullets into the Cursor rule file skills/development-harness/templates/rules/harness-core.mdc (Cursor does not have a native Agent primitive, so the rules-level constraint IS the Cursor equivalent for orchestrator/sub-agent boundary enforcement).",
-    "timestamp": "2026-04-20T03:40:00Z"
+    "next_action": "Run PHASE_006 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_029 in PHASE_007 (invoke-command-rewrite: rewrite commands/invoke.md into a single batch-driven flow where batch-of-1 runs in-tree and batch-of-N fans out via Agent(harness-unit)).",
+    "timestamp": "2026-04-20T03:50:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
