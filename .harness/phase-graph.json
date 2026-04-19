@@ -343,28 +343,43 @@
     {
       "id": "PHASE_006",
       "slug": "orchestrator-agent-contract",
-      "status": "pending",
+      "status": "completed",
       "depends_on": [],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-20T03:15:00Z",
+      "completed": "2026-04-20T03:50:00Z",
       "units": [
         {
           "id": "unit_026",
           "description": "New skills/development-harness/templates/claude-code/agents/harness-unit.md: system prompt, tool allowlist (no git push; no writes to .harness/; no writes outside worktree), required JSON report schema",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/agents/harness-unit.md: new ~170-line agent definition file under a new templates/claude-code/agents/ directory. YAML frontmatter carries name='harness-unit', a one-paragraph description of the agent's role (execute one unit inside its dispatched worktree, commit on the pre-created branch, emit structured JSON report), and tools=[Read, Edit, Write, Glob, Grep, Bash]",
+            "System-prompt body has 5 sections: Identity (read .harness/WORKTREE_UNIT.json first -- carries batch_id/unit_id/phase_id/touches_paths; stop immediately if the file is missing); Tool allowlist hard rules (Read/Edit/Write worktree-only, no .harness/ edits, Glob/Grep read-only, Bash restricted to git status/diff/log/add/commit + project test/lint commands, forbidden list covers git push/merge/rebase/reset --hard/checkout -b/worktree add/remove and anything writing outside the worktree or touching .harness/); Workflow (read identity -> read phase doc -> optional explore -> implement -> validate -> commit on pre-created branch -> emit JSON report); Report schema (unit_id, status, validation_evidence, commits, touched_paths_actual, failure) with per-field semantics; Reporting examples (success + validation failure + scope_violation failure); Hard rules summary",
+            "JSON report schema is baked in verbatim: unit_id (verbatim from WORKTREE_UNIT.json), status='succeeded'|'failed', validation_evidence as list of timed evidence strings, commits as list of full SHAs, touched_paths_actual as subset of the declared touches_paths globs, failure=null or {category: 'validation'|'scope_violation'|'ambiguity'|'infrastructure', detail: <prose>}",
+            "Acceptance criteria met: file exists; frontmatter + prompt + allowlist + report schema all present; prompt references .harness/WORKTREE_UNIT.json multiple times (grep finds it at lines 21, 23, 25, 40, 48, 49, 59, 90, 166)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
+          ]
         },
         {
           "id": "unit_027",
           "description": "Update skills/development-harness/templates/claude-code/rules/harness-core.md with orchestrator-vs-sub-agent rules (only orchestrator merges; sub-agents commit only in worktree; never push/rebase)",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/rules/harness-core.md: appended new '## Orchestrator vs sub-agent boundary' section below the existing Delegation section. Three bullets verbatim in the phase-doc order: (1) 'Only the orchestrator modifies .harness/ or runs git merge' -- orchestrator definition, sub-agents treat .harness/ as read-only, fan-in gated by scope-violation check + .harness/.lock mutex; (2) 'Sub-agents commit only within their worktree branch; never git push, never git rebase, never git reset --hard' -- pre-created harness/<batch_id>/<unit_id> branch, orchestrator owns any history rewrite; (3) 'A worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment' -- sentinel detection tells the agent which contract to follow (harness-unit) and explicitly notes the sentinel-absent case is orchestrator / ordinary session",
+            "Grep verification on acceptance criteria: 'Only the orchestrator' at line 34, 'Sub-agents commit only' at line 35, 'fan-out environment' at line 36 (all three bullets present under the new section header)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_028",
           "description": "Mirror orchestrator-vs-sub-agent rules in skills/development-harness/templates/rules/harness-core.mdc for Cursor",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/rules/harness-core.mdc: appended '## Orchestrator vs sub-agent boundary' mirroring the Claude Code version with Cursor-specific wording. A short preamble notes that Cursor has no native agent-dispatch primitive, so the rules describe a contract for a human operator or second Cursor session rather than a framework-enforced allowlist. Three bullets match the phase-doc order: (1) only the orchestrator modifies .harness/ or runs git merge -- orchestrator defined as the Cursor session owning live .harness/ state; (2) sub-agent sessions commit only within their worktree branch, never push/rebase/reset --hard -- pre-named harness/<batch_id>/<unit_id>; (3) WORKTREE_UNIT.json is the fan-out sentinel, and the JSON report format from the Claude Code harness-unit template is tool-agnostic",
+            "Cross-doc consistency verified via diff: the only deltas between templates/claude-code/rules/harness-core.md and templates/rules/harness-core.mdc are (a) the pre-existing frontmatter delimiter (paths: vs globs:), (b) the pre-existing rules-directory path (.claude/rules/ vs .cursor/rules/), and (c) the three new boundary bullets whose wording differs as required: Claude Code cites `Agent(subagent_type: \"harness-unit\")` and its own agent template; Cursor uses the 'second Cursor session' framing with a preamble explaining the no-native-Agent constraint",
+            "Grep verification on acceptance criteria: 'Only the orchestrator' at line 35, 'Sub-agent sessions commit only' at line 36, 'fan-out environment' at line 37 -- all three bullets present with Cursor-appropriate wording",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change, test suite unchanged"
+          ]
         }
       ]
     },
