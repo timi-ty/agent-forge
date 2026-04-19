@@ -9,7 +9,7 @@ import re
 import sys
 from pathlib import Path
 
-from harness_utils import find_harness_root, now_iso, read_text, write_json
+from harness_utils import SCHEMA_VERSION, find_harness_root, now_iso, read_text, write_json
 
 
 def _split_into_issues(text):
@@ -90,7 +90,7 @@ def _issue_record(raw_text, issue_id):
     """Build a single issue record."""
     title = _first_sentence_or_line(raw_text)
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "id": issue_id,
         "title": title,
         "severity": "medium",

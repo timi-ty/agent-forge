@@ -9,6 +9,8 @@ from pathlib import Path
 # Add parent dir so we can import from scripts if needed
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from harness_utils import SCHEMA_VERSION
+
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 NORMALIZE_SCRIPT = SCRIPT_DIR / "normalize_issues.py"
 
@@ -72,6 +74,11 @@ class TestNormalizeIssues(unittest.TestCase):
         issue = issues[0]
         for key in ("schema_version", "id", "title", "severity", "status"):
             self.assertIn(key, issue, f"Issue must have required field: {key}")
+        self.assertEqual(
+            issue["schema_version"],
+            SCHEMA_VERSION,
+            "Generated issues must carry the current harness SCHEMA_VERSION so they match schemas/issue.json.",
+        )
 
     def test_writes_to_output_dir(self):
         output_dir = self.temp_dir / "issues_out"
