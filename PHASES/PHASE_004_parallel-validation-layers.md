@@ -1,7 +1,7 @@
 # PHASE_004: Parallel Validation Layers
 
 ## Objective
-Collapse validation wall-clock by running independent validation layers concurrently when `config.agent_delegation.parallel_validation_layers == true`. Orthogonal to unit-level parallelism.
+Collapse validation wall-clock by running independent validation layers concurrently when `config.execution_mode.agent_delegation.parallel_validation_layers == true`. Orthogonal to unit-level parallelism.
 
 ## Why This Phase Exists
 Every unit today runs Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) sequentially, even though they share no state. Two Bash calls in one assistant message is the entire change. Layer 3 (integration) and Layer 4 (E2E) remain serial — they commonly contend on ports, fixtures, and DB state.

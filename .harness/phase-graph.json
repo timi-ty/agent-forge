@@ -211,28 +211,44 @@
     {
       "id": "PHASE_004",
       "slug": "parallel-validation-layers",
-      "status": "pending",
+      "status": "completed",
       "depends_on": [],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-19T23:30:00Z",
+      "completed": "2026-04-20T00:15:00Z",
       "units": [
         {
           "id": "unit_016",
           "description": "Rewrite validation step in skills/development-harness/commands/invoke.md to fan out Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) as concurrent Bash calls when config.agent_delegation.parallel_validation_layers == true",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added '### Parallel Layer 1 + Layer 2 (when enabled)' sub-section at the top of Step 9 (Validate), inserted between the 'only run relevant layers' intro and the existing Layer 1 heading. Triggered by config.agent_delegation.parallel_validation_layers == true; shape is explicitly 'single assistant message' containing multiple Bash tool calls for lint/typecheck/unit-tests. Concrete three-Bash-call sample included. Failure semantics: unit passes only if every parallel call exits 0; any failure drops back into the existing On Failure flow with no Layer 3/4 advancement. Layers 3 and 4 kept serial with justification (port/fixture/DB/test-account contention). Flag-off branch documented as default and unchanged from v1",
+            "Grep verification: 'Parallel Layer 1 + Layer 2' section header at line 181; 'config.agent_delegation.parallel_validation_layers' and 'single assistant message' both appear at line 183; flag-off preservation text 'The flag-off behavior is unchanged from the v1 flow' present",
+            "Acceptance criteria met: doc explicitly says 'single assistant message' + 'multiple Bash tool calls'; behavior when flag is off is preserved (existing Layer 1-4 subsections unchanged; new sub-section says 'skip this block' when flag is false)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_017",
           "description": "Mirror parallel-validation-layer step in skills/development-harness/templates/workspace-commands/invoke-development-harness.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a '**Parallel Layer 1 + Layer 2 (when enabled).**' bold-label paragraph inside section 10 (Validate), between the four-layer numbered list and the 'On failure' block. Semantically identical to the command-doc unit_016 version -- same trigger (config.agent_delegation.parallel_validation_layers == true), same single-assistant-message + multiple-Bash-calls shape, same all-must-pass failure semantics with no Layer 3/4 advancement on red, same Layers-3-and-4-stay-serial rule with the same port/fixture/DB/test-account justification, same flag-off default preservation",
+            "Grep verification: 'Parallel Layer 1' + 'config.agent_delegation.parallel_validation_layers' + 'single assistant message' all appear in section 10 at line 114; byte 'unchanged from v1' is present in the flag-off clause",
+            "Cross-doc consistency check: both docs cite the same flag name, the same fan-out shape, the same all-must-pass semantics, the same Layers-3/4-stay-serial rule, and the same flag-off default. Command doc has concrete Bash call sample and heading-level sub-section; template compresses to a single bold-label paragraph matching its compact style",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_018",
           "description": "Update evidence-recording format in both invoke command docs to include per-layer timing (e.g., 'pnpm lint exits 0 (2.1s)')",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md Step 9 'On Success' block rewritten: updated intro sentence to require per-layer wall-clock timing on every entry; expanded the 'Good' example list with four concrete entries carrying timings ('pnpm lint exits 0 (2.1s)', 'tsc --noEmit exits 0 (4.8s)', 'tests/auth.test.ts passes (5/5 assertions, 3.2s)', 'pytest tests/test_auth.py passes (12/12, 1.9s)'); added a specific 'Bad' example showing 'pnpm lint exits 0' without timing as now-insufficient; appended an explanatory paragraph on how to source the timing (the real line from 'time', or the 'Ran N tests in X.Xs' tail from unittest) and why this makes the parallel-layers benefit visible (max(layer_1, layer_2) vs. sum)",
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md section 10 'On success' bullet rewritten: single compact bullet requiring 'per-layer wall-clock timing' with three concrete examples ('pnpm lint exits 0 (2.1s)', 'tsc --noEmit exits 0 (4.8s)', 'tests/auth.test.ts passes (5/5, 3.2s)') and the same max-vs-sum rationale compressed inline",
+            "Grep verification: the regex 'pnpm lint exits 0 \\(\\d' matches the timing format example in both files (commands/invoke.md line 244; workspace-commands template line 122)",
+            "Cross-doc consistency: both docs cite the same concrete examples and the same rationale; command doc carries fuller prose including how to source timings, template stays minimal",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change"
+          ]
         }
       ]
     },
