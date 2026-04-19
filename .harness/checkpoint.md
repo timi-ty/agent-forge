@@ -1,46 +1,45 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_008 (PHASE_002):** Locked in the frontier-resolution contract with exhaustive topology coverage in [test_select_next_unit.py](skills/development-harness/scripts/tests/test_select_next_unit.py).
+**unit_009 (PHASE_002):** New [skills/development-harness/scripts/compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py) landed with stdlib-only dependencies.
 
-Coverage added:
+- `compute_batch(frontier, parallelism)` walks the frontier left-to-right once, deterministically packing units into a batch up to `parallelism.max_concurrent_units`. A unit is dropped with `reason="not_parallel_safe"` if `parallel_safe` is false or `require_touches_paths` is true and the unit has no `touches_paths`; capacity overflow yields `reason="capacity_cap"`; overlapping paths with an already-accepted unit yield `reason="path_overlap_with:<unit_id>"`.
+- `_patterns_overlap` handles three cases: literal/literal (exact match), literal/glob (`fnmatch`), glob/glob (literal-prefix containment; pessimistic -- false positives cost parallelism, never safety). `_literal_prefix` strips everything after the first `*`/`?`/`[`.
+- `_parallelism_config` extracts `execution_mode.parallelism` with a v1-safe fallback: a workspace whose config.json still carries `"execution_mode": "local"` (a string) gets the defaults rather than a crash, so batching can be computed against a partially-migrated harness.
+- `allow_cross_phase=False` (default) causes later-phase units in the frontier to be **deferred**, not excluded -- they remain eligible in the next batch. `allow_cross_phase=True` packs across phases in frontier order.
+- `batch_id` format: `batch_YYYY-MM-DDTHH-MM-SSZ` via `_make_batch_id(now)`. Tests pin both the regex and a fixed-`datetime` assertion.
 
-- **Linear** (`A -> B -> C`): head is the only ready unit at start; middle becomes ready only after head is marked `completed`.
-- **Diamond** (`A -> B`, `A -> C`, `B + C -> D`): both siblings surface after the root is done; the bottom unit requires both siblings completed; the bottom stays blocked while one sibling is still `in_progress`.
-- **Disconnected**: two independent phase subgraphs both surface their current heads (phase-list, then unit-list ordering); independent progress on each subgraph is respected.
-- **Partially completed**: middle-gap chains resolve to the earliest unblocked unit; parallel-sibling subsets with one completed sibling still surface the rest.
-- **Phase-complete-pending signalling**: when an earlier phase has all units done but is not yet marked `completed`, the no-flag selector returns `found=False, phase_complete=True, all_complete=False` so the invoke flow runs the review; once the phase is marked completed, the later phase's unit becomes the found head and `phase_complete` drops back to False.
-- **Malformed-unit error coverage** (extends unit_007's two cases): non-dict unit (exit 2, "must be an object"), missing `id` (exit 2, "missing"). All error paths point to `validate_harness.py`.
+CLI surface (`--input <frontier.json>` `--config <config.json>` `[--root]`) emits `{batch_id, batch, excluded}` on stdout. `--help` is covered by the smoke suite.
 
 ## What Failed (if anything)
-None. One test initially had the wrong assertion on `phase_complete_pending`-blocks-later-phase; the assertion was fixed to match the intended semantics (later phase blocks when its dep is not yet marked completed even if that dep's units are all done).
+None.
 
 ## What Is Next
-**Complete unit_009 (PHASE_002):** New [skills/development-harness/scripts/compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): stdlib `fnmatch` glob-overlap matrix + literal-prefix match; greedy-pack under `parallelism.max_concurrent_units`; emit `{batch, excluded, batch_id}` where every excluded entry carries a machine-readable reason.
+**Complete unit_010 (PHASE_002):** Add one dedicated regression test per exclusion reason ( `not_parallel_safe`, `path_overlap_with:<unit_id>`, `capacity_cap` ) on a crafted input. The three reasons are already covered indirectly by unit_009's `TestComputeBatch`, but unit_010 requires a named test per reason so a future selector refactor can't silently drop one of them.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [test_select_next_unit.py](skills/development-harness/scripts/tests/test_select_next_unit.py): `TestFrontierTopologies` (10 cases) and `TestNoLegacyFallback` (4 cases total after unit_008's additions).
-- `python -m unittest discover skills/development-harness/scripts/tests` -> 83/83 pass (up from 71 at end of unit_007).
-- No production code changes this unit -- the v2 selector from unit_007 already implements the right semantics; this unit is pure coverage.
+- [skills/development-harness/scripts/compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): new module (228 LOC incl. docstring).
+- [skills/development-harness/scripts/tests/test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py): 23 cases across 5 test classes.
+- `python -m unittest discover skills/development-harness/scripts/tests` -> 106/106 pass (up from 83 at end of unit_008).
+- `python skills/development-harness/scripts/compute_parallel_batch.py --help` prints usage (covered by `TestCliSmoke.test_cli_help_runs`).
 
 ## Open Questions
 None.
 
 ## Tracked Issues
-- **ISSUE_001** (high, open): Stop-hook portability when only `python` is on PATH. Workspace-level fix active. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
-- **Hook continuation regression (unscheduled):** After unit_007 the stop hook decided to stop and deleted `.harness/.invoke-active`; manual `/invoke-development-harness` was required to pick up unit_008. Root cause not yet pinpointed (could be Claude Code's `stop_hook_active` guard tripping on a deep continuation, could be a transient selector/subprocess error). Flag-re-creation at invoke-start (step 1) handles the symptom; if this recurs, investigate by adding per-fire telemetry to continue-loop.py.
+- **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; stop hook auto-continued from unit_008 -> unit_009 in this session. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
 - **PR cadence:** one PR per phase. PHASE_002 PR opens after unit_010.
 - **Branch:** `feat/phase-002-frontier-selector`.
-- **Merge:** squash; autonomous per the updated harness-git rule.
+- **Merge:** squash; autonomous.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- loop_budget bumped from 10 to 12 to accommodate longer phases; revisit this as a proper config knob in PHASE_011 doc pass.
+- `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
 
 ---
-*Updated: 2026-04-19T20:30:00Z*
+*Updated: 2026-04-19T20:45:00Z*

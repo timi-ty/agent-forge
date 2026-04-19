@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T20:30:00Z",
+  "last_updated": "2026-04-19T20:45:00Z",
   "execution": {
     "active_phase": "PHASE_002",
-    "active_unit": "unit_009",
-    "last_completed_unit": "unit_008",
-    "next_unit": "unit_009",
-    "session_count": 8,
+    "active_unit": "unit_010",
+    "last_completed_unit": "unit_009",
+    "next_unit": "unit_010",
+    "session_count": 9,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-19T20:30:00Z",
+    "last_run": "2026-04-19T20:45:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (83/83)"
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (106/106)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_008 complete. Locked in frontier behaviour with TestFrontierTopologies across all four graph shapes (linear, diamond, disconnected, partially-completed) and expanded TestNoLegacyFallback to cover non-dict unit and missing id alongside the unit_007 cases. Phase-complete-pending signalling now has explicit coverage. Test suite grew from 71 to 83.",
+    "summary": "unit_009 complete. compute_parallel_batch.py landed: stdlib-only greedy pack with fnmatch + literal-prefix glob overlap, _parallelism_config with v1-safe fallback, UTC-timestamped batch_id. 23 new tests covering pattern overlap, config extraction, compute_batch happy/edge paths, batch_id format, and the CLI (including --help). Test suite 83 -> 106.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_009 (PHASE_002): Create skills/development-harness/scripts/compute_parallel_batch.py with stdlib fnmatch glob-overlap matrix; greedy-pack under max_concurrent_units; emit {batch, excluded, batch_id}.",
-    "timestamp": "2026-04-19T20:30:00Z"
+    "next_action": "Complete unit_010 (PHASE_002): Machine-readable exclusion reasons -- add one dedicated test per reason ('not_parallel_safe', 'path_overlap_with:<unit_id>', 'capacity_cap') on a crafted input.",
+    "timestamp": "2026-04-19T20:45:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
