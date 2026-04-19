@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T00:40:00Z",
+  "last_updated": "2026-04-20T01:05:00Z",
   "execution": {
     "active_phase": "PHASE_005",
-    "active_unit": "unit_020",
-    "last_completed_unit": "unit_019",
-    "next_unit": "unit_020",
-    "session_count": 19,
+    "active_unit": "unit_021",
+    "last_completed_unit": "unit_020",
+    "next_unit": "unit_021",
+    "session_count": 20,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T00:40:00Z",
+    "last_run": "2026-04-20T01:05:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile <new files> exits 0 (0.14s); python -m unittest skills.development-harness.scripts.tests.test_dispatch_batch -v passes 9/9 (3.5s); python -m unittest discover skills/development-harness/scripts/tests passes 118/118 up from 109 (11.3s)"
+    "evidence": "python -m py_compile on both new files exits 0 (0.13s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch passes 16/16 (12.0s); python -m unittest discover skills/development-harness/scripts/tests passes 134/134 up from 118 (21.6s)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_019 complete. New skills/development-harness/scripts/dispatch_batch.py (stdlib-only, 207 LOC incl. docstring) creates per-unit git worktrees via `git worktree add -b harness/<batch_id>/<unit_id> .harness/worktrees/<batch_id>/<unit_id> HEAD`, seeds <worktree>/.harness/WORKTREE_UNIT.json with batch_id/unit_id/phase_id/touches_paths, and writes state.execution.fleet with status='running' entries matching the v2 schema. Atomic teardown on any per-unit subprocess/OS/KeyError via _rollback(root, created) that best-effort removes every worktree + branch created so far, then re-raises as DispatchError. 9 new unit tests (TestHappyPath 5, TestAtomicRollback 2, TestCliSmoke 2) use tempdir + real `git init` fixtures. Test suite 109 -> 118.",
+    "summary": "unit_020 complete. New skills/development-harness/scripts/merge_batch.py (stdlib-only, 217 LOC) does the serial fan-in merge of a dispatched batch: fleet.mode -> 'merging', captures pre_merge_ref, iterates fleet.units running 'git merge --no-ff' per unit with configurable conflict_strategy. abort_batch flips the conflicted unit to 'failed' and skips remaining units (also 'failed', conflict=null); serialize_conflicted leaves the conflicted unit status='running' with conflict recorded so it stays alive for a later batch. Post-merge runs an injected run_post_merge_validation callable (default no-op); on failure, 'git reset --hard <pre_merge_ref>' rolls back and every merged unit is downgraded to 'failed' with strategy_applied='post_merge_validation_failed'. On success, merged units' worktrees + branches are cleaned up and fleet.mode -> 'idle'. 16 new tests across 7 classes cover all outcomes: happy path, abort_batch, serialize_conflicted, validation failure with HEAD verification, validator-not-called-when-nothing-merged, unknown strategy raises, and one end-to-end case that runs dispatch_batch + commit in worktree + merge_batch. Test suite 118 -> 134.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_020 (PHASE_005): new skills/development-harness/scripts/merge_batch.py -- serial fan-in via `git merge --no-ff`, abort_batch vs serialize_conflicted conflict strategies, post-merge repo-wide validation, `git reset --hard <pre-merge-ref>` rollback on failure, branch + worktree cleanup on success.",
-    "timestamp": "2026-04-20T00:40:00Z"
+    "next_action": "Complete unit_021 (PHASE_005): new skills/development-harness/scripts/teardown_batch.py -- idempotent cleanup of worktrees under .harness/worktrees/ and branches matching 'harness/batch_*/'. Callable from /clear, /sync, and error recovery paths; second run must be a no-op; handles missing worktrees/branches gracefully.",
+    "timestamp": "2026-04-20T01:05:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
