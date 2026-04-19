@@ -178,6 +178,25 @@ Below the ≥4 threshold, prefer direct `Edit` / `Write` tool calls in the main 
 
 Run applicable layers of the validation hierarchy. Only run layers that are relevant to the changes made:
 
+### Parallel Layer 1 + Layer 2 (when enabled)
+
+When `config.agent_delegation.parallel_validation_layers` is `true`, fan Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) out as concurrent `Bash` tool calls in a **single assistant message**. Layer 1 and Layer 2 share no state — lint and typecheck read source files; tests run in isolated processes — so running them together cuts validation wall-clock from `layer_1 + layer_2` to `max(layer_1, layer_2)`.
+
+Shape:
+
+```
+# One assistant message containing multiple Bash tool calls:
+Bash(command: "pnpm lint",                              description: "Layer 1: lint")
+Bash(command: "pnpm typecheck",                         description: "Layer 1: typecheck")
+Bash(command: "pnpm test -- tests/<unit-touchpoint>",   description: "Layer 2: unit tests")
+```
+
+Collect every tool result. The unit passes only if **every** parallel call exits 0; if any call fails, fall into the **On Failure** flow below — do not advance to Layer 3 or Layer 4, and do not mark the unit complete.
+
+**Layers 3 and 4 stay serial.** Integration and E2E tests commonly contend on ports, fixtures, databases, and test accounts; running them concurrently with other layers or with each other risks false failures. Run Layer 3 only after Layer 1 + Layer 2 pass; run Layer 4 only after Layer 3.
+
+**When the flag is `false` (default),** skip this block — run the four layers sequentially as described below. The flag-off behavior is unchanged from the v1 flow.
+
 ### Layer 1: Static Checks
 Run linter, type checker, and formatter as configured in the project:
 ```bash

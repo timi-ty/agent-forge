@@ -1,46 +1,44 @@
 # Harness Checkpoint
 
 ## Last Completed
-**PHASE_003 (all five units).** Intra-unit helper-agent delegation is fully documented.
+**unit_016 (PHASE_004):** Parallel validation-layer guidance landed in [commands/invoke.md](skills/development-harness/commands/invoke.md) Step 9 (Validate).
 
-- **unit_011** — [commands/invoke.md](skills/development-harness/commands/invoke.md) gains new **Step 6: Exploration (conditional)** with the five trigger keywords (`refactor`, `extend`, `fix`, `migrate`, `update`), five skip keywords (`add`, `new`, `create`, `insert`, `scaffold`), and a concrete `Agent(subagent_type: "Explore", thoroughness: "medium")` call template.
-- **unit_012** — [templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) mirrors the step as new `## 7. Exploration (conditional)` in the compact-template style.
-- **unit_013** — **Multi-file parallel-edit guidance** landed in both docs: the **≥4 independent files** threshold and **single-assistant-message, 2–3 `Agent(general-purpose)`** fan-out shape. Above 3 concurrent agents, coordination cost erodes the speedup; below 4 files, the round-trip cost isn't worth it. Group by independence, not file count.
-- **unit_014** — **Parallel phase-review dispatch** landed in both docs: at phase completion, when both `code-review` and `commit-agent-changes` are installed, dispatch them in **one assistant message with two `Agent` calls** (disjoint state: one reads, one writes). Serial fallback when only one is installed.
-- **unit_015** — Both [harness-core.md](skills/development-harness/templates/claude-code/rules/harness-core.md) (Claude Code) and [harness-core.mdc](skills/development-harness/templates/rules/harness-core.mdc) (Cursor) gain a new **`## Delegation (when to dispatch sub-agents)`** section that consolidates the three dispatch shapes with pointers to the specific Steps in `commands/invoke.md` where the concrete prompt templates live. Opens with "Default to inline" and closes with "Stay inline" fallbacks so the main agent's default remains direct `Edit`/`Write`.
+- New sub-section `### Parallel Layer 1 + Layer 2 (when enabled)` at the top of Step 9, before the existing Layer 1 / Layer 2 / Layer 3 / Layer 4 subsections.
+- Trigger: `config.agent_delegation.parallel_validation_layers == true`.
+- Shape: **single assistant message with multiple `Bash` tool calls** for lint, typecheck, and unit tests. Concrete three-call sample included.
+- Failure semantics: the unit passes only if **every** parallel call exits 0. Any failure falls into the existing On Failure flow below; **no** Layer 3 or Layer 4 advancement on red.
+- Layers 3 and 4 **stay serial** (integration + E2E commonly contend on ports, fixtures, databases, test accounts).
+- Flag-off branch is the default and is unchanged from the v1 flow — explicit note in the sub-section: "The flag-off behavior is unchanged from the v1 flow."
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Run PHASE_003 phase completion review**, open the phase PR, autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, advance to **unit_016 (PHASE_004, parallel-validation-layers)** on a fresh branch — rewrite the validation step in `commands/invoke.md` to fan out Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) as concurrent Bash calls when `agent_delegation.parallel_validation_layers == true`.
+**Complete unit_017 (PHASE_004):** Mirror the parallel-validation-layer sub-section in [templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) section 10 (Validate). Wording should be consistent with the command-doc version — same trigger, same single-assistant-message shape, same failure semantics, same Layer-3/4-stay-serial rule, same flag-off default.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md): new Step 6 (Exploration); Step 10 parallel-dispatch sub-section; Step 12 pointer.
-- [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md): mirrored new sections 7, 13 (parallel dispatch), and a section-12 pointer.
-- [skills/development-harness/templates/claude-code/rules/harness-core.md](skills/development-harness/templates/claude-code/rules/harness-core.md) and [skills/development-harness/templates/rules/harness-core.mdc](skills/development-harness/templates/rules/harness-core.mdc): new Delegation section, byte-identical block across both files.
-- `Grep` across both rule files: `## Delegation (when to dispatch sub-agents)` matches exactly once in each.
-- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (docs-only phase; test suite unchanged end-to-end).
-- Out-of-band: ISSUE_002 injected this turn-cycle with `unit_bugfix_002` scheduled at head of PHASE_011 — retire the Claude Code Stop-hook-as-driver, use `/loop /invoke-development-harness`. (This very session is being driven by `/loop`, validating the workaround in practice.)
+- [skills/development-harness/commands/invoke.md:181-197](skills/development-harness/commands/invoke.md#L181-L197): new Parallel Layer 1 + Layer 2 sub-section.
+- Grep: section header at line 181; trigger flag `config.agent_delegation.parallel_validation_layers` at line 183; "single assistant message" at line 183; "The flag-off behavior is unchanged from the v1 flow" present; `Bash(command: ...)` three-call sample included.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (docs-only change).
 
 ## Open Questions
 None.
 
 ## Tracked Issues
 - **ISSUE_001** (high, open): Windows Python-detection in create.md Phase 5. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
-- **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot; workaround is `/loop /invoke-development-harness`. Skill-source fix scheduled as `unit_bugfix_002` at the head of PHASE_011.
+- **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot; this session remains driven by `/loop /invoke-development-harness`. Skill-source fix scheduled as `unit_bugfix_002` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_003 PR opens now with all five units.
-- **Branch:** `feat/phase-003-intra-unit-delegation` (delete on merge).
+- **PR cadence:** one PR per phase. PHASE_004 PR opens after unit_018.
+- **Branch:** `feat/phase-004-parallel-validation-layers`.
 - **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 15 / `loop_budget` 12 — over budget. `/loop` is driving so the hook's budget check is bypassed this session. The budget knob will get revisited as a config field in `unit_bugfix_002` / PHASE_011 doc pass.
+- `session_count` is 16 / `loop_budget` 12 — over budget but `/loop` is the driver; the budget knob will get revisited as a config field under `unit_bugfix_002` / PHASE_011 doc pass.
 
 ---
-*Updated: 2026-04-19T23:20:00Z*
+*Updated: 2026-04-19T23:45:00Z*

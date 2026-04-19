@@ -219,8 +219,13 @@
         {
           "id": "unit_016",
           "description": "Rewrite validation step in skills/development-harness/commands/invoke.md to fan out Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) as concurrent Bash calls when config.agent_delegation.parallel_validation_layers == true",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added '### Parallel Layer 1 + Layer 2 (when enabled)' sub-section at the top of Step 9 (Validate), inserted between the 'only run relevant layers' intro and the existing Layer 1 heading. Triggered by config.agent_delegation.parallel_validation_layers == true; shape is explicitly 'single assistant message' containing multiple Bash tool calls for lint/typecheck/unit-tests. Concrete three-Bash-call sample included. Failure semantics: unit passes only if every parallel call exits 0; any failure drops back into the existing On Failure flow with no Layer 3/4 advancement. Layers 3 and 4 kept serial with justification (port/fixture/DB/test-account contention). Flag-off branch documented as default and unchanged from v1",
+            "Grep verification: 'Parallel Layer 1 + Layer 2' section header at line 181; 'config.agent_delegation.parallel_validation_layers' and 'single assistant message' both appear at line 183; flag-off preservation text 'The flag-off behavior is unchanged from the v1 flow' present",
+            "Acceptance criteria met: doc explicitly says 'single assistant message' + 'multiple Bash tool calls'; behavior when flag is off is preserved (existing Layer 1-4 subsections unchanged; new sub-section says 'skip this block' when flag is false)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_017",

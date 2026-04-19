@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T23:20:00Z",
+  "last_updated": "2026-04-19T23:45:00Z",
   "execution": {
     "active_phase": "PHASE_004",
-    "active_unit": null,
-    "last_completed_unit": "unit_015",
-    "next_unit": "unit_016",
-    "session_count": 15,
+    "active_unit": "unit_017",
+    "last_completed_unit": "unit_016",
+    "next_unit": "unit_017",
+    "session_count": 16,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-19T23:20:00Z",
+    "last_run": "2026-04-19T23:45:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only phase, test suite unchanged end-to-end"
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit, test suite unchanged"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_003 complete. All five units landed: unit_011 (Exploration step in commands/invoke.md), unit_012 (mirror in workspace-commands template), unit_013 (multi-file parallel-edit guidance in both docs), unit_014 (parallel code-review + commit-agent-changes dispatch guidance in both docs), unit_015 (Delegation block in both harness-core rule files consolidating the three dispatch shapes). Phase is pure docs; 109/109 tests unchanged across the phase. Invoke-command doc grew a full Step 6 Exploration section and sub-sections under Step 10/Step 12 for parallel dispatch; the rules files now carry a central Delegation section that consolidates the decision rule with pointers back to the command-doc Steps.",
+    "summary": "unit_016 complete. Added 'Parallel Layer 1 + Layer 2 (when enabled)' sub-section at the top of commands/invoke.md Step 9 (Validate). Triggered by config.agent_delegation.parallel_validation_layers == true; shape is single assistant message with multiple Bash tool calls for lint + typecheck + unit tests. Failure semantics: unit passes only if every parallel call exits 0; failure falls into existing On Failure flow, no Layer 3/4 advancement. Layers 3 and 4 stay serial (port/fixture/DB/test-account contention). Flag-off branch documented as default and unchanged from v1. Docs-only change; 109/109 tests unchanged.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Run PHASE_003 phase completion review (pr-review-checklist + parallel code-review + commit-agent-changes dispatch), open PR, autonomous squash-merge per harness-git.md, then advance to unit_016 in PHASE_004 (parallel-validation-layers: rewrite validation step in invoke.md for concurrent Layer 1/Layer 2 Bash calls).",
-    "timestamp": "2026-04-19T23:20:00Z"
+    "next_action": "Complete unit_017 (PHASE_004): Mirror the parallel-validation-layer step in skills/development-harness/templates/workspace-commands/invoke-development-harness.md with wording consistent with the command-doc version landed in unit_016.",
+    "timestamp": "2026-04-19T23:45:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-003-intra-unit-delegation",
+    "current_branch": "feat/phase-004-parallel-validation-layers",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
