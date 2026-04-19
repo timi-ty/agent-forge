@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T01:05:00Z",
+  "last_updated": "2026-04-20T01:25:00Z",
   "execution": {
     "active_phase": "PHASE_005",
-    "active_unit": "unit_021",
-    "last_completed_unit": "unit_020",
-    "next_unit": "unit_021",
-    "session_count": 20,
+    "active_unit": "unit_022",
+    "last_completed_unit": "unit_021",
+    "next_unit": "unit_022",
+    "session_count": 21,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T01:05:00Z",
+    "last_run": "2026-04-20T01:25:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on both new files exits 0 (0.13s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch passes 16/16 (12.0s); python -m unittest discover skills/development-harness/scripts/tests passes 134/134 up from 118 (21.6s)"
+    "evidence": "python -m py_compile on both new files exits 0 (0.15s); python -m unittest skills.development-harness.scripts.tests.test_teardown_batch passes 10/10 (4.4s); python -m unittest discover skills/development-harness/scripts/tests passes 144/144 up from 134 (27.8s)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_020 complete. New skills/development-harness/scripts/merge_batch.py (stdlib-only, 217 LOC) does the serial fan-in merge of a dispatched batch: fleet.mode -> 'merging', captures pre_merge_ref, iterates fleet.units running 'git merge --no-ff' per unit with configurable conflict_strategy. abort_batch flips the conflicted unit to 'failed' and skips remaining units (also 'failed', conflict=null); serialize_conflicted leaves the conflicted unit status='running' with conflict recorded so it stays alive for a later batch. Post-merge runs an injected run_post_merge_validation callable (default no-op); on failure, 'git reset --hard <pre_merge_ref>' rolls back and every merged unit is downgraded to 'failed' with strategy_applied='post_merge_validation_failed'. On success, merged units' worktrees + branches are cleaned up and fleet.mode -> 'idle'. 16 new tests across 7 classes cover all outcomes: happy path, abort_batch, serialize_conflicted, validation failure with HEAD verification, validator-not-called-when-nothing-merged, unknown strategy raises, and one end-to-end case that runs dispatch_batch + commit in worktree + merge_batch. Test suite 118 -> 134.",
+    "summary": "unit_021 complete. New skills/development-harness/scripts/teardown_batch.py (146 LOC, stdlib-only) provides idempotent cleanup of harness batch worktrees and branches with scoped (batch_id='<id>') and global (batch_id=None) modes. Every git invocation runs with check=False so already-gone state never raises. Orphaned on-disk worktree dirs are scrubbed via shutil.rmtree after best-effort `git worktree remove --force`; orphaned branches (no worktree) are still deleted by the second pass. Final `git worktree prune` resyncs git metadata. 10 new tests across 4 classes verify idempotence (second run is empty), scope isolation, missing-state tolerance, and CLI end-to-end. Test suite 134 -> 144.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_021 (PHASE_005): new skills/development-harness/scripts/teardown_batch.py -- idempotent cleanup of worktrees under .harness/worktrees/ and branches matching 'harness/batch_*/'. Callable from /clear, /sync, and error recovery paths; second run must be a no-op; handles missing worktrees/branches gracefully.",
-    "timestamp": "2026-04-20T01:05:00Z"
+    "next_action": "Complete unit_022 (PHASE_005): scope-violation detector in merge_batch.py. Before each merge, run `git diff --name-only <merge-base>..<branch>` and reject any unit whose diff includes files matching none of the unit's declared touches_paths globs. The sub-agent self-report is never trusted for blast radius. Rejected units are marked failed with category='scope_violation'.",
+    "timestamp": "2026-04-20T01:25:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

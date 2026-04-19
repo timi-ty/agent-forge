@@ -285,8 +285,13 @@
         {
           "id": "unit_021",
           "description": "New skills/development-harness/scripts/teardown_batch.py: idempotent cleanup of worktrees and harness/batch_* branches; safe to run under /clear, /sync, and error recovery",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/teardown_batch.py: new 146-line stdlib-only module. Public API: teardown_batch(root, batch_id=None) -> {removed_worktrees, deleted_branches, batch_ids}. Scoped mode (batch_id='<id>') cleans just that batch; global mode (batch_id=None) cleans every .harness/worktrees/batch_*/ directory and every 'harness/batch_*/' branch. Every git call runs with check=False so missing worktrees / missing branches / already-pruned entries never raise. Orphaned on-disk worktree directories that git no longer knows about are scrubbed via shutil.rmtree after the 'git worktree remove --force' best-effort. Empty batch dirs and the worktrees root are auto-pruned. Final 'git worktree prune' resyncs git's metadata. CLI: --batch-id (default all) --root",
+            "skills/development-harness/scripts/tests/test_teardown_batch.py: new 172-line test module with 10 cases across 4 classes. TestScopedTeardown (4): single-batch teardown removes worktrees + branches + dir, second run is a no-op, scoped teardown leaves other batches alone, phantom batch_id is a no-op. TestGlobalTeardown (2): global mode removes every batch + every harness/* branch, clean-repo global teardown is a no-op. TestMissingStateTolerance (2): orphaned branch without worktree still gets deleted and is reported; orphaned on-disk worktree dir without branch still gets scrubbed. TestCliSmoke (2): --help + end-to-end scoped CLI invocation",
+            "Idempotence property verified: TestScopedTeardown.test_second_run_is_a_no_op asserts the second call returns empty removed_worktrees + deleted_branches + batch_ids. TestGlobalTeardown.test_global_teardown_on_clean_repo_is_a_no_op asserts the same on a pristine repo with no dispatch history",
+            "Validation evidence with per-layer timing: `python -m py_compile` on both new files exits 0 (0.15s); `python -m unittest skills.development-harness.scripts.tests.test_teardown_batch -v` passes 10/10 (4.4s); `python -m unittest discover skills/development-harness/scripts/tests` passes 144/144 up from 134 (27.8s)"
+          ]
         },
         {
           "id": "unit_022",
