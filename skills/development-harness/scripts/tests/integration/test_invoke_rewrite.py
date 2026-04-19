@@ -22,7 +22,7 @@ The tests don't parse the invoke.md prose -- they orchestrate the
 same Python calls the prose describes so any regression that slips
 past the docs-level grep still trips the integration assertion.
 """
-import json
+import copy
 import subprocess
 import sys
 import tempfile
@@ -301,6 +301,7 @@ class TestBatchOfOneDispatchModeEquivalence(unittest.TestCase):
         """In-tree fast path: no worktree, edit main directly."""
         phase_graph = self._phase_graph_one_unit()
         state = {"execution": {"fleet": {"mode": "idle", "batch_id": None, "units": []}}}
+        state_before = copy.deepcopy(state)
 
         # Step 4: Compute Batch -- len==1, parallelism off -> in-tree.
         frontier = compute_frontier(phase_graph["phases"])
@@ -339,8 +340,15 @@ class TestBatchOfOneDispatchModeEquivalence(unittest.TestCase):
             "integration: unit_solo (in-tree fast path)",
         )
 
-        self.assertEqual(state["execution"]["fleet"]["mode"], "idle",
-                         "in-tree fast path keeps fleet.mode == 'idle'")
+        # Substantive invariant: the in-tree path never touches state.fleet
+        # (no dispatch_batch, no merge_batch), so the fleet sub-dict is
+        # byte-identical to the before snapshot. This catches a regression
+        # where the pipeline wires in a state-mutating call on the in-tree
+        # side by mistake.
+        self.assertEqual(
+            state["execution"]["fleet"], state_before["execution"]["fleet"],
+            "in-tree fast path must not mutate state.execution.fleet",
+        )
         return phase_graph, state
 
     def _run_worktree(self, root):
@@ -401,8 +409,10 @@ class TestBatchOfOneDispatchModeEquivalence(unittest.TestCase):
             "logical final state (unit status, evidence count, files on main)",
         )
 
-        # Both paths end with fleet.mode == 'idle'.
-        self.assertEqual(in_tree_state["execution"]["fleet"]["mode"], "idle")
+        # Worktree path substantively ends with fleet.mode == 'idle' because
+        # merge_batch actively mutates the passed state. The in-tree path's
+        # invariant ("fleet is unchanged") is verified inside _run_in_tree
+        # via a before/after deepcopy compare.
         self.assertEqual(worktree_state["execution"]["fleet"]["mode"], "idle")
 
 
