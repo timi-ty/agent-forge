@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T04:50:00Z",
+  "last_updated": "2026-04-20T05:20:00Z",
   "execution": {
-    "active_phase": "PHASE_008",
+    "active_phase": "PHASE_009",
     "active_unit": null,
-    "last_completed_unit": "unit_033",
-    "next_unit": "unit_034",
-    "session_count": 32,
+    "last_completed_unit": "unit_036",
+    "next_unit": "unit_037",
+    "session_count": 34,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T04:50:00Z",
+    "last_run": "2026-04-20T05:20:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on new integration test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite -v passes 2/2 (3.5s); python -m unittest discover skills/development-harness/scripts/tests passes 173/173 up from 171 (45.0s). PHASE_007 end-to-end green."
+    "evidence": "python -m py_compile on Cursor hook + test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_continue_loop_cursor -v passes 5/5 (0.6s); python -m unittest discover skills/development-harness/scripts/tests passes 183/183 up from 178 (44.5s). PHASE_008 end-to-end green."
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_007 complete. All five units landed: unit_029 (whole-file invoke.md rewrite, 432->332 LOC, zero sequential/parallel fork language), unit_030 (workspace-commands template mirror in compact style), unit_031 (Batch Semantics paragraph in architecture.md), unit_032 (parallel phase-review dispatch pre-satisfied + grep-verified), unit_033 (new tests/integration/test_invoke_rewrite.py with 2 classes exercising both dispatch modes end-to-end from a realistic phase-graph). Test suite 171 -> 173. The parallel execution substrate (PHASE_005 scripts + PHASE_006 agent contract) now has a live contract in the invoke doc; the integration test ensures the one-turn-one-batch semantics and dispatch-mode equivalence hold end-to-end.",
+    "summary": "PHASE_008 complete. All three units landed: unit_034 (fleet-mode guard in Claude Code continue-loop.py + test_continue_loop_claude.py with 5 cases), unit_035 (same guard mirrored into the Cursor continue-loop.py + test_continue_loop_cursor.py with 5 cases -- Cursor protocol differs: always exits 0, stop vs continue encoded in stdout JSON), unit_036 (unit-test acceptance pre-satisfied by 034+035 test files; manual verification checklist added as a new subsection under 'Rollback / Failure Considerations' in PHASE_008_stop-hook-fleet-awareness.md walking through mid-batch kill -> new session -> hook stops cleanly -> /sync surfaces orphans -> teardown_batch recovers -> /invoke restarts). Test suite 173 -> 183 (+10 across both hook test files). The Stop hook now refuses to auto-continue into an inconsistent post-crash state regardless of whether the caller is Cursor (followup_message protocol) or Claude Code (exit-2 block-continue protocol).",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Run PHASE_007 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_034 in PHASE_008 (stop-hook fleet-awareness: update continue-loop.py to stop when state.execution.fleet.mode != 'idle'; deletes .invoke-active on stop). Note: PHASE_008 unit scopes may need re-examination given ISSUE_002 documents the Stop-hook as a precondition checker rather than a continuation driver on Claude Code.",
-    "timestamp": "2026-04-20T04:50:00Z"
+    "next_action": "Run PHASE_008 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_037 in PHASE_009 (safety-rails-and-automatic-fallback: session-scoped kill switch that writes .harness/.parallel-disabled after 2 scope_violation or ambiguity failures).",
+    "timestamp": "2026-04-20T05:20:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-007-invoke-rewrite",
+    "current_branch": "feat/phase-008-stop-hook-fleet-awareness",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
