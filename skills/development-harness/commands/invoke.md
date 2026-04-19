@@ -180,7 +180,7 @@ Run applicable layers of the validation hierarchy. Only run layers that are rele
 
 ### Parallel Layer 1 + Layer 2 (when enabled)
 
-When `config.agent_delegation.parallel_validation_layers` is `true`, fan Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) out as concurrent `Bash` tool calls in a **single assistant message**. Layer 1 and Layer 2 share no state — lint and typecheck read source files; tests run in isolated processes — so running them together cuts validation wall-clock from `layer_1 + layer_2` to `max(layer_1, layer_2)`.
+When `config.execution_mode.agent_delegation.parallel_validation_layers` is `true`, fan Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) out as concurrent `Bash` tool calls in a **single assistant message**. Layer 1 and Layer 2 share no state — lint and typecheck read source files; tests run in isolated processes — so running them together cuts validation wall-clock from `layer_1 + layer_2` to `max(layer_1, layer_2)`.
 
 Shape:
 
