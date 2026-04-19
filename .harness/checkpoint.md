@@ -1,39 +1,41 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_009 (PHASE_002):** New [skills/development-harness/scripts/compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py) landed with stdlib-only dependencies.
+**unit_010 (PHASE_002):** Dedicated exclusion-reason regression tests landed in [test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py).
 
-- `compute_batch(frontier, parallelism)` walks the frontier left-to-right once, deterministically packing units into a batch up to `parallelism.max_concurrent_units`. A unit is dropped with `reason="not_parallel_safe"` if `parallel_safe` is false or `require_touches_paths` is true and the unit has no `touches_paths`; capacity overflow yields `reason="capacity_cap"`; overlapping paths with an already-accepted unit yield `reason="path_overlap_with:<unit_id>"`.
-- `_patterns_overlap` handles three cases: literal/literal (exact match), literal/glob (`fnmatch`), glob/glob (literal-prefix containment; pessimistic -- false positives cost parallelism, never safety). `_literal_prefix` strips everything after the first `*`/`?`/`[`.
-- `_parallelism_config` extracts `execution_mode.parallelism` with a v1-safe fallback: a workspace whose config.json still carries `"execution_mode": "local"` (a string) gets the defaults rather than a crash, so batching can be computed against a partially-migrated harness.
-- `allow_cross_phase=False` (default) causes later-phase units in the frontier to be **deferred**, not excluded -- they remain eligible in the next batch. `allow_cross_phase=True` packs across phases in frontier order.
-- `batch_id` format: `batch_YYYY-MM-DDTHH-MM-SSZ` via `_make_batch_id(now)`. Tests pin both the regex and a fixed-`datetime` assertion.
+- New `TestExclusionReasons` class: one test per machine-readable reason string, each on the narrowest crafted input that can only trigger that one reason.
+  - `test_reason_not_parallel_safe_fires` — single unit with `parallel_safe=False`; asserts `{unit_id:"solo", reason:"not_parallel_safe"}`.
+  - `test_reason_path_overlap_with_fires` — u1=`src/shared/**` vs u2=`src/shared/auth.ts`; asserts `{unit_id:"loser", reason:"path_overlap_with:winner"}` (pins the `<unit_id>` suffix).
+  - `test_reason_capacity_cap_fires` — two disjoint units with `max_concurrent_units=1`; asserts `{unit_id:"u2", reason:"capacity_cap"}`.
+- Test names embed each reason literal so a future refactor that drops or renames a constant surfaces as a named failure rather than a silent regression.
+- Module docstring updated to describe the unit_009 vs unit_010 split.
 
-CLI surface (`--input <frontier.json>` `--config <config.json>` `[--root]`) emits `{batch_id, batch, excluded}` on stdout. `--help` is covered by the smoke suite.
+With unit_010 done, **all four PHASE_002 units are complete** and the frontier selector / batch computer are ready to be consumed by PHASE_005 and PHASE_007.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_010 (PHASE_002):** Add one dedicated regression test per exclusion reason ( `not_parallel_safe`, `path_overlap_with:<unit_id>`, `capacity_cap` ) on a crafted input. The three reasons are already covered indirectly by unit_009's `TestComputeBatch`, but unit_010 requires a named test per reason so a future selector refactor can't silently drop one of them.
+**Phase completion review for PHASE_002.** Run `pr-review-checklist.md` end-to-end, invoke the `code-review` skill on the PHASE_002 PR, mark PHASE_002 `"completed"` in [phase-graph.json](.harness/phase-graph.json) once the review is green, then autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, PHASE_003 (unit_011) is the next head.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): new module (228 LOC incl. docstring).
-- [skills/development-harness/scripts/tests/test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py): 23 cases across 5 test classes.
-- `python -m unittest discover skills/development-harness/scripts/tests` -> 106/106 pass (up from 83 at end of unit_008).
-- `python skills/development-harness/scripts/compute_parallel_batch.py --help` prints usage (covered by `TestCliSmoke.test_cli_help_runs`).
+- [skills/development-harness/scripts/tests/test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py): `+69 / -2` to add `TestExclusionReasons` and refresh the module docstring.
+- `python -m unittest skills.development-harness.scripts.tests.test_compute_parallel_batch -v` → 26/26 pass (up from 23; three new `TestExclusionReasons` cases).
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (up from 106).
+- `python -m py_compile skills/development-harness/scripts/compute_parallel_batch.py skills/development-harness/scripts/tests/test_compute_parallel_batch.py` → no output (Layer 1 clean).
+- `python .harness/scripts/select_next_unit.py` → `phase_complete: true`, next `PHASE_003 / unit_011`.
 
 ## Open Questions
 None.
 
 ## Tracked Issues
-- **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; stop hook auto-continued from unit_008 -> unit_009 in this session. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
+- **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_002 PR opens after unit_010.
+- **PR cadence:** one PR per phase. PHASE_002 PR opens now with all four units plus the phase-graph completion stamp.
 - **Branch:** `feat/phase-002-frontier-selector`.
 - **Merge:** squash; autonomous.
 
@@ -42,4 +44,4 @@ None.
 - `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
 
 ---
-*Updated: 2026-04-19T20:45:00Z*
+*Updated: 2026-04-19T21:15:00Z*

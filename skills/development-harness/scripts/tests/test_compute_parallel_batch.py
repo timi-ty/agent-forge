@@ -1,8 +1,15 @@
-"""Tests for compute_parallel_batch.py -- unit 009 scope (structural coverage).
+"""Tests for compute_parallel_batch.py.
 
-Unit 010 adds one dedicated test per exclusion reason. This file covers the
-core algorithm: packing, capacity, overlap, cross-phase deferral, batch_id
-format, and the two helpers (_patterns_overlap, _parallelism_config).
+Unit 009 covered the core algorithm: packing, capacity, overlap, cross-phase
+deferral, batch_id format, and the two helpers (_patterns_overlap,
+_parallelism_config).
+
+Unit 010 adds ``TestExclusionReasons`` with one dedicated, minimally-crafted
+test per exclusion reason (``not_parallel_safe``, ``path_overlap_with:<id>``,
+``capacity_cap``). Each test's only job is to pin that a specific reason
+string still fires on the narrowest input that can trigger it, so a future
+selector refactor can't silently drop one of the three machine-readable
+values without a named test failure.
 """
 import json
 import re
@@ -220,6 +227,58 @@ class TestComputeBatch(unittest.TestCase):
         ]
         result = compute_batch(frontier, _default_parallelism(allow_cross_phase=True))
         self.assertEqual([u["id"] for u in result["batch"]], ["a1", "b1"])
+
+
+class TestExclusionReasons(unittest.TestCase):
+    """Unit 010: one dedicated test per machine-readable exclusion reason.
+
+    Each test crafts the narrowest possible input that can only trigger the
+    reason under test, and asserts the exact reason string in ``excluded``.
+    The test names embed the reason literal so a missing / renamed constant
+    surfaces as a named failure rather than a quiet regression.
+    """
+
+    def test_reason_not_parallel_safe_fires(self):
+        # Narrowest input: a single unit with parallel_safe=False and no
+        # other plausible exclusion trigger (capacity is ample, no peers
+        # to overlap with).
+        frontier = [_unit("solo", parallel_safe=False, touches_paths=["src/**"])]
+        result = compute_batch(frontier, _default_parallelism(max_concurrent_units=3))
+        self.assertEqual(result["batch"], [])
+        self.assertEqual(
+            result["excluded"],
+            [{"unit_id": "solo", "reason": "not_parallel_safe"}],
+        )
+
+    def test_reason_path_overlap_with_fires(self):
+        # Narrowest input: two parallel-safe units whose touches_paths
+        # overlap. Capacity is 3 so only the overlap can cause exclusion,
+        # and the reason must name the accepted winner.
+        frontier = [
+            _unit("winner", touches_paths=["src/shared/**"]),
+            _unit("loser", touches_paths=["src/shared/auth.ts"]),
+        ]
+        result = compute_batch(frontier, _default_parallelism(max_concurrent_units=3))
+        self.assertEqual([u["id"] for u in result["batch"]], ["winner"])
+        self.assertEqual(
+            result["excluded"],
+            [{"unit_id": "loser", "reason": "path_overlap_with:winner"}],
+        )
+
+    def test_reason_capacity_cap_fires(self):
+        # Narrowest input: two non-overlapping, parallel-safe units with
+        # max_concurrent_units=1. The second unit can only be excluded
+        # because the batch is already at capacity.
+        frontier = [
+            _unit("u1", touches_paths=["src/a/**"]),
+            _unit("u2", touches_paths=["src/b/**"]),
+        ]
+        result = compute_batch(frontier, _default_parallelism(max_concurrent_units=1))
+        self.assertEqual([u["id"] for u in result["batch"]], ["u1"])
+        self.assertEqual(
+            result["excluded"],
+            [{"unit_id": "u2", "reason": "capacity_cap"}],
+        )
 
 
 class TestBatchIdFormat(unittest.TestCase):

@@ -127,8 +127,13 @@
         {
           "id": "unit_010",
           "description": "Machine-readable exclusion reasons ('not_parallel_safe', 'path_overlap_with:<unit_id>', 'capacity_cap'); unit tests asserting each reason fires on a crafted input",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/test_compute_parallel_batch.py: added TestExclusionReasons with one dedicated test per reason -- test_reason_not_parallel_safe_fires (single parallel_safe=False unit; excluded == [{unit_id:'solo', reason:'not_parallel_safe'}]), test_reason_path_overlap_with_fires (u1=src/shared/**, u2=src/shared/auth.ts; excluded == [{unit_id:'loser', reason:'path_overlap_with:winner'}] -- asserts the <unit_id> suffix), test_reason_capacity_cap_fires (two disjoint units, max_concurrent_units=1; excluded == [{unit_id:'u2', reason:'capacity_cap'}])",
+            "Each test uses the narrowest possible crafted input so only the reason under test can fire; test names embed the reason literal so a future refactor that drops a constant surfaces as a named failure",
+            "python -m unittest skills.development-harness.scripts.tests.test_compute_parallel_batch -v exits 0 (26/26 pass, up from 23 after unit_009; 3 new TestExclusionReasons cases)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109 pass, up from 106 after unit_009)"
+          ]
         }
       ]
     },
