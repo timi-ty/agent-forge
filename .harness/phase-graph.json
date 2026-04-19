@@ -386,16 +386,25 @@
     {
       "id": "PHASE_007",
       "slug": "invoke-command-rewrite",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_005", "PHASE_006"],
-      "started": null,
+      "started": "2026-04-20T03:55:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_029",
           "description": "Rewrite skills/development-harness/commands/invoke.md into a single batch-driven flow: batch of 1 runs in-tree, batch of N fans out via Agent(harness-unit); same dispatch/merge/validate/commit checkpoints",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: whole-file rewrite from 432 -> 332 lines. New 12-step batch-driven structure (Steps 0-11): 0 Detect Host Tool, 1 Activate Invoke Session, 2 Validate, 3 Load State (with new fleet.mode!=idle guard), 4 Compute Batch (select_next_unit --frontier piped into compute_parallel_batch), 5 Dispatch (in-tree fast path for size==1 && parallelism.enabled==false, else dispatch_batch.py), 6 Execute (inline for in-tree with optional Explore + multi-file parallel-edits + parallel Layer 1+Layer 2 validation; Agent(harness-unit) fan-out per unit in one assistant message for worktree mode), 7 Verify (scope-violation check + report hygiene), 8 Merge (no-op in-tree; merge_batch.py with .harness/.lock + scope check + post-merge validation + worktree cleanup for fan-out), 9 State Update & Phase Completion (9a phase-graph, 9b state.json with session_count +=1 per turn, 9c conditional phase completion review, 9d checkpoint.md), 10 Commit (with parallel code-review + commit-agent-changes dispatch at phase close), 11 Turn Ends (with ISSUE_002 note pointing Claude Code users at /loop /invoke-development-harness for multi-turn runs)",
+            "Acceptance criterion met: zero 'sequential path' / 'parallel path' fork language remains -- grep returns no matches. Every step applies to both batch sizes; only Steps 5 and 6 branch on the batch-size decision, and the branching is surfaced as 'In-tree fast path' vs 'Worktree fan-out' sub-sections within the single-step numbering",
+            "fleet.mode transitions documented end-to-end: Step 3 guards against non-idle start state; Step 5 in-tree keeps 'idle' / Step 5 fan-out flips to 'dispatched'; Step 8 fan-out flips to 'merging' during merge_batch and back to 'idle' on completion; Step 11 Stop Conditions surfaces 'fleet.mode != idle at start of turn' as a recovery trigger",
+            "One-turn-per-batch semantics documented in Step 9b: 'session_count -> increment by 1 (one turn, regardless of batch size)'. unit_031 will add the architecture.md paragraph",
+            "Parallel phase-review dispatch (code-review concurrent with commit-agent-changes) lives in Step 10 with the concrete two-Agent-call template and the serial fallback for when only one skill is installed -- satisfies unit_032's acceptance in advance",
+            "ISSUE_002 workaround documented in Step 11: Claude Code's one-shot stop_hook_active is called out with /loop /invoke-development-harness as the recommended multi-turn driver; Cursor's hook behavior is preserved",
+            "Preserved content from prior PHASE docs: Step 6 in-tree carries unit_011's Exploration keywords, unit_013's multi-file parallel-edit thresholds, and unit_016's parallel-validation-layers (config.execution_mode.agent_delegation.parallel_validation_layers == true). Step 10 carries unit_014's parallel-dispatch rule. No capability regressions from previous phases",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_030",
