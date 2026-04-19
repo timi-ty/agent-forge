@@ -1,30 +1,26 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_011 (PHASE_003):** Inserted **Step 6: Exploration (conditional)** in [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md).
+**unit_012 (PHASE_003):** Mirrored the Exploration step into [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) as new **`## 7. Exploration (conditional)`**.
 
-- New step sits between the existing "Step 5: Read Phase Context" and the (now-renumbered) "Step 7: Plan the Unit".
-- Lists the five **trigger keywords** that require a pre-plan Explore dispatch: `refactor`, `extend`, `fix`, `migrate`, `update`.
-- Lists the five **skip keywords** (from-scratch units): `add`, `new`, `create`, `insert`, `scaffold`.
-- Shows a concrete `Agent(subagent_type: "Explore", thoroughness: "medium")` call with a reusable prompt template covering files, tests to change, conventions to match, and prior-art gotchas.
-- Explains how to absorb the agent's report into Step 7's plan and that the main agent — not the Explore agent — still does the editing, testing, and commit.
-
-Side work: renumbered old Steps 6–12 to 7–13 (and subsection labels 9a/9b/9c → 10a/10b/10c), and updated three internal cross-references so the numbering stays coherent.
+- Content is semantically identical to the canonical `commands/invoke.md` Step 6 landed in unit_011 — same five **trigger keywords** (`refactor`, `extend`, `fix`, `migrate`, `update`), same five **skip keywords** (`add`, `new`, `create`, `insert`, `scaffold`), same concrete `Agent(subagent_type: "Explore", thoroughness: "medium")` call template, same "main agent still does the editing" framing.
+- Compressed to match the template's compact-section style (no `### Sub-heading` blocks; single-paragraph-plus-code-fence form).
+- Sections 7–13 renumbered to 8–14; one stale cross-reference (`phase completion review (step 12)` → `step 13`) fixed in section 5.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_012 (PHASE_003):** Mirror the Exploration step in [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) so the workspace-installed copy is consistent with the canonical command doc landed in unit_011.
+**Complete unit_013 (PHASE_003):** Add multi-file parallel-edit guidance to **both** invoke docs — when the implementation plan touches ≥4 independent files, fan out to 2–3 `Agent(general-purpose)` calls in one assistant message; only when edits are truly independent. Goes into [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md) Step 8 (Implement) and [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) section 9 (Implement).
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md): `+42 / -7` for the new Step 6 block plus renumbering and cross-reference fixes.
-- Grep: `## Step 6: Exploration` at line 94; the five trigger keywords on consecutive bullet lines 102–106; `Agent(` with `subagent_type: "Explore"` at line 115.
-- Grep: every `## Step N` heading appears exactly once, in order 0 → 13. No stale step numbers remain in prose or sub-section labels.
-- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (docs-only change; test suite unaffected).
+- [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md): `+21 / -3` — new Exploration section plus renumbering and one cross-ref fix.
+- Grep: `## 7. Exploration (conditional)` at line 65; the five trigger keywords on line 69; `Agent(` with `subagent_type: "Explore"` at line 76; every `## N.` heading appears exactly once in order 0 through 14.
+- Cross-doc consistency: command doc and template both carry identical trigger keywords, skip keywords, `Agent` call shape, and framing. Template is tighter; command doc has richer sub-sections.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (docs-only change).
 
 ## Open Questions
 None.
@@ -39,7 +35,7 @@ None.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
+- `loop_budget` is currently 12; this turn is session_count=12, so the stop hook will run its per-loop budget check at the end of this turn. If it declines to continue, the next `/invoke-development-harness` call resumes at unit_013.
 
 ---
-*Updated: 2026-04-19T21:50:00Z*
+*Updated: 2026-04-19T22:10:00Z*

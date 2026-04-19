@@ -160,8 +160,15 @@
         {
           "id": "unit_012",
           "description": "Mirror Exploration step in skills/development-harness/templates/workspace-commands/invoke-development-harness.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: inserted new '## 7. Exploration (conditional)' between the existing '## 6. Read Phase Context' and the former '## 7. Plan Internally' (now '## 8. Plan Internally'). The new section mirrors the command-doc (skills/development-harness/commands/invoke.md Step 6) content in the compact template style: same five trigger keywords (refactor/extend/fix/migrate/update), same five skip keywords (add/new/create/insert/scaffold), same Agent(subagent_type='Explore', thoroughness='medium') call template, same guidance on absorbing the report into the plan",
+            "Sections 8-14 renumbered: old 7 Plan -> 8, 8 Implement -> 9, 9 Validate -> 10, 10 Update State -> 11, 11 Commit -> 12, 12 Phase Completion Review -> 13, 13 Turn Ends -> 14",
+            "Two internal cross-references updated to the new numbering: 'phase completion review (step 12)' -> '(step 13)' on line 58; new section 7 prose references 'Step 8's plan' to match the renumbered Plan Internally section",
+            "Grep verification: 'Exploration (conditional)' matches at line 65; the five trigger keywords appear inline on line 69; 'Agent(' appears at line 76; every '## N.' heading appears exactly once in order 0 through 14",
+            "Cross-doc consistency check: command doc and template both carry identical trigger keywords, skip keywords, Agent call shape, and 'main agent still does the editing' framing. Template is tighter (compact-section style) but semantically identical",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_013",
