@@ -5,10 +5,10 @@
     {
       "id": "PHASE_001",
       "slug": "schema-and-data-model",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": [],
       "started": "2026-04-19T00:00:00Z",
-      "completed": null,
+      "completed": "2026-04-19T01:30:00Z",
       "units": [
         {
           "id": "unit_001",
@@ -70,8 +70,13 @@
         {
           "id": "unit_006",
           "description": "Extend skills/development-harness/scripts/validate_harness.py: required-field enforcement (no inference), cycle detection for depends_on, touches_paths path-safety checks, version gate with actionable error; add tests including v1 fixture rejection",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/validate_harness.py: added REQUIRED_UNIT_KEYS, FLEET_MODE_ENUM, _is_touches_path_safe, _find_cycle, _validate_unit; extended _validate_phase_graph with per-unit field enforcement, referential-integrity checks for phase and unit depends_on, and cycle detection; extended _validate_state with execution.fleet.mode enum validation",
+            "Version gate: check_schema_version (called from run_validation) rejects v1 fixtures with the /create-development-harness pointer",
+            "test_validate_harness.py: 22 new cases across TestValidateHarnessV2Schema (v1 rejection on all four JSON files, missing depends_on/parallel_safe, parallel_safe without touches_paths, empty touches_paths, .. traversal, POSIX absolute, Windows absolute, phase cycle, unit cycle, unknown phase dep, unknown unit dep, fleet.mode enum, missing fleet.mode, fleet.mode idle accepted, valid v2 unit accepted) + TestPathSafetyHelper (4) + TestFindCycleHelper (6)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (65/65 pass, up from 38)"
+          ]
         }
       ]
     },
