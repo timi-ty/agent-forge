@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T05:05:00Z",
+  "last_updated": "2026-04-20T05:20:00Z",
   "execution": {
-    "active_phase": "PHASE_008",
-    "active_unit": "unit_035",
-    "last_completed_unit": "unit_034",
-    "next_unit": "unit_035",
-    "session_count": 33,
+    "active_phase": "PHASE_009",
+    "active_unit": null,
+    "last_completed_unit": "unit_036",
+    "next_unit": "unit_037",
+    "session_count": 34,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T05:05:00Z",
+    "last_run": "2026-04-20T05:20:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on hook + test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_continue_loop_claude -v passes 5/5 (0.5s); python -m unittest discover skills/development-harness/scripts/tests passes 178/178 up from 173 (39.6s)"
+    "evidence": "python -m py_compile on Cursor hook + test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_continue_loop_cursor -v passes 5/5 (0.6s); python -m unittest discover skills/development-harness/scripts/tests passes 183/183 up from 178 (44.5s). PHASE_008 end-to-end green."
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_034 complete. Added a fleet-mode pre-check to templates/claude-code/hooks/continue-loop.py: reads execution.fleet.mode with a safe chain (missing fleet block treated as idle for v1 back-compat); if mode != 'idle' ('dispatched' or 'merging') the hook calls _stop() which deletes .invoke-active and exits 0. Sits between 'read state.json' and the existing loop-budget/blockers/open_questions chain. New test_continue_loop_claude.py (5 cases, 2 classes) runs the hook as a subprocess with controlled stdin payloads -- covers dispatched + merging stop cases, idle-falls-through case, missing-fleet-treated-as-idle case, and a positive control with a fully-seeded harness reaching exit 2 (block-continue) to prove the guard does not falsely trigger on idle state. Test suite 173 -> 178.",
+    "summary": "PHASE_008 complete. All three units landed: unit_034 (fleet-mode guard in Claude Code continue-loop.py + test_continue_loop_claude.py with 5 cases), unit_035 (same guard mirrored into the Cursor continue-loop.py + test_continue_loop_cursor.py with 5 cases -- Cursor protocol differs: always exits 0, stop vs continue encoded in stdout JSON), unit_036 (unit-test acceptance pre-satisfied by 034+035 test files; manual verification checklist added as a new subsection under 'Rollback / Failure Considerations' in PHASE_008_stop-hook-fleet-awareness.md walking through mid-batch kill -> new session -> hook stops cleanly -> /sync surfaces orphans -> teardown_batch recovers -> /invoke restarts). Test suite 173 -> 183 (+10 across both hook test files). The Stop hook now refuses to auto-continue into an inconsistent post-crash state regardless of whether the caller is Cursor (followup_message protocol) or Claude Code (exit-2 block-continue protocol).",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_035 (PHASE_008): mirror the fleet-mode guard into skills/development-harness/templates/hooks/continue-loop.py (Cursor variant). Same logic adapted to Cursor's hook protocol (return `{}` to stop instead of exit 0; Cursor reads fields from input_data.get('workspace_roots') not 'cwd'). Add test_continue_loop_cursor.py with the same five cases.",
-    "timestamp": "2026-04-20T05:05:00Z"
+    "next_action": "Run PHASE_008 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_037 in PHASE_009 (safety-rails-and-automatic-fallback: session-scoped kill switch that writes .harness/.parallel-disabled after 2 scope_violation or ambiguity failures).",
+    "timestamp": "2026-04-20T05:20:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

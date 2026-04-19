@@ -48,5 +48,18 @@ Not deploy-affecting.
 ## Rollback / Failure Considerations
 Hook scripts only. If the guard breaks the hook, the invoke loop simply stops more often — annoying but not dangerous. Revert on failure.
 
+### Manual verification checklist (unit_036)
+
+The fleet-mode guard's unit tests cover the observable contract (exit code + `.invoke-active` presence across `dispatched` / `merging` / `idle` / missing-fleet cases + a positive control proving idle doesn't short-circuit). The following manual steps complement the automated tests by exercising the crash-recovery path with a real workspace harness:
+
+- [ ] **Set up a live invoke session.** Run `/invoke-development-harness` once on a workspace with `config.execution_mode.parallelism.enabled == true` and at least one pending multi-unit phase. Watch for `state.execution.fleet.mode` flipping to `"dispatched"` when `dispatch_batch.py` runs during Step 5.
+- [ ] **Kill the turn mid-batch.** Interrupt (Ctrl+C or force-quit the agent session) after `fleet.mode == "dispatched"` but before `merge_batch.py` runs. On disk: `.harness/.invoke-active` should still exist; `.harness/state.json` should show `fleet.mode == "dispatched"`; per-unit worktrees are still in `.harness/worktrees/<batch_id>/`.
+- [ ] **Start a new session in the same workspace.** Trigger the stop hook (start any session — it doesn't need to be `/invoke-development-harness`).
+- [ ] **Confirm the guard fires.** The hook should exit 0 / print `{}` (Cursor) — the loop does not auto-continue. `.harness/.invoke-active` is now removed.
+- [ ] **Run `/sync-development-harness`.** It should surface the orphan under `state.drift.divergences` — an `orphan_worktree` for each per-unit dir and (optionally) an `orphan_branch` for each `harness/<batch_id>/*` branch.
+- [ ] **Recover.** Run `teardown_batch.py --batch-id <batch_id>` to clean up, or resolve the half-done work manually. Re-run `/sync` to confirm the divergences are gone. Then `/invoke-development-harness` restarts cleanly.
+
+If any step above behaves differently, the fleet-mode guard or the sync-detection is wrong — revert and investigate before merging into a production harness.
+
 ## Status
 pending

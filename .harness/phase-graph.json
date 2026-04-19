@@ -461,10 +461,10 @@
     {
       "id": "PHASE_008",
       "slug": "stop-hook-fleet-awareness",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_001", "PHASE_007"],
       "started": "2026-04-20T04:55:00Z",
-      "completed": null,
+      "completed": "2026-04-20T05:20:00Z",
       "units": [
         {
           "id": "unit_034",
@@ -480,14 +480,24 @@
         {
           "id": "unit_035",
           "description": "Mirror fleet-mode guard in skills/development-harness/templates/hooks/continue-loop.py (Cursor variant)",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/hooks/continue-loop.py: mirrored the fleet-mode guard from unit_034's Claude Code hook. Same safe chain (execution.get('fleet') or {}).get('mode', 'idle') so missing fleet block (v1 state) is treated as idle; non-idle mode calls _stop(invoke_flag) which removes .invoke-active and prints `{}` (Cursor's stop signal). Sits between state.json read and the existing loop_budget / blockers / open_questions chain. Authority-chain docstring updated",
+            "Minor code cleanup: factored 'execution = state.get(\"execution\", {})' out of the loop_budget line so the fleet-mode guard and loop_budget share the same reference (same pattern as the Claude Code variant). No behavior change",
+            "skills/development-harness/scripts/tests/test_continue_loop_cursor.py: new 180-line test module with 5 cases across 2 classes, structurally mirroring test_continue_loop_claude.py but adapted for Cursor's always-exit-0 + JSON-payload stop protocol. Tests inspect stdout JSON (`{}` = stop, `{followup_message: ...}` = continue) rather than returncode. TestFleetModeGuard: dispatched stops + removes flag; merging stops + removes flag; idle falls through; missing fleet block treated as idle. TestFleetGuardDoesNotMaskContinuePath: positive control with fully-seeded harness + stub selector reaches the followup_message path and preserves .invoke-active, proving the guard doesn't falsely short-circuit idle state",
+            "Validation evidence with per-layer timing: `python -m py_compile` on both files exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_continue_loop_cursor -v` passes 5/5 (0.6s); `python -m unittest discover skills/development-harness/scripts/tests` passes 183/183 up from 178 (44.5s)"
+          ]
         },
         {
           "id": "unit_036",
           "description": "Unit tests for both hooks simulating fleet.mode = 'dispatched' (stop) and 'idle' (existing behavior); manual verification checklist for mid-batch kill",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "First half of the acceptance (unit tests for both hooks simulating dispatched + idle) is covered by unit_034's test_continue_loop_claude.py and unit_035's test_continue_loop_cursor.py. Ten cases total across both files cover dispatched, merging, idle-falls-through, missing-fleet-treated-as-idle, and a positive-control continue path per hook variant",
+            "Second half (manual verification checklist for mid-batch kill) landed as a new subsection in PHASES/PHASE_008_stop-hook-fleet-awareness.md under 'Rollback / Failure Considerations'. The checklist walks through: set up a live invoke session with parallelism enabled; kill the turn mid-batch after fleet.mode flips to 'dispatched'; start a new session and confirm the hook stops cleanly (.invoke-active removed); run /sync-development-harness and confirm orphan_worktree + orphan_branch divergences surface; run teardown_batch.py --batch-id <id> to clean up; confirm /invoke-development-harness restarts cleanly afterward",
+            "No additional code changes for this unit -- the acceptance was 'Documented checklist captured in this phase's rollback section', which is now satisfied by the phase-doc edit",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (183/183) -- no code changes in this unit"
+          ]
         }
       ]
     },
