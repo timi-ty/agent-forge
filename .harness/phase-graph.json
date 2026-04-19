@@ -456,6 +456,21 @@
           "issue_id": "ISSUE_001"
         },
         {
+          "id": "unit_bugfix_002",
+          "description": "ISSUE_002 fix: retire the Stop-hook-as-continuation-driver for Claude Code (Cursor hook stays unchanged). (a) Add new doc skills/development-harness/references/claude-code-continuation.md explaining why Cursor's followup_message protocol cannot port to Claude Code's one-shot stop_hook_active guard. (b) Rewrite skills/development-harness/templates/claude-code/hooks/continue-loop.py to a precondition-only shape: run the authority chain (flag, budget, blockers, open_questions, selector-vs-checkpoint agreement), print an advisory to stdout describing next_unit or the reason to stop, always exit 0; do not attempt exit-2 block-continue. (c) Add 'Claude Code: run under /loop' sections to skills/development-harness/commands/invoke.md and skills/development-harness/templates/workspace-commands/invoke-development-harness.md pointing Claude Code users at '/loop /invoke-development-harness' as the autonomous-run primitive; document that direct /invoke-development-harness runs exactly one unit per turn on Claude Code by protocol. (d) Update skills/development-harness/commands/create.md Phase 5 (Hook configuration) so Claude Code installs wire the hook as a precondition checker (not a continue-driver) and the generated .claude/settings.local.json reflects the new role. After this lands, PHASE_008 (Stop-hook fleet-awareness, units 034-036) needs to be re-scoped so its fleet-mode checks layer onto the precondition-checker shape, not the retired block-continue shape.",
+          "acceptance_criteria": [
+            "references/claude-code-continuation.md exists and names the one-shot stop_hook_active guard and Cursor's followup_message as the structural mismatch",
+            "templates/claude-code/hooks/continue-loop.py contains no sys.exit(2) and no {'decision': 'block'} emission; authority chain remains but output is advisory-only",
+            "commands/invoke.md and workspace-commands/invoke-development-harness.md both carry a 'Claude Code: run under /loop' section naming '/loop /invoke-development-harness' as the autonomous-run entry point",
+            "commands/create.md Phase 5 describes the Claude Code hook as a precondition checker and does not describe block-continue semantics for Claude Code",
+            "Cursor hook templates/hooks/continue-loop.py is unchanged (diff: 0 lines)"
+          ],
+          "validation_method": "docs-linter tests asserting each acceptance bullet; hook exit-code test for the rewritten Claude Code template (precondition-only shape)",
+          "status": "pending",
+          "validation_evidence": [],
+          "issue_id": "ISSUE_002"
+        },
+        {
           "id": "unit_045",
           "description": "Add 'Parallel Execution Model' section to skills/development-harness/references/architecture.md: worktree-per-unit, orchestrator/sub-agent boundary, frontier+overlap check, dispatch-wait-merge lifecycle, conflict strategies, when to enable/not",
           "status": "pending",
