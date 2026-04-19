@@ -278,6 +278,62 @@ class TestConstants(unittest.TestCase):
         self.assertEqual(set(COUNTED_CATEGORIES), {"scope_violation", "ambiguity"})
 
 
+class TestScopeViolationAlwaysOnPolicy(unittest.TestCase):
+    """PHASE_009 unit_039: the scope-violation always-on policy must be
+    documented in references/phase-contract.md with its trust-boundary
+    rationale. The policy is the contract that keeps parallel execution
+    safe -- if the doc drifts or the policy section is deleted, the
+    trust boundary the orchestrator relies on becomes undocumented.
+    This test pins the presence and substance of the policy text.
+    """
+
+    PHASE_CONTRACT = SKILL_ROOT / "references" / "phase-contract.md"
+
+    def _load(self):
+        self.assertTrue(
+            self.PHASE_CONTRACT.exists(),
+            f"phase-contract.md must exist: {self.PHASE_CONTRACT}",
+        )
+        return self.PHASE_CONTRACT.read_text(encoding="utf-8")
+
+    def test_policy_section_present(self):
+        body = self._load()
+        self.assertIn(
+            "Scope-Violation Enforcement Policy", body,
+            "phase-contract.md must carry a 'Scope-Violation Enforcement "
+            "Policy' section",
+        )
+        self.assertIn(
+            "always on, regardless of configuration", body.lower().replace("**", ""),
+            "policy must state enforcement is unconditional",
+        )
+
+    def test_policy_explains_require_touches_paths_is_admission_control(self):
+        body = self._load()
+        # The doc must explain that require_touches_paths is an
+        # admission-control knob on compute_parallel_batch, not a
+        # merge-time enforcement toggle. This is the substantive claim
+        # that prevents future readers from assuming the two are related.
+        self.assertIn("admission-control", body.lower(),
+                      "policy must classify require_touches_paths as admission control")
+        self.assertIn("compute_parallel_batch", body,
+                      "policy must name compute_parallel_batch as the site of the knob")
+        self.assertIn("merge-time", body.lower(),
+                      "policy must contrast admission-time vs merge-time enforcement")
+
+    def test_policy_gives_trust_boundary_rationale(self):
+        body = self._load()
+        # The 'why' -- trust boundary -- must be present. Without the
+        # rationale a future editor may relax the policy reasoning it's
+        # just defensive duplication.
+        self.assertIn("trust-boundary", body.lower(),
+                      "policy must explicitly frame touches_paths as a trust boundary")
+        self.assertIn("sub-agent", body.lower(),
+                      "policy must name the sub-agent as the untrusted producer")
+        self.assertIn("diff", body.lower(),
+                      "policy must name git diff as the source of truth")
+
+
 class TestInvokeDocHasNoBatchOfOneSpecialCase(unittest.TestCase):
     """PHASE_009 unit_038: the invoke flow must not carry a 'batch-of-1
     means sequential' special case. The in-tree fast path is gated on

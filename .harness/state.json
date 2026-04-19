@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T06:30:00Z",
+  "last_updated": "2026-04-20T07:00:00Z",
   "execution": {
     "active_phase": "PHASE_009",
-    "active_unit": "unit_039",
-    "last_completed_unit": "unit_038",
-    "next_unit": "unit_039",
-    "session_count": 36,
+    "active_unit": "unit_040",
+    "last_completed_unit": "unit_039",
+    "next_unit": "unit_040",
+    "session_count": 37,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T06:30:00Z",
+    "last_run": "2026-04-20T07:00:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on the new test file exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v passes 18/18 (0.77s, up from 15 -- 3 new cases for unit_038); python -m unittest discover skills/development-harness/scripts/tests passes 201/201 (46.6s, up from 198)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails.TestScopeViolationAlwaysOnPolicy -v passes 3/3 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 204/204 (41.0s, up from 201 -- 3 new cases for unit_039)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_038 complete. Batch-of-1 equivalence verification locked in. Grep over skills/development-harness/commands/invoke.md + templates/workspace-commands/invoke-development-harness.md confirms both docs gate the in-tree fast path on `len(batch) == 1 AND config.execution_mode.parallelism.enabled == false` -- batch-of-1 alone does NOT take a sequential path; when parallelism is on, a batch-of-1 still fans out through worktrees. The integration half of the acceptance (logical-state equivalence between in-tree and worktree batch-of-1) was pre-satisfied by PHASE_007 unit_033's TestBatchOfOneDispatchModeEquivalence (compares unit status + evidence count + files-on-main across the two dispatch modes; also pins via copy.deepcopy that the in-tree path leaves state.execution.fleet byte-identical). New TestInvokeDocHasNoBatchOfOneSpecialCase class (3 cases) in test_safety_rails.py promotes the grep-level contract into a regression test: (a) every in-tree gating line in both docs names the parallelism=false clause; (b) no 'batch-of-1 -> sequential' antipattern phrasing anywhere; (c) the sentence routing batch-of-1 with parallelism on to the worktree fan-out path is pinned. Test suite 198 -> 201.",
+    "summary": "unit_039 complete. Scope-violation always-on policy now documented as a top-level section in skills/development-harness/references/phase-contract.md with three sub-subsections: (1) the statement itself -- scope-violation detection is always on regardless of configuration; (2) 'What require_touches_paths does NOT do' -- it's an admission-control knob on compute_parallel_batch.py:148 that decides whether a missing touches_paths declaration excludes a unit from parallel batches; it does NOT toggle merge-time enforcement in merge_batch.py:400-411 (which reads only the worktree sentinel's touches_paths list, unconditionally); (3) 'Rationale: trust boundary, not feature toggle' -- the sub-agent is untrusted (worktree-confined allowlist, no push/merge/rebase), and the git diff against declared globs is the orchestrator's only guarantee that the sub-agent didn't step outside its lane. Downstream consequences documented: scope violation is a hard reject regardless of conflict_strategy, counts toward the session kill switch in COUNTED_CATEGORIES, and is a per-phase contract invariant that no phase doc may opt out of. New TestScopeViolationAlwaysOnPolicy class (3 cases) in test_safety_rails.py pins policy presence, the admission-control classification + compute_parallel_batch mention + admission-time-vs-merge-time contrast, and the trust-boundary rationale with 'sub-agent' + 'diff' keywords. Suite 201 -> 204.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_039 (PHASE_009): document scope-violation always-on policy in skills/development-harness/references/phase-contract.md. The policy statement is: scope-violation detection (git diff --name-only vs merge-base, fnmatch against declared touches_paths) runs unconditionally regardless of config.execution_mode.parallelism.require_touches_paths. Rationale: touches_paths is a trust-boundary declaration, not a feature toggle -- even when it's not required as input, once it IS declared on a unit the orchestrator must enforce it because the sub-agent is untrusted. require_touches_paths only controls whether compute_parallel_batch rejects units that lack a touches_paths declaration; it does NOT relax merge-time enforcement when touches_paths IS present. Validation: grep of phase-contract.md for the policy statement + unit test that the policy text is present.",
-    "timestamp": "2026-04-20T06:30:00Z"
+    "next_action": "Complete unit_040 (PHASE_009): concurrent merge serialization test -- two merge_batch.py invocations contend on .harness/.lock; the second blocks until the first completes. Acceptance is largely pre-satisfied by PHASE_005 unit_023's TestLockContention.test_second_acquirer_blocks_until_first_releases in test_merge_batch.py (spawns a subprocess that acquires the lock, verifies the main process blocks on acquire until the subprocess releases). unit_040's job is to grep-verify that test is still present + covers the full contention contract, and add any missing assertions (e.g., `.harness/.lock` file location is pinned, timeout behavior is tested, second acquirer observes the post-first-merge state). Validation: test_merge_batch passes end-to-end.",
+    "timestamp": "2026-04-20T07:00:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

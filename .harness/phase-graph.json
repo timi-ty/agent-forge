@@ -534,8 +534,13 @@
         {
           "id": "unit_039",
           "description": "Document scope-violation always-on policy in skills/development-harness/references/phase-contract.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/references/phase-contract.md: added new 'Scope-Violation Enforcement Policy' top-level section (after 'Contract Enforcement') that states scope-violation detection is always on regardless of configuration, explains that `config.execution_mode.parallelism.require_touches_paths` is an admission-control knob on compute_parallel_batch (not a merge-time enforcement toggle), and gives the trust-boundary rationale: touches_paths is a trust boundary declaration, the sub-agent is untrusted (worktree-confined tool allowlist, no push/merge/rebase), and the git diff against declared globs is the orchestrator's only guarantee that the sub-agent didn't step outside its lane. Includes three sub-subsections: 'What require_touches_paths does NOT do', 'Rationale: trust boundary, not feature toggle', and 'Downstream consequences' (scope violation is a hard reject regardless of conflict_strategy; counts toward the session kill switch; is a per-phase contract invariant that no phase doc may opt out of)",
+            "Policy grounding verified in code: skills/development-harness/scripts/merge_batch.py L400-411 runs the scope check unconditionally when WORKTREE_UNIT.json carries a non-null touches_paths list -- require_touches_paths is never read there. skills/development-harness/scripts/compute_parallel_batch.py L148 is the only site that reads require_touches_paths; it gates batch admission for units that lack a touches_paths declaration. Both file+line references match the doc's claims",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new TestScopeViolationAlwaysOnPolicy class (3 cases). test_policy_section_present: 'Scope-Violation Enforcement Policy' heading is present AND 'always on, regardless of configuration' statement is present (normalized for markdown bold). test_policy_explains_require_touches_paths_is_admission_control: the doc classifies the knob as 'admission-control', names compute_parallel_batch as the site, and contrasts admission-time vs merge-time enforcement. test_policy_gives_trust_boundary_rationale: the doc frames touches_paths as a 'trust-boundary', names the 'sub-agent' as the untrusted producer, and names 'diff' as the source of truth",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_safety_rails.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails.TestScopeViolationAlwaysOnPolicy -v passes 3/3 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 204/204 (41.0s, up from 201 -- 3 new cases for unit_039)"
+          ]
         },
         {
           "id": "unit_040",
