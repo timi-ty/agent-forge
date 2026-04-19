@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T04:35:00Z",
+  "last_updated": "2026-04-20T04:50:00Z",
   "execution": {
-    "active_phase": "PHASE_007",
-    "active_unit": "unit_033",
-    "last_completed_unit": "unit_032",
-    "next_unit": "unit_033",
-    "session_count": 31,
+    "active_phase": "PHASE_008",
+    "active_unit": null,
+    "last_completed_unit": "unit_033",
+    "next_unit": "unit_034",
+    "session_count": 32,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T04:35:00Z",
+    "last_run": "2026-04-20T04:50:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only turn (unit_031 + unit_032 pre-satisfied), test suite unchanged"
+    "evidence": "python -m py_compile on new integration test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite -v passes 2/2 (3.5s); python -m unittest discover skills/development-harness/scripts/tests passes 173/173 up from 171 (45.0s). PHASE_007 end-to-end green."
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_031 AND unit_032 complete in one turn. unit_031: added '## Batch Semantics -- one turn per batch' subsection to references/architecture.md after Loop Mechanics, stating session_count increments by exactly 1 per turn regardless of batch size, the full idle->dispatched->merging->idle fleet transition completes within one turn, and loop_budget is denominated in turns not units. Links to commands/invoke.md Steps 4-9 and forward-references parallel-execution.md (PHASE_011 unit_047). unit_032 grep-verified as pre-satisfied: the parallel phase-review dispatch rule ('in one assistant message with two Agent(subagent_type=general-purpose) tool calls') is already in Step 10 of both commands/invoke.md (line 262) and the workspace-commands template (line 111) courtesy of the unit_029 + unit_030 rewrites. 171/171 tests unchanged. PHASE_007 progress 4/5 -- only the closing integration test unit_033 remains.",
+    "summary": "PHASE_007 complete. All five units landed: unit_029 (whole-file invoke.md rewrite, 432->332 LOC, zero sequential/parallel fork language), unit_030 (workspace-commands template mirror in compact style), unit_031 (Batch Semantics paragraph in architecture.md), unit_032 (parallel phase-review dispatch pre-satisfied + grep-verified), unit_033 (new tests/integration/test_invoke_rewrite.py with 2 classes exercising both dispatch modes end-to-end from a realistic phase-graph). Test suite 171 -> 173. The parallel execution substrate (PHASE_005 scripts + PHASE_006 agent contract) now has a live contract in the invoke doc; the integration test ensures the one-turn-one-batch semantics and dispatch-mode equivalence hold end-to-end.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_033 (PHASE_007, closes the phase): new skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py -- fixture 3-unit parallel phase completes in one turn; batch-of-1 in-tree produces same final state as a batch-of-1 worktree run would. Asserts final phase-graph.json shows all units completed with evidence and fleet.mode==idle. Test validates the end-to-end single-flow pipeline against both dispatch modes.",
-    "timestamp": "2026-04-20T04:35:00Z"
+    "next_action": "Run PHASE_007 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_034 in PHASE_008 (stop-hook fleet-awareness: update continue-loop.py to stop when state.execution.fleet.mode != 'idle'; deletes .invoke-active on stop). Note: PHASE_008 unit scopes may need re-examination given ISSUE_002 documents the Stop-hook as a precondition checker rather than a continuation driver on Claude Code.",
+    "timestamp": "2026-04-20T04:50:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

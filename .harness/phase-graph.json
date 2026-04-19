@@ -386,10 +386,10 @@
     {
       "id": "PHASE_007",
       "slug": "invoke-command-rewrite",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_005", "PHASE_006"],
       "started": "2026-04-20T03:55:00Z",
-      "completed": null,
+      "completed": "2026-04-20T04:50:00Z",
       "units": [
         {
           "id": "unit_029",
@@ -448,8 +448,13 @@
         {
           "id": "unit_033",
           "description": "End-to-end integration test: 3-unit fixture phase with parallelism.enabled=true completes with one merge; batch-of-1 test produces identical final state to a worktree batch of 1",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py: new 288-line integration module with 2 test classes. TestThreeUnitParallelBatch.test_one_turn_one_batch_end_to_end: seeds a 3-unit phase-graph with disjoint touches_paths, runs compute_frontier -> compute_batch(parallelism=enabled) -> dispatch_batch -> 3 fake agents committing inside their worktrees -> merge_batch in one pass. Asserts batch packs all three units; merge_result.outcome=='ok' and merged=['unit_a','unit_b','unit_c']; every unit ends with phase-graph status='completed' + non-empty validation_evidence; state.execution.fleet.mode=='idle' at end of turn; all touches_paths files present on main; no residual worktree dirs and no residual harness/<batch>/* branches",
+            "TestBatchOfOneDispatchModeEquivalence.test_batch_of_one_in_tree_matches_worktree_logical_state: runs the same single unit (touches_paths=['src/x/**']) through both dispatch modes on fresh fixture repos -- in-tree (compute_batch with parallelism=disabled, edit + commit on main directly, verify scope via git diff, no-op merge) vs worktree fan-out (compute_batch with parallelism=enabled, dispatch_batch, fake agent in worktree, merge_batch). Compares logical state (unit status + evidence count + files-on-main) via a helper; asserts strict equality regardless of SHA differences. Both paths end with fleet.mode=='idle'",
+            "Test operates at a higher abstraction than the PHASE_005 test_parallel_invoke.py integration -- starts from a realistic phase-graph.json-shaped dict and exercises compute_frontier + compute_parallel_batch.compute_batch, catching regressions in the full pipeline that a hand-crafted fleet state would miss",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite -v` passes 2/2 (3.5s); `python -m unittest discover skills/development-harness/scripts/tests` passes 173/173 up from 171 (45.0s)"
+          ]
         }
       ]
     },
