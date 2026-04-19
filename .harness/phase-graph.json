@@ -504,10 +504,10 @@
     {
       "id": "PHASE_009",
       "slug": "safety-rails-and-automatic-fallback",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_007"],
       "started": "2026-04-20T05:30:00Z",
-      "completed": null,
+      "completed": "2026-04-20T07:30:00Z",
       "units": [
         {
           "id": "unit_037",
@@ -545,8 +545,13 @@
         {
           "id": "unit_040",
           "description": "Concurrent merge serialization test: two merge_batch.py invocations contend on .harness/.lock; second waits for first",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/test_merge_batch.py TestLockContention: acceptance largely pre-satisfied by PHASE_005 unit_023's four existing cases (test_second_acquirer_blocks_until_first_releases via two threads, test_release_removes_lock_file_even_on_exception, test_stale_lock_is_taken_over, test_timeout_raises_merge_error_when_lock_is_fresh). All four continue to pass",
+            "unit_040 adds two new cases to close the 'two merge_batch.py invocations' wording in the acceptance -- the prior thread test proves the _MergeLock primitive; the new subprocess test proves OS-level O_EXCL semantics hold across processes (the production scenario when two CLI invocations race from two shells or schedulers). test_two_subprocess_acquirers_serialize_on_disk_lock: spawn a Python subprocess that acquires _MergeLock against the same .harness/.lock, signals 'HELD' on stdout, sleeps hold_seconds=0.5s, releases. The main process then acquires the same lock in-process and measures elapsed -- must be >= hold_seconds - 0.1s. After both release, the lock file is gone. PIPE handles explicitly closed to avoid Python 3.12 ResourceWarnings (verified via `python -W error::ResourceWarning`)",
+            "test_lock_path_is_exactly_harness_dot_lock: pin the on-disk location. If anyone moves LOCK_FILENAME in merge_batch.py or changes the <root>/.harness/.lock layout, cross-process serialization would silently break (each invocation would acquire a different lock). This test trips before that can ship",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_merge_batch.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention -v passes 6/6 (2.2s, up from 4 -- 2 new cases for unit_040); python -W error::ResourceWarning single-test run confirms clean handle management; python -m unittest discover skills/development-harness/scripts/tests passes 206/206 (34.7s, up from 204)"
+          ]
         }
       ]
     },

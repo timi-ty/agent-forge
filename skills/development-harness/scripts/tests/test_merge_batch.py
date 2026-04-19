@@ -586,6 +586,90 @@ class TestLockContention(MergeBatchBase):
         # did not stomp on it.
         self.assertTrue(lock_path.exists())
 
+    def test_two_subprocess_acquirers_serialize_on_disk_lock(self):
+        """unit_040: two real Python processes (not threads) contending
+        on the same .harness/.lock. The thread-level test above proves
+        the _MergeLock primitive works in-process; this one proves the
+        OS-level O_EXCL semantics hold across processes, which is the
+        production scenario (two merge_batch.py CLI invocations from
+        two shells or schedulers).
+        """
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+
+        # Sidecar: acquire the lock via _MergeLock (same code path as
+        # merge_batch.py) and hold it for HOLD seconds. We run it as a
+        # subprocess so it's a separate OS process, not a Python thread.
+        sidecar = (
+            "import sys, time, json\n"
+            f"sys.path.insert(0, {str(SCRIPT_DIR)!r})\n"
+            "from merge_batch import _MergeLock\n"
+            f"lock = _MergeLock({str(self.temp_dir)!r}, timeout=5.0, poll_interval=0.02)\n"
+            "with lock:\n"
+            "    sys.stdout.write('HELD\\n')\n"
+            "    sys.stdout.flush()\n"
+            "    time.sleep(float(sys.argv[1]))\n"
+        )
+
+        hold_seconds = 0.5
+        proc_a = subprocess.Popen(
+            [sys.executable, "-c", sidecar, str(hold_seconds)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        try:
+            # Block until proc_a prints 'HELD' so we know it's holding
+            # the lock before proc_b starts. Deterministic across
+            # schedulers.
+            line = proc_a.stdout.readline()
+            self.assertEqual(line.strip(), "HELD",
+                             f"sidecar should signal HELD; got {line!r}")
+            self.assertTrue(
+                self._lock_path().exists(),
+                "disk lock file must exist while sidecar holds it",
+            )
+
+            # Second acquirer -- in-process this time. It must block
+            # until proc_a's sleep expires and the lock is released.
+            start = time.monotonic()
+            with _MergeLock(self.temp_dir, timeout=5.0, poll_interval=0.02):
+                elapsed = time.monotonic() - start
+        finally:
+            try:
+                rc = proc_a.wait(timeout=5.0)
+                self.assertEqual(rc, 0, "sidecar should exit cleanly")
+            finally:
+                # Close PIPE handles to avoid ResourceWarning on 3.12+.
+                for stream in (proc_a.stdout, proc_a.stderr):
+                    if stream is not None:
+                        stream.close()
+
+        # The second acquirer should have waited roughly hold_seconds
+        # before proc_a released. 0.3s buffer for process-startup +
+        # poll-interval noise.
+        self.assertGreaterEqual(
+            elapsed, hold_seconds - 0.1,
+            f"second acquirer should wait for subprocess release "
+            f"(~{hold_seconds}s); took {elapsed:.3f}s",
+        )
+        # After both release, disk lock is gone.
+        self.assertFalse(
+            self._lock_path().exists(),
+            "lock file must be released after both holders exit",
+        )
+
+    def test_lock_path_is_exactly_harness_dot_lock(self):
+        """unit_040: pin the on-disk location. Two invocations can only
+        serialize if they agree on the file path -- if someone moves
+        LOCK_FILENAME, this test trips.
+        """
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+        with _MergeLock(self.temp_dir, timeout=1.0):
+            lock_path = self.temp_dir / ".harness" / ".lock"
+            self.assertTrue(
+                lock_path.exists(),
+                f"lock file must live at <root>/.harness/.lock; "
+                f"expected {lock_path}",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
