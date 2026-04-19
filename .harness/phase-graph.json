@@ -255,52 +255,88 @@
     {
       "id": "PHASE_005",
       "slug": "worktree-dispatch-and-merge-infrastructure",
-      "status": "pending",
+      "status": "completed",
       "depends_on": ["PHASE_001", "PHASE_002"],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-20T00:35:00Z",
+      "completed": "2026-04-20T03:00:00Z",
       "units": [
         {
           "id": "unit_019",
           "description": "New skills/development-harness/scripts/dispatch_batch.py: creates git worktrees under .harness/worktrees/<batch_id>/<unit_id>, creates harness/<batch_id>/<unit_id> branches, seeds WORKTREE_UNIT.json, writes state.execution.fleet; atomic teardown on failure",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/dispatch_batch.py: new 207-line stdlib-only module. Public API: dispatch_batch(batch_result, root, state=None, now=None) takes the {batch_id, batch, excluded} dict from compute_parallel_batch and per unit runs 'git worktree add -b harness/<batch_id>/<unit_id> .harness/worktrees/<batch_id>/<unit_id> HEAD' (via subprocess), seeds '<worktree>/.harness/WORKTREE_UNIT.json' with batch_id/unit_id/phase_id/touches_paths, and returns the updated fleet block. When a 'state' dict is passed, state.execution.fleet is replaced in place with {mode='dispatched', batch_id, units=[...]} where every entry matches the v2 state schema (status='running', started_at=now, ended_at=null, agent_summary_path=null, conflict=null). Atomic failure semantics: any subprocess.CalledProcessError, OSError, or KeyError raised during per-unit processing triggers _rollback(root, created) which best-effort 'git worktree remove --force' + 'git branch -D' every worktree/branch the call created before re-raising as DispatchError. CLI: --batch <file> --root <dir> --state <file>",
+            "skills/development-harness/scripts/tests/test_dispatch_batch.py: new 194-line test module with 9 cases across 3 classes. TestHappyPath: creates worktrees + branches + WORKTREE_UNIT.json contents + fleet-entry shape + empty-batch edge + state-is-written-in-place. TestAtomicRollback: pre-creates a colliding branch on unit_b so the second 'git worktree add' fails and asserts unit_a's worktree + branch are removed after DispatchError (pre-existing unit_b branch untouched); second case exercises the KeyError path by omitting 'id' on the second unit and asserts same rollback shape. TestCliSmoke: end-to-end via subprocess asserting stdout JSON, state.json mutation including last_updated, plus --help",
+            "Test fixtures use a real tempdir git repo (git init + user config + one commit) because worktree ops require a non-trivial commit graph. The helper _init_repo(path) is local to the test module; this is the first git-subprocess-using test file in the suite",
+            "Validation evidence with per-layer timing (per unit_018 rule): `python -m py_compile skills/development-harness/scripts/dispatch_batch.py skills/development-harness/scripts/tests/test_dispatch_batch.py` exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_dispatch_batch -v` passes 9/9 (3.5s); `python -m unittest discover skills/development-harness/scripts/tests` passes 118/118 up from 109 (11.3s wall-clock)"
+          ]
         },
         {
           "id": "unit_020",
           "description": "New skills/development-harness/scripts/merge_batch.py: serial fan-in via git merge --no-ff; conflict_strategy=abort_batch or serialize_conflicted; post-merge validation; git reset --hard rollback on failure",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/merge_batch.py: new 217-line stdlib-only module. Public API: merge_batch(state, root, *, conflict_strategy='abort_batch', run_post_merge_validation=None, now=None). Flips fleet.mode to 'merging', captures pre_merge_ref = git rev-parse HEAD, iterates fleet.units in order running 'git merge --no-ff <branch> -m \"harness: merge <unit_id>\"'. On conflict: 'git merge --abort' always, then conflict_strategy decides -- abort_batch flips the unit's status to 'failed' with conflict={paths, strategy_applied} and flags remaining units as 'failed' (conflict=null, they were skipped); serialize_conflicted leaves the unit status='running' with conflict recorded so its worktree + branch stay alive for a later batch. Post-merge runs run_post_merge_validation(root, merged_unit_ids) (default: _noop_validate that always returns True) and on failure does 'git reset --hard <pre_merge_ref>' then downgrades every previously merged unit to 'failed' with strategy_applied='post_merge_validation_failed'. On success, every merged unit has its worktree ('git worktree remove --force') and branch ('git branch -D') cleaned up. Return value names the outcome: 'ok' | 'partial' | 'aborted' | 'validation_failed' | 'all_conflicted' | 'empty'. CLI: --state --root --conflict-strategy (choices validated at argparse level)",
+            "Scope-violation detection is left for unit_022 and .harness/.lock mutex for unit_023 -- both are clean insertion points in merge_batch's pre-per-unit and wrapper layers respectively",
+            "skills/development-harness/scripts/tests/test_merge_batch.py: new 340-line test module with 16 cases across 7 classes. TestHappyPath: 5 cases (all clean, commit messages, branches deleted, empty fleet, mode transitions). TestAbortBatchStrategy: 2 cases (abort semantics, branch-cleanup asymmetry -- merged branch deleted, conflicted + skipped branches preserved). TestSerializeConflictedStrategy: 2 cases (conflicted stays running + remaining merge, conflicted branch preserved). TestPostMergeValidation: 3 cases (validator called with correct merged_ids, reset --hard rollback on failure with HEAD verified at pre-merge SHA, validator not called when no unit merged). TestStrategyValidation: unknown strategy raises MergeError. TestEndToEndWithDispatch: full dispatch_batch -> commit in worktree -> merge_batch -> worktrees removed cycle. TestCliSmoke: --help and end-to-end state.json write",
+            "Validation evidence with per-layer timing: `python -m py_compile` on both new files exits 0 (0.13s); `python -m unittest skills.development-harness.scripts.tests.test_merge_batch` passes 16/16 (12.0s); `python -m unittest discover skills/development-harness/scripts/tests` passes 134/134 up from 118 (21.6s)"
+          ]
         },
         {
           "id": "unit_021",
           "description": "New skills/development-harness/scripts/teardown_batch.py: idempotent cleanup of worktrees and harness/batch_* branches; safe to run under /clear, /sync, and error recovery",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/teardown_batch.py: new 146-line stdlib-only module. Public API: teardown_batch(root, batch_id=None) -> {removed_worktrees, deleted_branches, batch_ids}. Scoped mode (batch_id='<id>') cleans just that batch; global mode (batch_id=None) cleans every .harness/worktrees/batch_*/ directory and every 'harness/batch_*/' branch. Every git call runs with check=False so missing worktrees / missing branches / already-pruned entries never raise. Orphaned on-disk worktree directories that git no longer knows about are scrubbed via shutil.rmtree after the 'git worktree remove --force' best-effort. Empty batch dirs and the worktrees root are auto-pruned. Final 'git worktree prune' resyncs git's metadata. CLI: --batch-id (default all) --root",
+            "skills/development-harness/scripts/tests/test_teardown_batch.py: new 172-line test module with 10 cases across 4 classes. TestScopedTeardown (4): single-batch teardown removes worktrees + branches + dir, second run is a no-op, scoped teardown leaves other batches alone, phantom batch_id is a no-op. TestGlobalTeardown (2): global mode removes every batch + every harness/* branch, clean-repo global teardown is a no-op. TestMissingStateTolerance (2): orphaned branch without worktree still gets deleted and is reported; orphaned on-disk worktree dir without branch still gets scrubbed. TestCliSmoke (2): --help + end-to-end scoped CLI invocation",
+            "Idempotence property verified: TestScopedTeardown.test_second_run_is_a_no_op asserts the second call returns empty removed_worktrees + deleted_branches + batch_ids. TestGlobalTeardown.test_global_teardown_on_clean_repo_is_a_no_op asserts the same on a pristine repo with no dispatch history",
+            "Validation evidence with per-layer timing: `python -m py_compile` on both new files exits 0 (0.15s); `python -m unittest skills.development-harness.scripts.tests.test_teardown_batch -v` passes 10/10 (4.4s); `python -m unittest discover skills/development-harness/scripts/tests` passes 144/144 up from 134 (27.8s)"
+          ]
         },
         {
           "id": "unit_022",
           "description": "Scope-violation detector in merge_batch.py: computes git diff --name-only <merge-base>..<branch> and rejects any unit whose diff exceeds declared touches_paths, regardless of sub-agent self-report",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/merge_batch.py: added three new helpers -- _is_within_scope(file_path, touches_paths) using fnmatch.fnmatchcase (fnmatch's `*` already matches path separators so `src/auth/**` naturally covers descendants); _scope_violations(root, branch, touches_paths) that runs `git merge-base HEAD <branch>` then `git diff --name-only <merge-base>..<branch>` and returns files matching no declared glob; _read_worktree_touches_paths(root, worktree_path) that reads the WORKTREE_UNIT.json sentinel seeded by dispatch_batch. Integration: the per-unit loop in merge_batch() now calls _scope_violations before _merge_unit. On violation, the unit is rejected with status='failed' and conflict={paths: <violators>, category: 'scope_violation'} -- NO merge is attempted and HEAD does not advance. Scope failures are always hard rejects regardless of conflict_strategy (don't conflate with merge conflicts). Other well-scoped units in the same batch still get their chance to merge",
+            "Also added `category` field to the existing merge-conflict conflict dict ('merge_conflict') for taxonomy consistency; `strategy_applied` is preserved so existing tests stay green",
+            "skills/development-harness/scripts/tests/test_scope_violation.py: new 276-line test module with 16 cases across 4 classes. TestIsWithinScope (6): literal match, recursive glob, non-recursive glob, non-match, empty scope rejects all, multi-glob any-match. TestScopeViolationsHelper (4): in-scope branch returns []; out-of-scope files returned verbatim; empty touches_paths flags every changed file; unknown branch yields []. TestReadWorktreeTouchesPaths (3): reads what dispatch seeded; missing sentinel returns None (skip check); empty list is preserved (not coerced to None). TestMergeBatchRejectsScopeViolator (3): scope violator rejected before merge with HEAD unchanged + branch preserved; well-scoped sibling merges alongside scope violator (scope failures don't trigger abort_batch); within-scope changes merge cleanly",
+            "Validation evidence with per-layer timing: `python -m py_compile` on the edited module + new test file exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_scope_violation -v` passes 16/16 (4.0s); `python -m unittest discover skills/development-harness/scripts/tests` passes 160/160 up from 144 (27.8s) -- zero regressions in existing test_merge_batch.py despite merge_batch.py's internal changes"
+          ]
         },
         {
           "id": "unit_023",
           "description": "Add .harness/.lock file-based mutex around merge_batch.py with O_EXCL; contention test verifies serialization",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/merge_batch.py: added _MergeLock context manager backed by os.open(path, O_CREAT | O_EXCL | O_WRONLY) on <root>/.harness/.lock. First acquirer wins immediately; subsequent acquirers block, polling on lock_poll_interval (default 0.1s) until the file is unlinked (normal release) or its mtime exceeds stale_after_seconds (take-over after crashed holder). If lock_timeout (default 300s) elapses, MergeError is raised. Lock file body is '<pid> <iso_ts>\\n' for human inspection and stale debugging. Release removes the file on both normal exit AND exception paths (via __exit__ always calling unlink, verified by test_release_removes_lock_file_even_on_exception). merge_batch() wraps its full flow in `with _MergeLock(root, timeout=..., stale_after_seconds=..., poll_interval=...)` -- factored the original body into _merge_batch_locked(). CLI gets new --lock-timeout and --lock-stale-after flags passing through to merge_batch. Defaults: DEFAULT_LOCK_TIMEOUT=300.0, DEFAULT_LOCK_STALE_AFTER=600.0, DEFAULT_LOCK_POLL_INTERVAL=0.1",
+            "skills/development-harness/scripts/tests/test_merge_batch.py: added TestLockContention with 4 cases. test_second_acquirer_blocks_until_first_releases: thread A acquires + holds for 0.4s; thread B blocks then acquires; assertion `b_time >= 0.3` verifies B waited. Event-barrier ensures A owns the lock before B tries, making the test robust against scheduling jitter. test_release_removes_lock_file_even_on_exception: raising RuntimeError inside `with _MergeLock(...)` still unlinks the lock file. test_stale_lock_is_taken_over: writes a lock file with mtime 10000s old, acquires with stale_after=300 in <0.5s. test_timeout_raises_merge_error_when_lock_is_fresh: pre-existing FRESH lock, lock_timeout=0.3s, merge_batch raises MergeError after >=0.25s wall-clock with 'timed out' in the error text; the pre-existing lock file is preserved (not stomped)",
+            "Backward compatibility: the lock wrapper is transparent to existing tests. test_merge_batch + test_scope_violation (32 cases) pass unchanged after the wrapper was introduced -- the fresh tempdir per test means no cross-test lock contention",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/merge_batch.py` exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention` passes 4/4 (1.6s); `python -m unittest discover skills/development-harness/scripts/tests` passes 164/164 up from 160 (34.5s)"
+          ]
         },
         {
           "id": "unit_024",
           "description": "Extend skills/development-harness/scripts/sync_harness.py to detect orphaned worktrees, stale fleet entries, and harness/batch_* branches lacking fleet entries",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/sync_harness.py: added _list_on_disk_worktrees (scans .harness/worktrees/<batch>/<unit>/ structure), _list_harness_branches (shells to `git branch --list --format=...`, filters for names matching `harness/batch_*/<unit>`, silently returns [] when git is unavailable -- sync is informational), and _detect_fleet_drift (cross-references state.execution.fleet.units against disk worktrees and git branches). run_sync now loads state.json (optional) and appends fleet-drift findings to the existing divergences array",
+            "Three new divergence types reported with actionable ids: orphan_worktree {type, worktree_path, batch_id, unit_id} for on-disk dirs not in fleet; stale_fleet_entry {type, unit_id, worktree_path, branch, batch_id} for fleet entries whose worktree_path is missing on disk; orphan_branch {type, branch, batch_id, unit_id} for harness/batch_*/<unit> branches without fleet entries. Each carries enough identity for downstream cleanup (feed batch_id to teardown_batch, unit_id to re-dispatch, etc.)",
+            "skills/development-harness/scripts/tests/test_sync_harness.py: added TestFleetDriftDetection (5 cases) with helpers _init_git_repo, _write_state_with_fleet, _minimal_phase_graph. Cases: on-disk worktree without fleet entry is orphan; fleet entry without on-disk worktree is stale; harness branch without fleet entry is orphan; clean state (worktree + fleet entry + matching branch) yields zero fleet-drift divergences; one of each divergence type in the same run is reported separately (by_type dict). Existing 3 TestSyncHarness tests pass unchanged",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/sync_harness.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_sync_harness -v` passes 8/8 (2.1s); `python -m unittest discover skills/development-harness/scripts/tests` passes 169/169 up from 164 (35.3s)"
+          ]
         },
         {
           "id": "unit_025",
           "description": "Integration test skills/development-harness/scripts/tests/integration/test_parallel_invoke.py: fixture git repo with 3-unit phase, shell-scripted fake agents, asserts final state and cleanup",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/integration/__init__.py (new empty file) + skills/development-harness/scripts/tests/integration/test_parallel_invoke.py (new 230-line integration module) under a fresh integration/ package. Each test uses its own tempdir git repo so tests are independent",
+            "TestParallelInvokeHappyPath.test_three_unit_dispatch_merge_cycle: 3-unit batch over disjoint file trees (src/a/**, src/b/**, src/c/**); dispatch_batch creates worktrees + branches + fleet; shell-scripted fake agents commit canned files inside each worktree (mirrors what a real sub-agent would do); merge_batch fans the three branches back into main. Asserts outcome='ok'; every unit status='merged' with conflict=null + ended_at stamped; fleet.mode='idle'; every unit's files are present on main via `git cat-file -e HEAD:<path>`; `harness: merge <unit_id>` subjects are present in `git log`; NO residual .harness/worktrees/<batch_id>/ dir; NO residual harness/<batch_id>/* branches",
+            "TestParallelInvokeWithScopeViolator.test_scope_violator_rejected_other_units_merge: mixed batch -- two well-scoped units (src/x/**, src/z/**) + one scope violator that declared src/y/** but committed to src/elsewhere/secrets.ts. merge_batch returns outcome='partial' with merged=['unit_good1','unit_good2'] and conflicted=['unit_bad']. unit_bad carries conflict.category='scope_violation' and conflict.paths includes src/elsewhere/secrets.ts. Asserts good units' files landed on main; violator's out-of-scope AND in-scope files did NOT (whole unit rejected); merged worktrees/branches are gone; violator's worktree + branch are preserved for operator inspection",
+            "skills/development-harness/scripts/merge_batch.py: added _prune_empty_dir helper (no-op on missing / non-empty dirs, OS-error safe); merge_batch now prunes `.harness/worktrees/<batch_id>/` and `.harness/worktrees/` on the success path after per-unit cleanup. This matches the teardown_batch pattern and keeps sync_harness output clean. A serialize_conflicted unit or a scope-violator keeps its worktree, so the batch dir only disappears when the whole batch is resolved -- verified by the scope-violator integration test which sees the batch dir persist because unit_bad's worktree is still there",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/merge_batch.py skills/development-harness/scripts/tests/integration/test_parallel_invoke.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v` passes 2/2 (2.9s); `python -m unittest discover skills/development-harness/scripts/tests` passes 171/171 up from 169 (36.1s)"
+          ]
         }
       ]
     },
