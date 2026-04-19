@@ -104,8 +104,13 @@
         {
           "id": "unit_008",
           "description": "Implement frontier resolution strictly from depends_on; error loudly on malformed units; cover linear, diamond, disconnected, partially-completed graphs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "TestFrontierTopologies (new) covers all four required graph shapes: linear (head-ready, middle-ready-after-head-done), diamond (siblings ready after root, bottom ready after both siblings, bottom blocked while one sibling is in_progress), disconnected (two independent phase subgraphs both surface their heads; independent progress on each), partially-completed (middle-gap chain, parallel-siblings mid-progress)",
+            "Phase-complete-pending signal coverage: when an earlier phase has all units done but is not yet marked completed, the no-flag selector surfaces found=False, phase_complete=True, all_complete=False; once the phase is marked completed, the later phase's unit becomes the found head and phase_complete drops to False",
+            "Malformed-unit coverage expanded: TestNoLegacyFallback now asserts exit 2 on (a) missing depends_on, (b) non-list depends_on, (c) non-dict unit, (d) missing id. All error paths surface a clear message and direct the user to validate_harness.py",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (83/83 pass, up from 71 after unit_007)"
+          ]
         },
         {
           "id": "unit_009",

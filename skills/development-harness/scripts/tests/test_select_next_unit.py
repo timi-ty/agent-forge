@@ -367,6 +367,347 @@ class TestNoLegacyFallback(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("depends_on", stderr)
 
+    def test_non_dict_unit_errors(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "pending",
+                    "depends_on": [],
+                    "units": ["not-a-dict"],
+                }
+            ],
+        }
+        path = self._write("non_dict.json", graph)
+        rc, _result, stderr = run_select_next_unit(self.temp_dir, path, ["--frontier"])
+        self.assertEqual(rc, 2)
+        self.assertIn("must be an object", stderr)
+
+    def test_missing_id_errors(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "pending",
+                    "depends_on": [],
+                    "units": [
+                        {
+                            "description": "no id",
+                            "status": "pending",
+                            "parallel_safe": False,
+                            "depends_on": [],
+                        }
+                    ],
+                }
+            ],
+        }
+        path = self._write("no_id.json", graph)
+        rc, _result, stderr = run_select_next_unit(self.temp_dir, path, ["--frontier"])
+        self.assertEqual(rc, 2)
+        self.assertIn("id", stderr)
+        self.assertIn("missing", stderr)
+
+
+class TestFrontierTopologies(unittest.TestCase):
+    """Frontier resolution against each graph shape called out in PHASE_002 unit_008.
+
+    Each test builds a minimal phase-graph that exercises one topology, runs
+    `select_next_unit.py --frontier`, and asserts the exact set of ready unit
+    IDs in order. The no-flag output is also spot-checked so the stop-hook
+    contract is confirmed alongside the frontier contract.
+    """
+
+    def setUp(self):
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.temp_dir, ignore_errors=True))
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+
+    def _write(self, name, data):
+        path = self.temp_dir / name
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return path
+
+    def _frontier_ids(self, path, extra_args=None):
+        rc, result, stderr = run_select_next_unit(
+            self.temp_dir, path, ["--frontier"] + (extra_args or [])
+        )
+        self.assertEqual(rc, 0, f"non-zero exit: {stderr}")
+        return [u["id"] for u in result]
+
+    # -------------- Linear: A -> B -> C --------------
+
+    def test_linear_head_only_ready_at_start(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "pending",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A"),
+                        _unit("B", depends_on=["A"]),
+                        _unit("C", depends_on=["B"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("linear_start.json", graph)
+        self.assertEqual(self._frontier_ids(path), ["A"])
+
+        rc, result, _ = run_select_next_unit(self.temp_dir, path)
+        self.assertEqual(rc, 0)
+        self.assertEqual(result["unit_id"], "A")
+
+    def test_linear_middle_ready_after_head_done(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A", status="completed"),
+                        _unit("B", depends_on=["A"]),
+                        _unit("C", depends_on=["B"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("linear_middle.json", graph)
+        self.assertEqual(self._frontier_ids(path), ["B"])
+
+    # -------------- Diamond: A -> B, A -> C, B+C -> D --------------
+
+    def test_diamond_siblings_ready_after_root(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A", status="completed"),
+                        _unit("B", depends_on=["A"]),
+                        _unit("C", depends_on=["A"]),
+                        _unit("D", depends_on=["B", "C"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("diamond_siblings.json", graph)
+        # B and C are ready; D is blocked on both.
+        self.assertEqual(self._frontier_ids(path), ["B", "C"])
+
+    def test_diamond_bottom_ready_after_both_siblings(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A", status="completed"),
+                        _unit("B", status="completed", depends_on=["A"]),
+                        _unit("C", status="completed", depends_on=["A"]),
+                        _unit("D", depends_on=["B", "C"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("diamond_bottom.json", graph)
+        self.assertEqual(self._frontier_ids(path), ["D"])
+
+    def test_diamond_bottom_blocked_if_one_sibling_still_running(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A", status="completed"),
+                        _unit("B", status="completed", depends_on=["A"]),
+                        _unit("C", status="in_progress", depends_on=["A"]),
+                        _unit("D", depends_on=["B", "C"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("diamond_blocked.json", graph)
+        # D stays blocked on C; only C is in the frontier (B is done).
+        self.assertEqual(self._frontier_ids(path), ["C"])
+
+    # -------------- Disconnected: two independent subgraphs --------------
+
+    def test_disconnected_subgraphs_both_heads_in_frontier(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "left",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("L1"),
+                        _unit("L2", depends_on=["L1"]),
+                    ],
+                },
+                {
+                    "id": "PHASE_002",
+                    "slug": "right",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("R1"),
+                        _unit("R2", depends_on=["R1"]),
+                    ],
+                },
+            ],
+        }
+        path = self._write("disconnected.json", graph)
+        # Both phase heads are ready; tails are blocked on their heads.
+        # Order follows phase-list then unit-list.
+        self.assertEqual(self._frontier_ids(path), ["L1", "R1"])
+
+    def test_disconnected_subgraphs_independent_progress(self):
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_A",
+                    "slug": "a",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A1", status="completed"),
+                        _unit("A2", depends_on=["A1"]),
+                    ],
+                },
+                {
+                    "id": "PHASE_B",
+                    "slug": "b",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("B1"),
+                        _unit("B2", depends_on=["B1"]),
+                    ],
+                },
+            ],
+        }
+        path = self._write("disconnected_progress.json", graph)
+        # A has moved past its head; B hasn't. Both current heads appear.
+        self.assertEqual(self._frontier_ids(path), ["A2", "B1"])
+
+    # -------------- Partially completed --------------
+
+    def test_partially_completed_middle_gap(self):
+        """Unit in the middle of a chain is ready; later units still blocked."""
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("A", status="completed"),
+                        _unit("B", depends_on=["A"]),
+                        _unit("C", depends_on=["B"]),
+                        _unit("D", depends_on=["C"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("partial_middle.json", graph)
+        self.assertEqual(self._frontier_ids(path), ["B"])
+
+    def test_partially_completed_with_parallel_siblings(self):
+        """One of several siblings is done; the rest of the siblings are still ready."""
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [
+                        _unit("root", status="completed"),
+                        _unit("s1", status="completed", depends_on=["root"]),
+                        _unit("s2", depends_on=["root"]),
+                        _unit("s3", depends_on=["root"]),
+                    ],
+                }
+            ],
+        }
+        path = self._write("partial_siblings.json", graph)
+        self.assertEqual(self._frontier_ids(path), ["s2", "s3"])
+
+    def test_phase_complete_pending_blocks_later_phase(self):
+        """PHASE_001 has all units done but is not yet marked completed. PHASE_002
+        depends on PHASE_001, so PHASE_002 is still blocked. The no-flag call
+        must surface phase_complete=True so the invoke flow runs the completion
+        review, and all_complete=False so the hook does not report 'done'.
+        """
+        graph = {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_001",
+                    "slug": "p1",
+                    "status": "in_progress",
+                    "depends_on": [],
+                    "units": [_unit("u1", status="completed")],
+                },
+                {
+                    "id": "PHASE_002",
+                    "slug": "p2",
+                    "status": "pending",
+                    "depends_on": ["PHASE_001"],
+                    "units": [_unit("u2")],
+                },
+            ],
+        }
+        path = self._write("phase_complete_pending.json", graph)
+        rc, result, _ = run_select_next_unit(self.temp_dir, path)
+        self.assertEqual(rc, 0)
+        self.assertFalse(result["found"])
+        self.assertTrue(
+            result["phase_complete"],
+            "phase_complete must be True when an earlier phase has all units done",
+        )
+        self.assertFalse(
+            result["all_complete"],
+            "all_complete must be False while a completion review is still outstanding",
+        )
+        # Once PHASE_001 is marked completed, PHASE_002 should become ready and
+        # phase_complete should drop back to False.
+        graph["phases"][0]["status"] = "completed"
+        path = self._write("phase_complete_pending_resolved.json", graph)
+        rc, result, _ = run_select_next_unit(self.temp_dir, path)
+        self.assertEqual(rc, 0)
+        self.assertTrue(result["found"])
+        self.assertEqual(result["phase_id"], "PHASE_002")
+        self.assertEqual(result["unit_id"], "u2")
+        self.assertFalse(result["phase_complete"])
+
 
 if __name__ == "__main__":
     unittest.main()
