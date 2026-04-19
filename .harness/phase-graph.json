@@ -83,34 +83,57 @@
     {
       "id": "PHASE_002",
       "slug": "frontier-selector-and-batch-computation",
-      "status": "pending",
+      "status": "completed",
       "depends_on": ["PHASE_001"],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-19T18:15:00Z",
+      "completed": "2026-04-19T21:30:00Z",
       "units": [
         {
           "id": "unit_007",
           "description": "Rewrite skills/development-harness/scripts/select_next_unit.py around frontier computation; add --frontier and --max N flags; no legacy list-order fallback; preserve stop-hook JSON contract on no-flag call",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/select_next_unit.py rewritten around compute_frontier(phases, max_items): deterministic frontier from v2 phase/unit depends_on; MalformedPhaseGraph raised (exit 2, stderr) when a unit is missing depends_on or has non-list depends_on -- no silent legacy fallback",
+            "No-flag CLI invocation preserves the v1 stop-hook JSON contract (found/phase_id/phase_slug/unit_id/unit_description/phase_complete/all_complete); phase_complete signal reinstated via _phase_completion_pending",
+            "New --frontier flag prints the full frontier as a JSON array with phase_id, phase_slug, id, description, status, depends_on, touches_paths, parallel_safe on each entry; --max N caps the list; ordering is phase-list then unit-list (deterministic)",
+            "test_select_next_unit.py fixtures upgraded to v2 shape (every unit carries depends_on + parallel_safe); added TestFrontierFlag (4 cases: all-ready, --max cap, v2 field pass-through, empty-on-all-complete) and TestNoLegacyFallback (2 cases: missing depends_on, non-list depends_on -- both exit 2)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (71/71 pass, up from 65)",
+            "Manual smoke: running the new selector against this workspace's v1-shaped phase-graph errors loudly with 'Run validate_harness.py -- the graph is not v2-conformant', confirming the no-fallback stance"
+          ]
         },
         {
           "id": "unit_008",
           "description": "Implement frontier resolution strictly from depends_on; error loudly on malformed units; cover linear, diamond, disconnected, partially-completed graphs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "TestFrontierTopologies (new) covers all four required graph shapes: linear (head-ready, middle-ready-after-head-done), diamond (siblings ready after root, bottom ready after both siblings, bottom blocked while one sibling is in_progress), disconnected (two independent phase subgraphs both surface their heads; independent progress on each), partially-completed (middle-gap chain, parallel-siblings mid-progress)",
+            "Phase-complete-pending signal coverage: when an earlier phase has all units done but is not yet marked completed, the no-flag selector surfaces found=False, phase_complete=True, all_complete=False; once the phase is marked completed, the later phase's unit becomes the found head and phase_complete drops to False",
+            "Malformed-unit coverage expanded: TestNoLegacyFallback now asserts exit 2 on (a) missing depends_on, (b) non-list depends_on, (c) non-dict unit, (d) missing id. All error paths surface a clear message and direct the user to validate_harness.py",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (83/83 pass, up from 71 after unit_007)"
+          ]
         },
         {
           "id": "unit_009",
           "description": "New skills/development-harness/scripts/compute_parallel_batch.py with stdlib fnmatch glob-overlap matrix; greedy-pack under max_concurrent_units; emits {batch, excluded, batch_id}",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/compute_parallel_batch.py: new CLI entry point (--input, --config, --root); compute_batch(frontier, parallelism) runs a deterministic greedy left-to-right pack; _patterns_overlap uses stdlib fnmatch for literal/glob and a literal-prefix containment heuristic for glob/glob (pessimistic: false positives serialise, never corrupt); output schema is {batch_id, batch, excluded} where excluded carries machine-readable reasons",
+            "_parallelism_config extracts from execution_mode.parallelism with v1-safe fallback (string execution_mode falls back to defaults); defaults: max_concurrent_units=3, require_touches_paths=true, allow_cross_phase=false, conflict_strategy=abort_batch",
+            "batch_id format: batch_YYYY-MM-DDTHH-MM-SSZ (UTC timestamp) via _make_batch_id; test locks the format with a regex and a fixed-datetime assertion",
+            "Coverage (new test_compute_parallel_batch.py, 23 cases): TestPatternOverlap (7 cases incl. literal/literal, literal/glob, glob/glob containment, disjoint globs, empty-prefix star, helper regressions), TestParallelismConfigExtraction (3 cases incl. v1 string fallback), TestComputeBatch (8 cases incl. non-overlapping pack, capacity cap, overlap serialisation, parallel_safe false, require_touches_paths true/false, cross-phase deferral vs allow_cross_phase), TestBatchIdFormat (2), TestCliSmoke (2 incl. --help)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (106/106 pass, up from 83 after unit_008)"
+          ]
         },
         {
           "id": "unit_010",
           "description": "Machine-readable exclusion reasons ('not_parallel_safe', 'path_overlap_with:<unit_id>', 'capacity_cap'); unit tests asserting each reason fires on a crafted input",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/test_compute_parallel_batch.py: added TestExclusionReasons with one dedicated test per reason -- test_reason_not_parallel_safe_fires (single parallel_safe=False unit; excluded == [{unit_id:'solo', reason:'not_parallel_safe'}]), test_reason_path_overlap_with_fires (u1=src/shared/**, u2=src/shared/auth.ts; excluded == [{unit_id:'loser', reason:'path_overlap_with:winner'}] -- asserts the <unit_id> suffix), test_reason_capacity_cap_fires (two disjoint units, max_concurrent_units=1; excluded == [{unit_id:'u2', reason:'capacity_cap'}])",
+            "Each test uses the narrowest possible crafted input so only the reason under test can fire; test names embed the reason literal so a future refactor that drops a constant surfaces as a named failure",
+            "python -m unittest skills.development-harness.scripts.tests.test_compute_parallel_batch -v exits 0 (26/26 pass, up from 23 after unit_009; 3 new TestExclusionReasons cases)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109 pass, up from 106 after unit_009)"
+          ]
         }
       ]
     },

@@ -1,62 +1,43 @@
 # Harness Checkpoint
 
 ## Last Completed
-**PHASE_001 complete.** unit_006 landed the strict v2 validator in [skills/development-harness/scripts/validate_harness.py](skills/development-harness/scripts/validate_harness.py):
+**PHASE_002 (all four units):** Frontier selector and batch computation landed and merged (pending squash).
 
-- **Required-field enforcement (no inference):** every unit must carry `id`, `description`, `status`, `depends_on`, `parallel_safe`. When `parallel_safe: true`, `touches_paths` is required as a non-empty array.
-- **Path safety on `touches_paths`:** rejects `..` segments, POSIX-absolute paths (leading `/`), and Windows drive-rooted paths (e.g. `C:/...`, `C:\...`).
-- **Referential integrity + cycle detection:** phase-level `depends_on` and unit-level `depends_on` are both checked for unknown references and for cycles via an iterative-DFS helper (`_find_cycle`).
-- **Fleet enum gate:** when `state.execution.fleet` is present, `fleet.mode` must be one of `{idle, dispatched, merging}` and must not be missing.
-- **Version gate:** all four JSON files (`config.json`, `state.json`, `manifest.json`, `phase-graph.json`) surface the `/create-development-harness` pointer on v1 fixtures — the message comes directly from `check_schema_version` bumped in unit_005.
+- **unit_007** — [select_next_unit.py](skills/development-harness/scripts/select_next_unit.py) rewritten around `compute_frontier(phases, max_items)`; `--frontier` and `--max N` flags added; no-flag call preserves the v1 stop-hook JSON contract; `MalformedPhaseGraph` (exit 2) replaces the legacy list-order fallback.
+- **unit_008** — `TestFrontierTopologies` locks the frontier contract on linear, diamond, disconnected, partially-completed, and phase-complete-pending graphs; `TestNoLegacyFallback` expanded to four malformed-unit cases (missing `depends_on`, non-list `depends_on`, non-dict unit, missing `id`).
+- **unit_009** — [compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): stdlib-only greedy pack with `fnmatch` + literal-prefix glob-overlap matrix, `_parallelism_config` with v1-safe fallback, UTC-timestamped `batch_id`, CLI (`--input`, `--config`, `--root`).
+- **unit_010** — `TestExclusionReasons` pins each machine-readable reason (`not_parallel_safe`, `path_overlap_with:<unit_id>`, `capacity_cap`) on the narrowest crafted input, with test names embedding the reason literal so a dropped/renamed constant surfaces as a named failure.
 
-New tests in [test_validate_harness.py](skills/development-harness/scripts/tests/test_validate_harness.py):
-- `TestValidateHarnessV2Schema` — 16 cases covering every failure mode plus a valid-v2 round-trip.
-- `TestPathSafetyHelper` — 4 cases for `_is_touches_path_safe`.
-- `TestFindCycleHelper` — 6 cases for `_find_cycle` (linear, self-loop, 2-cycle, 3-cycle, diamond, unknown-dep tolerance).
+Phase completion review ran the `code-review` skill against PR #26 and cleared the phase with two Low findings (unused `import re`, unused `root` parameter); both addressed in a follow-up commit on the same branch.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Start PHASE_002 — Frontier Selector and Batch Computation.** Unit_007: rewrite [skills/development-harness/scripts/select_next_unit.py](skills/development-harness/scripts/select_next_unit.py) around frontier computation; add `--frontier` and `--max N` flags; drop legacy list-order fallback; preserve the stop-hook JSON contract on no-flag calls.
+**PHASE_003, unit_011** — Insert an Exploration step in [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md) that dispatches `Agent(Explore)` for refactor / extend / fix / migrate / update keywords before implementation. New branch off main after PR #26 merges.
 
 ## Blocked By
 None.
 
 ## Evidence
-- `python -m unittest discover skills/development-harness/scripts/tests` → 65/65 tests pass (up from 38 after unit_005, 36 at phase start).
-- Frozen `.harness/scripts/validate_harness.py` still exits 0 on this workspace (dogfood caveat intact — the new strict validator lives in `skills/`, the frozen runtime copy stays at its v1 shape).
-- Every unit in PHASE_001 (001–006) has concrete `validation_evidence` entries in [.harness/phase-graph.json](.harness/phase-graph.json).
-- PHASE_001 is not deploy-affecting, so deployment truth gate does not apply.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (PHASE_001 end: 65 → PHASE_002 end: 109).
+- PR #26 at https://github.com/timi-ty/agent-forge/pull/26: 8 commits across 7 files, +1483 / -243.
+- Code-review report: [pr-26-review.md](pr-26-review.md) (zero High, zero Medium, two Low — both fixed).
 
 ## Open Questions
 None.
 
 ## Tracked Issues
-- **ISSUE_001** (high, open): Stop-hook portability for Windows where only `python` is on PATH. Workspace-level fix already committed (`c3e2428`); the current session successfully auto-continues via the stop hook. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
+- **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase (13 PRs total). PHASE_001 PR opens now.
-- **Branch:** `feat/phase-001-schema-and-data-model` (cut from `main`). PHASE_002 will use a new branch.
-- **Merge:** squash; merge requires explicit user approval per global rule.
-
-## Phase Completion Review (PHASE_001)
-- [x] All units have validation evidence in phase-graph.json
-- [x] No linter/type errors in changed files (no Python linter configured; modules import and tests run clean)
-- [x] Code follows existing codebase patterns (new helpers follow the module's docstring/naming conventions)
-- [x] Unit tests pass for all new/modified code (65/65)
-- [N/A] Integration tests (none configured for this phase)
-- [N/A] E2E tests (none configured)
-- [ ] CI checks pass — will run when the PR is pushed
-- [N/A] Deployment verification — PHASE_001 is non-deploy-affecting
-- [x] Phase document carries completion evidence (unit_006 entry in phase-graph.json)
-- [x] Checkpoint updated
-- [x] No uncommitted harness-related changes (will hold after the upcoming commit)
+- **PR cadence:** one PR per phase. PHASE_002 → PR #26 (squash-merge pending).
+- **Branch:** `feat/phase-002-frontier-selector` (delete on merge).
+- **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
-- All skill edits go to `skills/development-harness/**`. `.harness/scripts/` is a frozen runtime copy.
-- Parallelism stays off in this bootstrap's config until PHASE_007 lands.
-- Stop-hook auto-continuation is working in this session; manual `/invoke-development-harness` is no longer required between units.
+- Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
+- `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
 
 ---
-*Updated: 2026-04-19T01:30:00Z*
+*Updated: 2026-04-19T21:30:00Z*
