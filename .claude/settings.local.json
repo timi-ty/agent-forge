@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/continue-loop.py",
+            "command": "python .claude/hooks/continue-loop.py",
             "timeout": 15
           }
         ]
