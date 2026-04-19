@@ -1,0 +1,185 @@
+{
+  "schema_version": "1.0",
+  "skill_version": "1.0",
+  "_comment": "Claude Code bootstrap in agent-forge. .claude/settings.local.json is managed-block because other Claude Code settings may live there. .github/workflows/ci.yml is product-owned (scaffolded by harness, owned by project).",
+  "entries": [
+    {
+      "path": "AGENTS.md",
+      "ownership": "harness-owned",
+      "type": "guidance",
+      "removable": true,
+      "note": "Created during bootstrap; no pre-existing AGENTS.md in repo"
+    },
+    {
+      "path": ".harness/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true
+    },
+    {
+      "path": ".harness/ARCHITECTURE.md",
+      "ownership": "harness-owned",
+      "type": "reference",
+      "removable": true
+    },
+    {
+      "path": ".harness/config.json",
+      "ownership": "harness-owned",
+      "type": "config",
+      "removable": true
+    },
+    {
+      "path": ".harness/manifest.json",
+      "ownership": "harness-owned",
+      "type": "manifest",
+      "removable": true
+    },
+    {
+      "path": ".harness/state.json",
+      "ownership": "harness-owned",
+      "type": "state",
+      "removable": true
+    },
+    {
+      "path": ".harness/phase-graph.json",
+      "ownership": "harness-owned",
+      "type": "phase-graph",
+      "removable": true
+    },
+    {
+      "path": ".harness/checkpoint.md",
+      "ownership": "harness-owned",
+      "type": "checkpoint",
+      "removable": true
+    },
+    {
+      "path": ".harness/pr-review-checklist.md",
+      "ownership": "harness-owned",
+      "type": "reference",
+      "removable": true
+    },
+    {
+      "path": ".harness/.gitignore",
+      "ownership": "harness-owned",
+      "type": "config",
+      "removable": true
+    },
+    {
+      "path": ".harness/scripts/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true
+    },
+    {
+      "path": ".harness/plans/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true
+    },
+    {
+      "path": ".harness/issues/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true
+    },
+    {
+      "path": "PHASES/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/create-development-harness.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/invoke-development-harness.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/update-development-harness.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/harness-state.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/sync-development-harness.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/clear-development-harness.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/commands/inject-harness-issues.md",
+      "ownership": "harness-owned",
+      "type": "command",
+      "removable": true
+    },
+    {
+      "path": ".claude/settings.local.json",
+      "ownership": "managed-block",
+      "type": "hook-config",
+      "removable": false,
+      "marker_pattern": "hooks.Stop entry pointing at .claude/hooks/continue-loop.py",
+      "note": "Claude Code: shared file. On clear, remove only the harness-owned Stop hook entry; leave other settings intact. File did not pre-exist in this repo, but is treated as managed-block for forward safety."
+    },
+    {
+      "path": ".claude/hooks/continue-loop.py",
+      "ownership": "harness-owned",
+      "type": "hook-script",
+      "removable": true
+    },
+    {
+      "path": ".claude/rules/harness-core.md",
+      "ownership": "harness-owned",
+      "type": "rule",
+      "removable": true
+    },
+    {
+      "path": ".claude/rules/harness-validation.md",
+      "ownership": "harness-owned",
+      "type": "rule",
+      "removable": true
+    },
+    {
+      "path": ".claude/rules/harness-git.md",
+      "ownership": "harness-owned",
+      "type": "rule",
+      "removable": true
+    },
+    {
+      "path": ".claude/rules/harness-deployment.md",
+      "ownership": "harness-owned",
+      "type": "rule",
+      "removable": true
+    },
+    {
+      "path": ".claude/rules/harness-testing.md",
+      "ownership": "harness-owned",
+      "type": "rule",
+      "removable": true
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "ownership": "product-owned",
+      "type": "ci-cd",
+      "removable": false,
+      "note": "Scaffolded by harness during create; now product-owned. Runs harness unit tests on PR and push to main."
+    }
+  ]
+}

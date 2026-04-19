@@ -1,0 +1,64 @@
+# PHASE_011: Documentation
+
+## Objective
+Make parallel execution discoverable, understandable, and safe to adopt via thorough reference docs and updated command prompts.
+
+## Why This Phase Exists
+Every phase before this introduces new concepts (fleet, batch, worktree, overlap, scope violation) or new fields (`depends_on`, `touches_paths`, `parallel_safe`, `versioning.break_on_schema_bump`). Without documentation a reader cannot enable parallelism correctly, cannot reason about failures, and cannot answer the create-command Phase 2 questions thoughtfully. This phase completes the work.
+
+## Scope
+- Add a "Parallel Execution Model" section to `skills/development-harness/references/architecture.md` covering: worktree-per-unit, orchestrator/sub-agent trust boundary, frontier + overlap check, dispatch–wait–merge lifecycle, conflict strategies, when to enable vs. not.
+- Update `skills/development-harness/references/phase-contract.md`:
+  - Document the new required unit fields (`depends_on`, `touches_paths` when `parallel_safe: true`, `parallel_safe`).
+  - Add a "Decomposing a phase for parallelism" subsection: feature-sliced units, narrow path declarations, avoiding shared-aggregator units.
+- Create `skills/development-harness/references/parallel-execution.md`: dispatch lifecycle (text diagram), overlap-matrix algorithm with example, merge-order rationale, failure-mode catalog, recovery procedures.
+- Update `skills/development-harness/commands/create.md`:
+  - Phase 2 adds two structured questions:
+    1. "Enable parallel unit execution?" (y/n, default n) → `config.execution_mode.parallelism.enabled`.
+    2. "When the harness's `schema_version` changes, should breaking changes require re-creating the harness, or do you want migration guidance?" (break/migrate, default break) → `config.execution_mode.versioning.break_on_schema_bump`.
+  - Phase 4 instructs the agent to propose `touches_paths` per unit and set `parallel_safe: false` when blast radius is unknown.
+- Update `skills/development-harness/SKILL.md`:
+  - "Parallel execution (optional)" subsection pointing at `references/parallel-execution.md`.
+  - "Version upgrades" note: re-run `/create-development-harness` on `schema_version` changes; ROADMAP.md and PHASES/ are untouched by the recreate flow.
+- Cross-check: every new field, script, rule, and command introduced by the roadmap is referenced in at least one doc under `skills/development-harness/references/`.
+
+> ⚠️ **Edit target:** `skills/development-harness/**` only.
+
+## Non-goals
+- Reader-authored migration playbooks — not provided, per roadmap non-goals.
+- Per-language parallelism decomposition guides — out of scope.
+
+## Dependencies
+None strictly (docs-only), but best scheduled after the features they describe are stable.
+
+## User-visible Outcomes
+- A reader unfamiliar with the upgrade can enable parallelism using only the docs.
+- The create command asks the user about back-compat policy explicitly.
+
+## Units of Work
+
+| ID | Description | Acceptance Criteria | Validation Method | Status |
+|----|-------------|--------------------|--------------------|--------|
+| unit_045 | Add "Parallel Execution Model" section to `references/architecture.md` | New section present with all six sub-topics listed in Scope | grep for section header + each sub-topic | pending |
+| unit_046 | Update `references/phase-contract.md` with new fields + decomposition subsection | Three new fields documented; decomposition subsection present with at least three pieces of guidance | grep | pending |
+| unit_047 | Create `references/parallel-execution.md` with dispatch lifecycle, overlap algo, failure catalog, recovery, readiness checklist | File exists; ToC covers all five topics; each topic has substantive content | file exists + ToC check + manual read | pending |
+| unit_048 | Update `commands/create.md` Phase 2 with two structured questions; Phase 4 with touches_paths/parallel_safe guidance | Both Phase 2 questions present with exact wording and config keys; Phase 4 guidance present | grep | pending |
+| unit_049 | Update `SKILL.md` with Parallel Execution subsection + Version upgrades note | Both sections present; pointer to `parallel-execution.md` | grep | pending |
+| unit_050 | Cross-check: every new artifact introduced by the roadmap is referenced in at least one `references/` doc | Grep finds each new script (`dispatch_batch.py`, `merge_batch.py`, `teardown_batch.py`, `compute_parallel_batch.py`), rule, and config field in at least one reference doc | scripted grep | pending |
+
+## Validation Gates
+- **Layer 1:** All markdown parses; frontmatter intact.
+- **Layer 2:** Scripted cross-check grep succeeds.
+
+## Deployment Implications
+Not deploy-affecting.
+
+## Completion Evidence Required
+- All greps succeed as described.
+- Manual walkthrough: a reader given only the docs can enable parallelism (verified by someone unfamiliar, or by dry-reading).
+
+## Rollback / Failure Considerations
+Docs-only. Revert on failure.
+
+## Status
+pending
