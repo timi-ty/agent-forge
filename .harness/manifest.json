@@ -1,14 +1,14 @@
 {
-  "schema_version": "2.0",
+  "schema_version": "1.0",
   "skill_version": "1.0",
-  "_comment": "Paths prefixed with $TOOL_DIR are parameterized. During create, substitute $TOOL_DIR with .cursor (Cursor) or .claude (Claude Code). $RULE_EXT is .mdc (Cursor) or .md (Claude Code). $HOOK_CONFIG ownership must be set to harness-owned for Cursor (.cursor/hooks.json) or managed-block for Claude Code (.claude/settings.local.json) since the latter is a shared file.",
+  "_comment": "Claude Code bootstrap in agent-forge. .claude/settings.local.json is managed-block because other Claude Code settings may live there. .github/workflows/ci.yml is product-owned (scaffolded by harness, owned by project).",
   "entries": [
     {
       "path": "AGENTS.md",
       "ownership": "harness-owned",
       "type": "guidance",
       "removable": true,
-      "note": "Created only if none existed; if pre-existing, ownership is managed-block instead"
+      "note": "Created during bootstrap; no pre-existing AGENTS.md in repo"
     },
     {
       "path": ".harness/",
@@ -83,106 +83,93 @@
       "removable": true
     },
     {
-      "path": ".harness/worktrees/",
-      "ownership": "harness-owned",
-      "type": "directory",
-      "removable": true,
-      "note": "Transient per-batch git worktrees for parallel execution. Gitignored. Cleaned by teardown_batch.py and /clear."
-    },
-    {
-      "path": ".harness/logs/",
-      "ownership": "harness-owned",
-      "type": "directory",
-      "removable": true,
-      "note": "Per-batch execution logs (batch.json, <unit>.md, merge.log, validation.log). Gitignored. Retained until /clear."
-    },
-    {
       "path": "PHASES/",
       "ownership": "harness-owned",
       "type": "directory",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/create-development-harness.md",
+      "path": ".claude/commands/create-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/invoke-development-harness.md",
+      "path": ".claude/commands/invoke-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/update-development-harness.md",
+      "path": ".claude/commands/update-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/harness-state.md",
+      "path": ".claude/commands/harness-state.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/sync-development-harness.md",
+      "path": ".claude/commands/sync-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/clear-development-harness.md",
+      "path": ".claude/commands/clear-development-harness.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/commands/inject-harness-issues.md",
+      "path": ".claude/commands/inject-harness-issues.md",
       "ownership": "harness-owned",
       "type": "command",
       "removable": true
     },
     {
-      "path": "$HOOK_CONFIG",
-      "ownership": "harness-owned",
+      "path": ".claude/settings.local.json",
+      "ownership": "managed-block",
       "type": "hook-config",
-      "removable": true,
-      "note": "Cursor: .cursor/hooks.json (harness-owned). Claude Code: .claude/settings.local.json (shared -- treat as managed-block if other settings exist)."
+      "removable": false,
+      "marker_pattern": "hooks.Stop entry pointing at .claude/hooks/continue-loop.py",
+      "note": "Claude Code: shared file. On clear, remove only the harness-owned Stop hook entry; leave other settings intact. File did not pre-exist in this repo, but is treated as managed-block for forward safety."
     },
     {
-      "path": "$TOOL_DIR/hooks/continue-loop.py",
+      "path": ".claude/hooks/continue-loop.py",
       "ownership": "harness-owned",
       "type": "hook-script",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/rules/harness-core$RULE_EXT",
+      "path": ".claude/rules/harness-core.md",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/rules/harness-validation$RULE_EXT",
+      "path": ".claude/rules/harness-validation.md",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/rules/harness-git$RULE_EXT",
+      "path": ".claude/rules/harness-git.md",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/rules/harness-deployment$RULE_EXT",
+      "path": ".claude/rules/harness-deployment.md",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
     },
     {
-      "path": "$TOOL_DIR/rules/harness-testing$RULE_EXT",
+      "path": ".claude/rules/harness-testing.md",
       "ownership": "harness-owned",
       "type": "rule",
       "removable": true
@@ -192,14 +179,7 @@
       "ownership": "product-owned",
       "type": "ci-cd",
       "removable": false,
-      "note": "Scaffolded by harness during create, now product-owned"
-    },
-    {
-      "path": "tests/e2e/",
-      "ownership": "product-owned",
-      "type": "directory",
-      "removable": false,
-      "note": "Scaffolded by harness during create, now product-owned"
+      "note": "Scaffolded by harness during create; now product-owned. Runs harness unit tests on PR and push to main."
     }
   ]
 }

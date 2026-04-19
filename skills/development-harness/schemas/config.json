@@ -1,6 +1,7 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "skill_version": "1.0",
+  "_comment": "Example config.json illustrating the v2 execution_mode object. execution_mode is now a nested block with four sub-sections: location (runtime mode), parallelism (opt-in batch execution policy), agent_delegation (helper-agent preferences), versioning (back-compat stance on schema bumps). Defaults are chosen to be conservative: parallelism off, versioning breaks on schema bump.",
   "project": {
     "name": "my-app",
     "description": "A full-stack web application with API and frontend"
@@ -46,5 +47,22 @@
       "e2e-smoke"
     ]
   },
-  "execution_mode": "local"
+  "execution_mode": {
+    "location": "local",
+    "parallelism": {
+      "enabled": false,
+      "max_concurrent_units": 3,
+      "conflict_strategy": "abort_batch",
+      "require_touches_paths": true,
+      "allow_cross_phase": false
+    },
+    "agent_delegation": {
+      "use_explore_for_research": true,
+      "use_code_review_skill_for_phase_review": true,
+      "parallel_validation_layers": false
+    },
+    "versioning": {
+      "break_on_schema_bump": true
+    }
+  }
 }

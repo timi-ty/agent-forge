@@ -175,7 +175,7 @@ Create every file listed below. Use schemas from `schemas/` and templates from `
 | `ARCHITECTURE.md` | Generate from `references/architecture.md`, adapted to this specific project. Replace generic references with project-specific paths, stack names, and conventions. Use `$TOOL_DIR` for tool-specific paths. |
 | `plans/` | Create empty directory. |
 | `issues/` | Create empty directory. |
-| `.gitignore` | Contains `.invoke-active` — the transient session flag must not be committed. |
+| `.gitignore` | Contains `.invoke-active`, `worktrees/`, and `logs/` — transient session flag and transient per-batch directories must not be committed. |
 | `scripts/` | Copy ALL Python scripts from this skill's `scripts/` directory: `compile_roadmap.py`, `validate_harness.py`, `select_next_unit.py`, `sync_harness.py`, `clear_harness.py`, `normalize_issues.py`, `harness_utils.py`. |
 
 ### $COMMANDS_DIR/ -- workspace slash commands

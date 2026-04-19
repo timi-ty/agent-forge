@@ -15,6 +15,11 @@ from harness_utils import (
 )
 
 
+class TestSchemaVersionConstant(unittest.TestCase):
+    def test_schema_version_is_v2(self):
+        self.assertEqual(SCHEMA_VERSION, "2.0")
+
+
 class TestCheckSchemaVersion(unittest.TestCase):
     def test_check_schema_version_valid(self):
         data = {"schema_version": SCHEMA_VERSION}
@@ -27,13 +32,23 @@ class TestCheckSchemaVersion(unittest.TestCase):
         result = check_schema_version(data)
         self.assertFalse(result["valid"])
         self.assertIn("missing schema_version", result["error"])
+        self.assertIn("/create-development-harness", result["error"])
 
     def test_check_schema_version_wrong(self):
-        data = {"schema_version": "2.0"}
+        data = {"schema_version": "1.0"}
         result = check_schema_version(data)
         self.assertFalse(result["valid"])
         self.assertIn("expected", result["error"])
-        self.assertIn("1.0", result["error"])
+        self.assertIn("'2.0'", result["error"])
+        self.assertIn("'1.0'", result["error"])
+
+    def test_check_schema_version_v1_rejected_with_recreate_pointer(self):
+        """A v1 harness must be rejected with an actionable re-create message."""
+        data = {"schema_version": "1.0"}
+        result = check_schema_version(data, filepath=".harness/state.json")
+        self.assertFalse(result["valid"])
+        self.assertIn(".harness/state.json", result["error"])
+        self.assertIn("/create-development-harness", result["error"])
 
 
 class TestValidateRequiredKeys(unittest.TestCase):

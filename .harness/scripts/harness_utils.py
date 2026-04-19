@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 HARNESS_DIR = ".harness"
-SCHEMA_VERSION = "2.0"
+SCHEMA_VERSION = "1.0"
 
 MANAGED_BLOCK_START = "<!-- HARNESS:START -->"
 MANAGED_BLOCK_END = "<!-- HARNESS:END -->"
@@ -82,27 +82,14 @@ def now_iso():
 
 
 def check_schema_version(data, expected=SCHEMA_VERSION, filepath="unknown"):
-    """Validate that a loaded JSON object has the expected schema_version.
-
-    On mismatch, the error message directs the user to re-run
-    /create-development-harness. No in-place migration is provided by design.
-    """
+    """Validate that a loaded JSON object has the expected schema_version."""
     version = data.get("schema_version")
     if version is None:
-        return {
-            "valid": False,
-            "error": (
-                f"{filepath}: missing schema_version. "
-                f"Re-run /create-development-harness to regenerate harness files at schema v{expected}."
-            ),
-        }
+        return {"valid": False, "error": f"{filepath}: missing schema_version"}
     if version != expected:
         return {
             "valid": False,
-            "error": (
-                f"{filepath}: schema_version is '{version}', expected '{expected}'. "
-                f"Re-run /create-development-harness to regenerate harness files at schema v{expected}."
-            ),
+            "error": f"{filepath}: schema_version is '{version}', expected '{expected}'",
         }
     return {"valid": True, "error": None}
 
