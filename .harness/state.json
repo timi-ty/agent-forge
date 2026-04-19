@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T02:10:00Z",
+  "last_updated": "2026-04-20T02:35:00Z",
   "execution": {
     "active_phase": "PHASE_005",
-    "active_unit": "unit_024",
-    "last_completed_unit": "unit_023",
-    "next_unit": "unit_024",
-    "session_count": 23,
+    "active_unit": "unit_025",
+    "last_completed_unit": "unit_024",
+    "next_unit": "unit_025",
+    "session_count": 24,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T02:10:00Z",
+    "last_run": "2026-04-20T02:35:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on merge_batch.py exits 0 (0.14s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention passes 4/4 (1.6s); python -m unittest discover skills/development-harness/scripts/tests passes 164/164 up from 160 (34.5s)"
+    "evidence": "python -m py_compile on sync_harness.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_sync_harness -v passes 8/8 (2.1s); python -m unittest discover skills/development-harness/scripts/tests passes 169/169 up from 164 (35.3s)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_023 complete. .harness/.lock O_EXCL mutex now wraps merge_batch(). New _MergeLock context manager in merge_batch.py: O_CREAT|O_EXCL|O_WRONLY on <root>/.harness/.lock, polls every 0.1s up to a 300s timeout, takes over after 600s staleness (mtime-based), writes '<pid> <iso_ts>' body for inspection. Releases on both normal and exception exit paths. merge_batch()'s full flow is now `with _MergeLock(...): _merge_batch_locked(...)`. CLI gained --lock-timeout and --lock-stale-after. 4 new tests: blocking contention (threaded, event-barriered for determinism), exception-path cleanup, stale-lock take-over, fresh-lock timeout raising MergeError with preserved pre-existing lock file. Lock wrapper is transparent to existing tests (fresh tempdirs, no cross-test contention). Test suite 160 -> 164.",
+    "summary": "unit_024 complete. sync_harness.py now reports three fleet-drift divergence types alongside its existing phase-report analysis: orphan_worktree (on-disk .harness/worktrees/<batch>/<unit>/ dirs with no fleet entry), stale_fleet_entry (fleet entries whose worktree_path is missing on disk), orphan_branch (harness/batch_*/<unit> branches without a matching fleet entry). Each divergence carries the batch_id + unit_id needed to feed into teardown_batch or re-dispatch. Three new private helpers: _list_on_disk_worktrees, _list_harness_branches (silently skips when git unavailable), _detect_fleet_drift. run_sync loads state.json (optional) and appends fleet-drift findings to divergences. 5 new TestFleetDriftDetection cases + 3 existing sync tests all green. Test suite 164 -> 169.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_024 (PHASE_005): extend skills/development-harness/scripts/sync_harness.py to detect orphaned worktrees on disk not in state.fleet, stale fleet entries whose worktrees are missing, and harness/batch_*/ branches without fleet entries. Add new cases to test_sync_harness.py.",
-    "timestamp": "2026-04-20T02:10:00Z"
+    "next_action": "Complete unit_025 (PHASE_005): new skills/development-harness/scripts/tests/integration/test_parallel_invoke.py -- builds a fixture git repo, sets up a 3-unit phase, runs dispatch_batch then shell-scripted fake agents that commit canned files in each worktree, then merge_batch. Asserts final state, clean worktree removal, and no residual harness/batch_*/ branches. This is the PHASE_005 closing unit; after it merges, open the phase PR.",
+    "timestamp": "2026-04-20T02:35:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

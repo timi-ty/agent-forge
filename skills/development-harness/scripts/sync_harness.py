@@ -13,10 +13,16 @@ Uses only Python 3 stdlib. Imports from harness_utils.
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 from harness_utils import find_harness_root, now_iso
+
+
+HARNESS_DIR = ".harness"
+WORKTREES_DIR = "worktrees"
+BATCH_BRANCH_PREFIX = "harness/"
 
 
 EXCLUDE_DIRS = {
@@ -145,12 +151,123 @@ def build_phase_report(phase, all_paths):
     }
 
 
+def _list_on_disk_worktrees(root):
+    """Return ``[(batch_id, unit_id, relpath), ...]`` for every per-unit
+    worktree directory under ``.harness/worktrees/<batch>/<unit>/``.
+
+    Missing parent dir is not an error -- the list is just empty.
+    """
+    base = Path(root) / HARNESS_DIR / WORKTREES_DIR
+    if not base.is_dir():
+        return []
+    found = []
+    for batch_dir in sorted(base.iterdir()):
+        if not batch_dir.is_dir():
+            continue
+        for unit_dir in sorted(batch_dir.iterdir()):
+            if not unit_dir.is_dir():
+                continue
+            relpath = f"{HARNESS_DIR}/{WORKTREES_DIR}/{batch_dir.name}/{unit_dir.name}"
+            found.append((batch_dir.name, unit_dir.name, relpath))
+    return found
+
+
+def _list_harness_branches(root):
+    """Return every local branch matching ``harness/batch_*/``.
+
+    Silently returns an empty list when git is unavailable or the
+    directory isn't a git repo -- sync is informational, not critical.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "branch", "--list",
+             "--format=%(refname:short)"],
+            capture_output=True, text=True, check=False,
+        )
+    except (OSError, FileNotFoundError):
+        return []
+    if result.returncode != 0:
+        return []
+    branches = []
+    for line in result.stdout.splitlines():
+        name = line.strip()
+        if not name.startswith(BATCH_BRANCH_PREFIX):
+            continue
+        rest = name[len(BATCH_BRANCH_PREFIX):]
+        if "/" not in rest:
+            continue
+        batch_id, _, unit_id = rest.partition("/")
+        # Keep only names that look like harness/<batch_*>/<unit_id>.
+        if not batch_id.startswith("batch_") or not unit_id:
+            continue
+        branches.append((batch_id, unit_id, name))
+    return branches
+
+
+def _detect_fleet_drift(root, state):
+    """Report divergences between state.execution.fleet and git/disk reality.
+
+    Three categories:
+      * ``orphan_worktree`` -- directory under ``.harness/worktrees/`` has
+        no matching fleet entry (by worktree_path).
+      * ``stale_fleet_entry`` -- fleet entry whose worktree_path is not
+        present on disk.
+      * ``orphan_branch`` -- local git branch ``harness/batch_*/<unit>``
+        with no matching fleet entry (by branch name).
+
+    Each divergence carries the ids needed to act on it (feed to
+    teardown_batch --batch-id, re-dispatch, etc.).
+    """
+    execution = (state or {}).get("execution") or {}
+    fleet = execution.get("fleet") or {}
+    units = fleet.get("units") or []
+
+    known_worktrees = {u.get("worktree_path") for u in units if u.get("worktree_path")}
+    known_branches = {u.get("branch") for u in units if u.get("branch")}
+
+    divergences = []
+
+    for batch_id, unit_id, relpath in _list_on_disk_worktrees(root):
+        if relpath not in known_worktrees:
+            divergences.append({
+                "type": "orphan_worktree",
+                "worktree_path": relpath,
+                "batch_id": batch_id,
+                "unit_id": unit_id,
+            })
+
+    for unit in units:
+        worktree_path = unit.get("worktree_path")
+        if not worktree_path:
+            continue
+        if not (Path(root) / worktree_path).is_dir():
+            divergences.append({
+                "type": "stale_fleet_entry",
+                "unit_id": unit.get("unit_id"),
+                "worktree_path": worktree_path,
+                "branch": unit.get("branch"),
+                "batch_id": fleet.get("batch_id"),
+            })
+
+    for batch_id, unit_id, branch in _list_harness_branches(root):
+        if branch not in known_branches:
+            divergences.append({
+                "type": "orphan_branch",
+                "branch": branch,
+                "batch_id": batch_id,
+                "unit_id": unit_id,
+            })
+
+    return divergences
+
+
 def run_sync(root):
     """Run sync analysis. Return output dict."""
     root = Path(root).resolve()
     harness_dir = root / ".harness"
     phase_graph_path = harness_dir / "phase-graph.json"
     config_path = harness_dir / "config.json"
+    state_path = harness_dir / "state.json"
 
     divergences = []
     phase_reports = []
@@ -171,12 +288,19 @@ def run_sync(root):
     # Load config (optional)
     config_data, _ = _read_json_safe(config_path)
 
+    # Load state.json (optional). Used for fleet-drift detection below.
+    state_data, _ = _read_json_safe(state_path)
+
     phases = pg_data.get("phases", [])
     all_paths = list(walk_project_tree(root))
 
     for phase in phases:
         report = build_phase_report(phase, all_paths)
         phase_reports.append(report)
+
+    # Fleet-drift detection (unit_024): orphan worktrees / stale fleet
+    # entries / orphan harness/batch_*/ branches.
+    divergences.extend(_detect_fleet_drift(root, state_data or {}))
 
     return {
         "sync_timestamp": now_iso(),

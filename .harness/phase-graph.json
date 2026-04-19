@@ -318,8 +318,13 @@
         {
           "id": "unit_024",
           "description": "Extend skills/development-harness/scripts/sync_harness.py to detect orphaned worktrees, stale fleet entries, and harness/batch_* branches lacking fleet entries",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/sync_harness.py: added _list_on_disk_worktrees (scans .harness/worktrees/<batch>/<unit>/ structure), _list_harness_branches (shells to `git branch --list --format=...`, filters for names matching `harness/batch_*/<unit>`, silently returns [] when git is unavailable -- sync is informational), and _detect_fleet_drift (cross-references state.execution.fleet.units against disk worktrees and git branches). run_sync now loads state.json (optional) and appends fleet-drift findings to the existing divergences array",
+            "Three new divergence types reported with actionable ids: orphan_worktree {type, worktree_path, batch_id, unit_id} for on-disk dirs not in fleet; stale_fleet_entry {type, unit_id, worktree_path, branch, batch_id} for fleet entries whose worktree_path is missing on disk; orphan_branch {type, branch, batch_id, unit_id} for harness/batch_*/<unit> branches without fleet entries. Each carries enough identity for downstream cleanup (feed batch_id to teardown_batch, unit_id to re-dispatch, etc.)",
+            "skills/development-harness/scripts/tests/test_sync_harness.py: added TestFleetDriftDetection (5 cases) with helpers _init_git_repo, _write_state_with_fleet, _minimal_phase_graph. Cases: on-disk worktree without fleet entry is orphan; fleet entry without on-disk worktree is stale; harness branch without fleet entry is orphan; clean state (worktree + fleet entry + matching branch) yields zero fleet-drift divergences; one of each divergence type in the same run is reported separately (by_type dict). Existing 3 TestSyncHarness tests pass unchanged",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/sync_harness.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_sync_harness -v` passes 8/8 (2.1s); `python -m unittest discover skills/development-harness/scripts/tests` passes 169/169 up from 164 (35.3s)"
+          ]
         },
         {
           "id": "unit_025",
