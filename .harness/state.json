@@ -2,17 +2,17 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T03:25:00Z",
+  "last_updated": "2026-04-20T03:40:00Z",
   "execution": {
     "active_phase": "PHASE_006",
-    "active_unit": "unit_027",
-    "last_completed_unit": "unit_026",
-    "next_unit": "unit_027",
-    "session_count": 26,
+    "active_unit": "unit_028",
+    "last_completed_unit": "unit_027",
+    "next_unit": "unit_028",
+    "session_count": 27,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T03:25:00Z",
+    "last_run": "2026-04-20T03:40:00Z",
     "status": "passing",
     "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
   },
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_026 complete. New skills/development-harness/templates/claude-code/agents/harness-unit.md (new templates/claude-code/agents/ directory). YAML frontmatter: name=harness-unit, description (one-unit-in-isolated-worktree-then-emit-JSON-report), tools=[Read, Edit, Write, Glob, Grep, Bash]. System-prompt body has five sections -- Identity (read WORKTREE_UNIT.json first; fail loudly if missing), Tool allowlist with hard forbidden list (no git push/merge/rebase/reset --hard/checkout -b/worktree add-remove; no .harness/ edits; no writes outside the worktree), Workflow (read identity -> read phase doc -> optional explore -> implement -> validate -> commit on pre-created branch -> emit report), JSON report schema with exact fields from the phase doc (unit_id, status, validation_evidence, commits, touched_paths_actual, failure with category enum), and three worked report examples (success, validation failure, scope_violation failure). Docs-only; 171/171 tests unchanged.",
+    "summary": "unit_027 complete. Appended a new '## Orchestrator vs sub-agent boundary' section to templates/claude-code/rules/harness-core.md with the three phase-doc-required bullets: (1) only the orchestrator modifies .harness/ or runs git merge; (2) sub-agents commit only within their worktree branch and never push/rebase/reset --hard; (3) a worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment so follow the harness-unit contract exactly. Each bullet names the concrete enforcement mechanism (scope-violation check + .harness/.lock mutex; pre-created branch; sentinel-based agent self-identification). Docs-only; 171/171 tests unchanged.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_027 (PHASE_006): update skills/development-harness/templates/claude-code/rules/harness-core.md with three orchestrator-vs-sub-agent boundary rules (only orchestrator modifies .harness/ or runs git merge; sub-agents commit only within their worktree branch and never push/rebase; a worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment).",
-    "timestamp": "2026-04-20T03:25:00Z"
+    "next_action": "Complete unit_028 (PHASE_006): mirror the three orchestrator-vs-sub-agent boundary bullets into the Cursor rule file skills/development-harness/templates/rules/harness-core.mdc (Cursor does not have a native Agent primitive, so the rules-level constraint IS the Cursor equivalent for orchestrator/sub-agent boundary enforcement).",
+    "timestamp": "2026-04-20T03:40:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

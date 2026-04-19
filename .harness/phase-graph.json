@@ -363,8 +363,12 @@
         {
           "id": "unit_027",
           "description": "Update skills/development-harness/templates/claude-code/rules/harness-core.md with orchestrator-vs-sub-agent rules (only orchestrator merges; sub-agents commit only in worktree; never push/rebase)",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/rules/harness-core.md: appended new '## Orchestrator vs sub-agent boundary' section below the existing Delegation section. Three bullets verbatim in the phase-doc order: (1) 'Only the orchestrator modifies .harness/ or runs git merge' -- orchestrator definition, sub-agents treat .harness/ as read-only, fan-in gated by scope-violation check + .harness/.lock mutex; (2) 'Sub-agents commit only within their worktree branch; never git push, never git rebase, never git reset --hard' -- pre-created harness/<batch_id>/<unit_id> branch, orchestrator owns any history rewrite; (3) 'A worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment' -- sentinel detection tells the agent which contract to follow (harness-unit) and explicitly notes the sentinel-absent case is orchestrator / ordinary session",
+            "Grep verification on acceptance criteria: 'Only the orchestrator' at line 34, 'Sub-agents commit only' at line 35, 'fan-out environment' at line 36 (all three bullets present under the new section header)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_028",
