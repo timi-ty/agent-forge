@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T05:45:00Z",
+  "last_updated": "2026-04-20T06:30:00Z",
   "execution": {
     "active_phase": "PHASE_009",
-    "active_unit": "unit_038",
-    "last_completed_unit": "unit_037",
-    "next_unit": "unit_038",
-    "session_count": 35,
+    "active_unit": "unit_039",
+    "last_completed_unit": "unit_038",
+    "next_unit": "unit_039",
+    "session_count": 36,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T05:45:00Z",
+    "last_run": "2026-04-20T06:30:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on 4 changed/new files exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v passes 15/15 (0.7s); python -m unittest discover skills/development-harness/scripts/tests passes 198/198 up from 183 (38.4s)"
+    "evidence": "python -m py_compile on the new test file exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v passes 18/18 (0.77s, up from 15 -- 3 new cases for unit_038); python -m unittest discover skills/development-harness/scripts/tests passes 201/201 (46.6s, up from 198)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_037 complete. New safety_rails.py (165 LOC) + hook updates + 15 new tests. Public API: record_failure(root, category, unit_id, now) appends a JSON line to .harness/.parallel-failures.jsonl and writes the .harness/.parallel-disabled kill switch when counted-category failures reach the 2-strike threshold; is_parallel_disabled(root) is a presence check; clear_safety_rails(root) is idempotent. Counted categories are scope_violation and ambiguity only -- other failures are logged for observability but don't count toward the switch. Both continue-loop.py hooks' _stop() now clear .invoke-active AND the session-scoped safety-rail files in one sweep so the next invoke session starts clean. 15 tests cover threshold logic (below/at/above, mixed categories, non-counted filtering), helpers (presence reflection, idempotent clear), CLI (record + status + clear), AND hook-stop side effects (Claude Code + Cursor both wipe the rail files). Pre-existing 10 hook tests pass unchanged -- the additional unlink calls target missing files in those tests, which the try/except handles cleanly. Test suite 183 -> 198.",
+    "summary": "unit_038 complete. Batch-of-1 equivalence verification locked in. Grep over skills/development-harness/commands/invoke.md + templates/workspace-commands/invoke-development-harness.md confirms both docs gate the in-tree fast path on `len(batch) == 1 AND config.execution_mode.parallelism.enabled == false` -- batch-of-1 alone does NOT take a sequential path; when parallelism is on, a batch-of-1 still fans out through worktrees. The integration half of the acceptance (logical-state equivalence between in-tree and worktree batch-of-1) was pre-satisfied by PHASE_007 unit_033's TestBatchOfOneDispatchModeEquivalence (compares unit status + evidence count + files-on-main across the two dispatch modes; also pins via copy.deepcopy that the in-tree path leaves state.execution.fleet byte-identical). New TestInvokeDocHasNoBatchOfOneSpecialCase class (3 cases) in test_safety_rails.py promotes the grep-level contract into a regression test: (a) every in-tree gating line in both docs names the parallelism=false clause; (b) no 'batch-of-1 -> sequential' antipattern phrasing anywhere; (c) the sentence routing batch-of-1 with parallelism on to the worktree fan-out path is pinned. Test suite 198 -> 201.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_038 (PHASE_009): verify batch-of-1 uses the in-tree path (no special case in invoke doc) AND integration test asserts final state equivalence. Grep + potential addition of an assertion in the existing tests/integration/test_invoke_rewrite.py TestBatchOfOneDispatchModeEquivalence class (or a new regression test). Most of the acceptance is pre-satisfied by PHASE_007's unit_029 rewrite which collapsed the sequential/parallel fork; this unit is the grep+integration verification of that collapse.",
-    "timestamp": "2026-04-20T05:45:00Z"
+    "next_action": "Complete unit_039 (PHASE_009): document scope-violation always-on policy in skills/development-harness/references/phase-contract.md. The policy statement is: scope-violation detection (git diff --name-only vs merge-base, fnmatch against declared touches_paths) runs unconditionally regardless of config.execution_mode.parallelism.require_touches_paths. Rationale: touches_paths is a trust-boundary declaration, not a feature toggle -- even when it's not required as input, once it IS declared on a unit the orchestrator must enforce it because the sub-agent is untrusted. require_touches_paths only controls whether compute_parallel_batch rejects units that lack a touches_paths declaration; it does NOT relax merge-time enforcement when touches_paths IS present. Validation: grep of phase-contract.md for the policy statement + unit test that the policy text is present.",
+    "timestamp": "2026-04-20T06:30:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

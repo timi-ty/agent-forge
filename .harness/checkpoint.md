@@ -1,41 +1,30 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_037 (PHASE_009):** Session-scoped safety rails landed — the harness now auto-degrades to in-tree after two bad batches in a session.
+**unit_038 (PHASE_009):** Batch-of-1 equivalence verification locked in. The PHASE_007 rewrite collapsed the pre-existing sequential/parallel fork; unit_038 promotes that collapse from "a prose paragraph in invoke.md" into a regression-test contract.
 
-- **New module** [safety_rails.py](skills/development-harness/scripts/safety_rails.py) (165 LOC, stdlib-only):
-  - `record_failure(root, category, unit_id, now)` — appends a JSON line to `.harness/.parallel-failures.jsonl` and writes the kill switch at `.harness/.parallel-disabled` when the count of failures in `COUNTED_CATEGORIES = ("scope_violation", "ambiguity")` reaches `KILL_SWITCH_THRESHOLD = 2`.
-  - `is_parallel_disabled(root)` — presence check.
-  - `clear_safety_rails(root)` — idempotent removal of both files.
-  - CLI: `record` / `status` / `clear` subcommands for manual operator control.
-- **Failures in non-counted categories** (e.g., `validation`, `infrastructure`) are still logged for observability but **do not count toward the threshold** — only the two kill-switch categories do. `test_other_categories_do_not_pollute_counted_total` pins this invariant.
-- **Hook updates:** both [Claude Code](skills/development-harness/templates/claude-code/hooks/continue-loop.py) and [Cursor](skills/development-harness/templates/hooks/continue-loop.py) `continue-loop.py` `_stop()` helpers now remove `.invoke-active` **and** `.parallel-disabled` **and** `.parallel-failures.jsonl` in one sweep, so session-scoped safety-rail state is cleared whenever the hook decides to stop.
-
-**Test coverage:** 15 new cases across 5 classes in [test_safety_rails.py](skills/development-harness/scripts/tests/test_safety_rails.py):
-- `TestRecordFailureThreshold` (6) — below-threshold no-op; at-threshold trips; above-threshold idempotent; scope_violation + ambiguity mix correctly; non-counted categories don't count; counted + non-counted interleave correctly.
-- `TestHelpers` (3) — `is_parallel_disabled` reflects file; `clear_safety_rails` removes both files; `clear_safety_rails` idempotent on missing files.
-- `TestCliSmoke` (2) — round-trip record + status; clear via CLI.
-- `TestHookStopClearsSafetyRails` (2) — **both** Claude Code and Cursor hooks' `_stop()` wipe the rail files via subprocess end-to-end (seeded state + controlled stdin).
-- `TestConstants` (2) — pins `KILL_SWITCH_THRESHOLD == 2` and the counted-categories set.
-
-**Pre-existing hook tests pass unchanged.** The 10 cases in `test_continue_loop_{claude,cursor}.py` still pass — the additional `unlink` calls in `_stop()` target missing files in those tests and the `try/except OSError` handles cleanly.
+- **Grep contract:** both [invoke.md](skills/development-harness/commands/invoke.md) (step 4 "Pick the dispatch mode") and the workspace-commands mirror [invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) gate the in-tree fast path on **`len(batch) == 1 AND config.execution_mode.parallelism.enabled == false`**. Batch-of-1 alone does NOT take a sequential path; when parallelism is on, a batch-of-1 still fans out through worktrees.
+- **Integration-test half pre-satisfied** by PHASE_007 unit_033's `TestBatchOfOneDispatchModeEquivalence` in [test_invoke_rewrite.py](skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py): runs the same unit through both dispatch modes on fresh fixture repos, asserts identical logical state (unit status map, evidence count, `touches_paths` files on main), and pins the substantive invariant that the in-tree path never mutates `state.execution.fleet` via a `copy.deepcopy` before/after compare.
+- **New regression test:** `TestInvokeDocHasNoBatchOfOneSpecialCase` class in [test_safety_rails.py](skills/development-harness/scripts/tests/test_safety_rails.py) (3 cases). Promotes the grep-level check into a unit test so a future doc edit cannot silently reintroduce the fork:
+  - `test_in_tree_gating_always_includes_parallelism_clause` — every in-tree gating line in both docs must name the `parallelism=false` clause (not batch size alone).
+  - `test_no_batch_of_one_sequential_antipattern` — rejects pre-PHASE_007 phrasings like "batch-of-1 uses the sequential path" in either doc.
+  - `test_batch_of_one_with_parallelism_on_goes_to_worktree` — pins the long-form invoke doc's explicit sentence that routes `len(batch) == 1` with parallelism on through worktree fan-out.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_038 (PHASE_009):** Verify batch-of-1 uses the in-tree path (no special-case branch in the invoke doc) AND integration test asserts final state equivalence. Most of the acceptance is **pre-satisfied** by PHASE_007's unit_029 rewrite (which collapsed the sequential/parallel fork) and unit_033's `TestBatchOfOneDispatchModeEquivalence` (which asserted in-tree vs worktree produce equivalent final state). This unit becomes a grep-verify of the invoke doc + optional augmentation of the existing equivalence test.
+**Complete unit_039 (PHASE_009):** Document scope-violation always-on policy in [references/phase-contract.md](skills/development-harness/references/phase-contract.md). Policy statement: scope-violation detection (`git diff --name-only` vs merge-base + fnmatch against declared `touches_paths`) runs unconditionally regardless of `config.execution_mode.parallelism.require_touches_paths`. Rationale: `touches_paths` is a trust-boundary declaration, not a feature toggle — even when `require_touches_paths` is false, once `touches_paths` IS declared on a unit the orchestrator must enforce it because the sub-agent is untrusted. `require_touches_paths` only controls whether `compute_parallel_batch` rejects units that LACK a declaration; it does NOT relax merge-time enforcement when a declaration IS present.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/safety_rails.py](skills/development-harness/scripts/safety_rails.py): new 165-line module.
-- [skills/development-harness/scripts/tests/test_safety_rails.py](skills/development-harness/scripts/tests/test_safety_rails.py): new 225-line test module, 15 cases.
-- Both hook `_stop()` helpers updated with the safety-rail sweep.
-- `python -m py_compile` → 0 (~0.1s) on all 4 changed/new files.
-- `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` → 15/15 in 0.7s.
-- `python -m unittest discover skills/development-harness/scripts/tests` → **198/198** (up from 183 at PHASE_008 end) in 38.4s.
+- [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md): step 4 "Pick the dispatch mode" gating reviewed — correct.
+- [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md): mirror verified.
+- [skills/development-harness/scripts/tests/test_safety_rails.py](skills/development-harness/scripts/tests/test_safety_rails.py): new 3-case class appended; `python -m py_compile` exits 0 (~0.1s).
+- `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` → **18/18** in 0.77s (up from 15).
+- `python -m unittest discover skills/development-harness/scripts/tests` → **201/201** (up from 198) in 46.6s.
 
 ## Open Questions
 None.
@@ -51,9 +40,9 @@ None.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 35 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_009 progress: **1/4 units done** (037 kill switch). Remaining: 038 batch-of-1 equivalence verification, 039 scope-violation always-on policy docs, 040 concurrent merge serialization test.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → **198** across phases so far.
+- `session_count` is 36 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_009 progress: **2/4 units done** (037 kill switch, 038 batch-of-1 equivalence). Remaining: 039 scope-violation always-on policy docs, 040 concurrent merge serialization test.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → **201** across phases so far.
 
 ---
-*Updated: 2026-04-20T05:45:00Z*
+*Updated: 2026-04-20T06:30:00Z*

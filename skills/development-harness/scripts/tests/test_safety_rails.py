@@ -278,5 +278,86 @@ class TestConstants(unittest.TestCase):
         self.assertEqual(set(COUNTED_CATEGORIES), {"scope_violation", "ambiguity"})
 
 
+class TestInvokeDocHasNoBatchOfOneSpecialCase(unittest.TestCase):
+    """PHASE_009 unit_038: the invoke flow must not carry a 'batch-of-1
+    means sequential' special case. The in-tree fast path is gated on
+    `len(batch) == 1 AND parallelism.enabled == false`; when parallelism
+    is on, a batch-of-1 still takes the worktree path. This pins that
+    contract in both the long-form command doc and the workspace-commands
+    template so a future edit cannot silently reintroduce the fork.
+    """
+
+    LONG_DOC = SKILL_ROOT / "commands" / "invoke.md"
+    WORKSPACE_DOC = SKILL_ROOT / "templates" / "workspace-commands" / "invoke-development-harness.md"
+
+    def _load(self, path):
+        self.assertTrue(path.exists(), f"doc must exist: {path}")
+        return path.read_text(encoding="utf-8")
+
+    def _in_tree_gating_lines(self, body):
+        """Return lines that define when the in-tree fast path is chosen.
+        Both docs phrase this as a bullet beginning with 'In-tree fast
+        path' followed by the gating clause.
+        """
+        return [
+            line for line in body.splitlines()
+            if "In-tree fast path" in line and (
+                "len(batch) == 1" in line or "batch size" in line.lower()
+            )
+        ]
+
+    def test_in_tree_gating_always_includes_parallelism_clause(self):
+        for doc in (self.LONG_DOC, self.WORKSPACE_DOC):
+            body = self._load(doc)
+            gating_lines = self._in_tree_gating_lines(body)
+            self.assertTrue(
+                gating_lines,
+                f"{doc.name} must document the in-tree fast-path gating clause",
+            )
+            for line in gating_lines:
+                self.assertIn(
+                    "parallelism", line,
+                    f"{doc.name} in-tree gating clause must reference "
+                    f"parallelism config (not batch size alone): {line!r}",
+                )
+                self.assertTrue(
+                    "false" in line or "disabled" in line.lower(),
+                    f"{doc.name} in-tree gating clause must name the "
+                    f"parallelism=false half of the condition: {line!r}",
+                )
+
+    def test_no_batch_of_one_sequential_antipattern(self):
+        """The docs must not describe a 'batch-of-1 -> sequential' fork.
+        Sequential is the pre-PHASE_007 shape; the rewrite collapsed it.
+        """
+        forbidden_substrings = (
+            "batch of 1 uses the sequential",
+            "batch-of-1 uses the sequential",
+            "batch_size == 1 then sequential",
+            "if len(batch) == 1: sequential",
+            "single-unit sequential path",
+        )
+        for doc in (self.LONG_DOC, self.WORKSPACE_DOC):
+            body = self._load(doc).lower()
+            for needle in forbidden_substrings:
+                self.assertNotIn(
+                    needle, body,
+                    f"{doc.name} must not describe a batch-of-1 sequential "
+                    f"fork (found: {needle!r})",
+                )
+
+    def test_batch_of_one_with_parallelism_on_goes_to_worktree(self):
+        """The long-form invoke doc explicitly calls out that a
+        batch-of-1 with parallelism on still takes the fan-out path --
+        that's exactly what the batch-of-1 equivalence integration test
+        exercises. Pin that sentence so it doesn't drift."""
+        body = self._load(self.LONG_DOC)
+        self.assertIn(
+            "len(batch) == 1` when parallelism is on", body,
+            "invoke.md must call out that batch-of-1 with parallelism on "
+            "still goes through the worktree fan-out path",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

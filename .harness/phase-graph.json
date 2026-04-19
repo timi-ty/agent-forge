@@ -523,8 +523,13 @@
         {
           "id": "unit_038",
           "description": "Verify batch-of-1 uses the same in-tree path as parallelism=false; re-assert via test that no special-case branch exists in invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md step 4 'Pick the dispatch mode' gates the in-tree fast path on `len(batch) == 1 AND config.execution_mode.parallelism.enabled == false`; the companion 'Worktree fan-out' bullet explicitly covers `len(batch) == 1` when parallelism is on, so batch-of-1 is NOT a sequential-path special case. skills/development-harness/templates/workspace-commands/invoke-development-harness.md step 4 mirrors the same two-clause gating. No 'batch-of-1 -> sequential' fork remains anywhere in the invoke docs post-PHASE_007 rewrite",
+            "skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py TestBatchOfOneDispatchModeEquivalence (landed in PHASE_007 unit_033) already asserts logical-state equivalence between a single unit run through the in-tree fast path and a single unit run through the worktree fan-out (unit status, evidence count, touches_paths file contents on main). It also pins the substantive invariant that the in-tree path leaves state.execution.fleet byte-identical via a copy.deepcopy before/after compare -- the integration half of unit_038's acceptance is pre-satisfied",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new class TestInvokeDocHasNoBatchOfOneSpecialCase (3 cases) promotes the grep-level check into a regression test so a future doc edit can't silently reintroduce the fork. test_in_tree_gating_always_includes_parallelism_clause asserts every in-tree-gating line in both docs names the parallelism=false clause. test_no_batch_of_one_sequential_antipattern rejects the pre-PHASE_007 'batch-of-1 -> sequential' phrasings. test_batch_of_one_with_parallelism_on_goes_to_worktree pins the sentence that routes batch-of-1 through worktree fan-out when parallelism is on",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/tests/test_safety_rails.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` passes 18/18 (0.77s, up from 15 -- 3 new cases for unit_038); `python -m unittest discover skills/development-harness/scripts/tests` passes 201/201 (46.6s, up from 198)"
+          ]
         },
         {
           "id": "unit_039",
