@@ -2,17 +2,17 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T00:15:00Z",
+  "last_updated": "2026-04-19T00:20:00Z",
   "execution": {
     "active_phase": "PHASE_001",
-    "active_unit": "unit_003",
-    "last_completed_unit": "unit_002",
-    "next_unit": "unit_004",
-    "session_count": 2,
+    "active_unit": "unit_004",
+    "last_completed_unit": "unit_003",
+    "next_unit": "unit_005",
+    "session_count": 3,
     "loop_budget": 10
   },
   "validation_summary": {
-    "last_run": "2026-04-19T00:15:00Z",
+    "last_run": "2026-04-19T00:20:00Z",
     "status": "passing",
     "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36)"
   },
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_002 complete: state.json schema extended with execution.fleet block (mode, batch_id, per-unit entries with worktree/branch/status/conflict). Tests still green.",
+    "summary": "unit_003 complete: config.json schema promotes execution_mode to an object with location, parallelism, agent_delegation, and versioning sub-blocks. break_on_schema_bump defaults to true.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_003: Extend skills/development-harness/schemas/config.json with execution_mode.parallelism, execution_mode.agent_delegation, execution_mode.versioning blocks",
-    "timestamp": "2026-04-19T00:15:00Z"
+    "next_action": "Complete unit_004: Register .harness/worktrees/ and .harness/logs/ in skills/development-harness/schemas/manifest.json and add entries to the .gitignore template",
+    "timestamp": "2026-04-19T00:20:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

@@ -34,8 +34,14 @@
         {
           "id": "unit_003",
           "description": "Extend skills/development-harness/schemas/config.json: add execution_mode.parallelism, execution_mode.agent_delegation, execution_mode.versioning blocks",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/schemas/config.json: execution_mode promoted from string to object with location + three sub-blocks",
+            "parallelism: enabled=false, max_concurrent_units=3, conflict_strategy=abort_batch, require_touches_paths=true, allow_cross_phase=false",
+            "agent_delegation: use_explore_for_research=true, use_code_review_skill_for_phase_review=true, parallel_validation_layers=false",
+            "versioning: break_on_schema_bump=true (default matches the clean-code direction chosen for this project)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36)"
+          ]
         },
         {
           "id": "unit_004",
