@@ -119,7 +119,7 @@ On failure:
 - Do NOT continue to the next unit on failure
 
 On success:
-- Record concrete evidence (e.g., `"tests/auth.test.ts passes (5/5)"`)
+- Record concrete evidence **with per-layer wall-clock timing** (e.g., `"pnpm lint exits 0 (2.1s)"`, `"tsc --noEmit exits 0 (4.8s)"`, `"tests/auth.test.ts passes (5/5, 3.2s)"`). The timing makes the parallel-layers benefit visible in checkpoint history — when Layer 1 + Layer 2 ran in a single assistant message, a reader can see the unit's validation wall-clock was `max(layer_1, layer_2)` rather than the sum.
 
 ## 11. Update State
 

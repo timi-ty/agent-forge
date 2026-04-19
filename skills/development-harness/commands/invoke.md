@@ -239,10 +239,12 @@ If any validation layer fails:
 
 ### On Success
 
-Record specific evidence for each passing layer. Evidence must be concrete:
+Record specific evidence for each passing layer. Every entry must include the **per-layer wall-clock timing** so the parallel-layers benefit (Layer 1 + Layer 2 fan-out) is visible in checkpoint history over time.
 
-- **Good:** `"tests/auth.test.ts passes (5/5 assertions)"`, `"tsc --noEmit exits 0"`, `"pnpm lint exits 0"`
-- **Bad:** `"tests pass"`, `"looks good"`, `"validated"`
+- **Good:** `"pnpm lint exits 0 (2.1s)"`, `"tsc --noEmit exits 0 (4.8s)"`, `"tests/auth.test.ts passes (5/5 assertions, 3.2s)"`, `"pytest tests/test_auth.py passes (12/12, 1.9s)"`
+- **Bad:** `"tests pass"`, `"looks good"`, `"validated"`, `"pnpm lint exits 0"` (missing timing)
+
+The timing is the elapsed wall-clock of the command itself (e.g., the `real` line from `time pnpm lint`, or the trailing "Ran 109 tests in 6.153s" line from `unittest`). When Layer 1 and Layer 2 ran in parallel, the recorded timings let a reader spot that the unit's total validation wall-clock was `max(layer_1, layer_2)` rather than the sum.
 
 ---
 
