@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T07:30:00Z",
+  "last_updated": "2026-04-20T07:50:00Z",
   "execution": {
     "active_phase": "PHASE_010",
-    "active_unit": "unit_041",
-    "last_completed_unit": "unit_040",
-    "next_unit": "unit_041",
-    "session_count": 38,
+    "active_unit": "unit_042",
+    "last_completed_unit": "unit_041",
+    "next_unit": "unit_042",
+    "session_count": 39,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T07:30:00Z",
+    "last_run": "2026-04-20T07:50:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention -v passes 6/6 (2.2s, up from 4 -- 2 new cases for unit_040); python -W error::ResourceWarning confirms clean handle management in the subprocess test; python -m unittest discover skills/development-harness/scripts/tests passes 206/206 (34.7s, up from 204)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_checkpoint_template -v passes 4/4 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 210/210 (33.6s, up from 206 -- 4 new cases for unit_041)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_040 complete. PHASE_009 CLOSED. Concurrent merge serialization proven end-to-end. PHASE_005 unit_023 already gave us 4 TestLockContention cases (two-thread contention, exception cleanup, stale-lock takeover, fresh-lock timeout) -- all still pass. unit_040 adds 2 new cases to close the 'two merge_batch.py invocations' wording in the acceptance: test_two_subprocess_acquirers_serialize_on_disk_lock spawns a Python subprocess that acquires _MergeLock, signals 'HELD' on stdout, sleeps 0.5s, releases; the main process then acquires the same lock in-process and asserts elapsed >= 0.4s, proving OS-level O_EXCL semantics hold across processes (production scenario: two CLI invocations racing from two shells/schedulers). test_lock_path_is_exactly_harness_dot_lock pins the on-disk lock location so a future LOCK_FILENAME rename cannot silently break cross-process serialization. PIPE handles explicitly closed; python -W error::ResourceWarning confirms no 3.12+ warnings leak. PHASE_009 summary: unit_037 (session kill switch, safety_rails.py + 15 tests + hook _stop() sweeps), unit_038 (batch-of-1 no-special-case doc contract + 3 grep-as-test cases), unit_039 (scope-violation always-on policy in phase-contract.md + 3 policy tests), unit_040 (cross-process merge lock + 2 subprocess tests). Suite 183 -> 204 -> 206 across the phase. pr-review-checklist: all units have validation_evidence; no linter/type errors (stdlib-only Python); codebase patterns followed; all tests pass; phase is not deploy-affecting (config.deployment.target = 'none', skill distribution repo); docs updated; checkpoint current. PHASE_009 marked completed in phase-graph.json.",
+    "summary": "unit_041 complete (PHASE_010 started). Extended skills/development-harness/templates/checkpoint-template.md with a new 'Batch (current or last)' second-level heading carrying four placeholders -- {{BATCH_ID_OR_NONE}}, {{FLEET_MODE}}, {{BATCH_UNIT_ROWS_OR_NONE}}, {{BATCH_CONFLICTS_OR_NONE}} -- plus a per-unit markdown table with the six columns that already exist on state.execution.fleet.units (Unit, Phase, Status, Branch, Started, Ended). The section reflects state.execution.fleet directly, so no reshape is needed when an agent or script renders the checkpoint. A guidance paragraph documents the idle-with-no-prior-batch render. Grep confirmed no runtime script programmatically substitutes these placeholders -- the template is seed material for create.md's initial checkpoint, so the additive edit is safe. New test_checkpoint_template.py module with 4 cases pins the heading, each placeholder, each table column, and -- importantly -- that all 7 pre-PHASE_010 placeholders survive the edit (guard against accidental deletion in future template edits). Suite 206 -> 210. PHASE_009 merged as PR #33, squashed into main at 4a02920; new branch feat/phase-010-observability cut and pushed.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Open PHASE_009 PR (feat/phase-009-safety-rails -> main), run the code-review skill, squash-merge per harness-git.md autonomous-merge authorization. THEN continue with PHASE_010 unit_041: extend skills/development-harness/templates/checkpoint-template.md with a Batch section (batch ID, mode, per-unit status and branch, conflicts summary) so live invoke turns render batch state visibly in the checkpoint. PHASE_010 is observability -- three units total (041 checkpoint batch section, 042 logs/ layout for per-batch artifacts, 043 status summarizer).",
-    "timestamp": "2026-04-20T07:30:00Z"
+    "next_action": "Complete unit_042 (PHASE_010): update skills/development-harness/commands/state.md and skills/development-harness/templates/workspace-commands/harness-state.md to render three things -- (1) fleet status from state.execution.fleet (reuse the Batch section shape from unit_041); (2) orphaned worktrees via sync_harness.py --dry-run (already implemented in PHASE_006 timeframe); (3) per-batch timings (dispatch start, merge complete, total wall-clock) -- likely derived from .harness/logs/<batch_id>/ once unit_043 lands, but unit_042 can at least specify the timing format ('Batch <id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns'). Validation: grep both docs + structural presence test in the test module.",
+    "timestamp": "2026-04-20T07:50:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

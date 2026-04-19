@@ -558,16 +558,22 @@
     {
       "id": "PHASE_010",
       "slug": "observability",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_005", "PHASE_007"],
-      "started": null,
+      "started": "2026-04-20T07:45:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_041",
           "description": "Extend skills/development-harness/templates/checkpoint-template.md with a Batch section (batch ID, mode, per-unit status and branch, conflicts summary)",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/checkpoint-template.md: added new 'Batch (current or last)' second-level heading at the bottom of the template (above the trailing `--- Updated` line). Placeholders: {{BATCH_ID_OR_NONE}}, {{FLEET_MODE}}, {{BATCH_UNIT_ROWS_OR_NONE}}, {{BATCH_CONFLICTS_OR_NONE}}. Reflects state.execution.fleet. Guidance paragraph documents the idle-with-no-prior-batch render ('Batch ID: none', 'Mode: idle', empty unit table, 'No conflicts.')",
+            "Per-unit markdown table column set: Unit, Phase, Status, Branch, Started, Ended. These are the fields already present on state.execution.fleet.units (from PHASE_005's dispatch/merge state shape), so the agent/script filling the template doesn't need to reshape the data",
+            "skills/development-harness/scripts/tests/test_checkpoint_template.py: new 90-line test module with 1 class (TestCheckpointTemplateBatchSection) and 4 cases. test_batch_section_heading_present pins the heading. test_batch_section_placeholders_present pins all four new placeholders. test_batch_section_has_unit_table_columns extracts the table-header line and asserts each of the 6 column names is present, so a future edit that shuffles columns trips this test. test_pre_existing_placeholders_still_present pins the 7 pre-PHASE_010 placeholders to guard against accidental deletion during future edits",
+            "Grounding: grep -r checkpoint-template.md skills/ confirms only commands/create.md references the template, and it does so narratively (no placeholder substitution in any runtime script). The template is seed material for a new project's initial checkpoint.md -- this edit cannot break runtime code because there is no runtime code that interprets the placeholders programmatically",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_checkpoint_template.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_checkpoint_template -v passes 4/4 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 210/210 (33.6s, up from 206 -- 4 new cases for unit_041)"
+          ]
         },
         {
           "id": "unit_042",
