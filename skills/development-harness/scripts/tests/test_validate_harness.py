@@ -9,6 +9,8 @@ from pathlib import Path
 # Add parent dir so we can import from scripts if needed
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from harness_utils import SCHEMA_VERSION
+
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 VALIDATE_SCRIPT = SCRIPT_DIR / "validate_harness.py"
 
@@ -30,7 +32,7 @@ def run_validate_harness(root):
 
 def _valid_config():
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "project": {"name": "test", "description": ""},
         "stack": {},
         "deployment": {},
@@ -42,7 +44,7 @@ def _valid_config():
 
 def _valid_state():
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "execution": {},
         "checkpoint": {},
     }
@@ -50,7 +52,7 @@ def _valid_state():
 
 def _valid_manifest():
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "entries": [
             {"path": "PHASES/", "ownership": "harness-owned", "type": "directory", "removable": True},
         ],
@@ -59,7 +61,7 @@ def _valid_manifest():
 
 def _valid_phase_graph():
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "phases": [
             {
                 "id": "PHASE_001",

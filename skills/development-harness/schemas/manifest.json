@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "skill_version": "1.0",
   "_comment": "Paths prefixed with $TOOL_DIR are parameterized. During create, substitute $TOOL_DIR with .cursor (Cursor) or .claude (Claude Code). $RULE_EXT is .mdc (Cursor) or .md (Claude Code). $HOOK_CONFIG ownership must be set to harness-owned for Cursor (.cursor/hooks.json) or managed-block for Claude Code (.claude/settings.local.json) since the latter is a shared file.",
   "entries": [

@@ -1,22 +1,24 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_004 (PHASE_001):** Registered `.harness/worktrees/` and `.harness/logs/` in `skills/development-harness/schemas/manifest.json` (both harness-owned transient directories) and updated the `.gitignore` template description in `commands/create.md`. Also hardened this workspace's own `.harness/.gitignore` with the same entries plus `.parallel-disabled` and `.lock` for the later phases.
+**unit_005 (PHASE_001):** Bumped `SCHEMA_VERSION` in [skills/development-harness/scripts/harness_utils.py](skills/development-harness/scripts/harness_utils.py) from `"1.0"` to `"2.0"`. Updated `check_schema_version` so that both the missing and mismatched cases now emit a user-actionable error including `Re-run /create-development-harness to regenerate harness files at schema v2.0`. Bumped `schema_version` to `"2.0"` in all five skill schema templates under [skills/development-harness/schemas/](skills/development-harness/schemas/). Updated [test_harness_utils.py](skills/development-harness/scripts/tests/test_harness_utils.py) (wrong-version fixture flipped to `"1.0"`, added `test_schema_version_is_v2` and `test_check_schema_version_v1_rejected_with_recreate_pointer`) and refactored [test_validate_harness.py](skills/development-harness/scripts/tests/test_validate_harness.py) fixtures to import `SCHEMA_VERSION` from `harness_utils` instead of hardcoding `"1.0"`.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_005:** Bump `SCHEMA_VERSION` in `skills/development-harness/scripts/harness_utils.py` from `"1.0"` to `"2.0"` and update `check_schema_version` to emit an actionable "re-run `/create-development-harness`" error on mismatch.
+**Complete unit_006:** Extend [skills/development-harness/scripts/validate_harness.py](skills/development-harness/scripts/validate_harness.py) with required-field enforcement (no inference), `depends_on` cycle detection, `touches_paths` path-safety checks (reject `..` and absolute paths), `fleet.mode` enum check, and a version gate that rejects v1 fixtures with the `/create-development-harness` pointer. Add matching tests including a v1 fixture rejection test.
 
 ## Blocked By
 None.
 
 ## Evidence
-- `skills/development-harness/schemas/manifest.json`: two new entries for `worktrees/` and `logs/` with notes.
-- `skills/development-harness/commands/create.md`: `.gitignore` template description now mentions `worktrees/` and `logs/`.
-- `.harness/.gitignore` (this workspace) extended with `worktrees/`, `logs/`, `.parallel-disabled`, `.lock`.
-- `python -m unittest discover skills/development-harness/scripts/tests` → 36/36 tests pass.
+- [skills/development-harness/scripts/harness_utils.py](skills/development-harness/scripts/harness_utils.py): `SCHEMA_VERSION = "2.0"`; `check_schema_version` mismatch and missing-version errors include `/create-development-harness` pointer.
+- All five schemas in [skills/development-harness/schemas/](skills/development-harness/schemas/) carry `"schema_version": "2.0"`.
+- [test_harness_utils.py](skills/development-harness/scripts/tests/test_harness_utils.py) asserts v2 constant, mismatch message wording, and v1 rejection with pointer.
+- [test_validate_harness.py](skills/development-harness/scripts/tests/test_validate_harness.py) fixtures reference `SCHEMA_VERSION` constant (version-proof).
+- `python -m unittest discover skills/development-harness/scripts/tests` → 38/38 tests pass (up from 36 before).
+- `python .harness/scripts/validate_harness.py` still exits 0 on this workspace (frozen runtime copy still at v1 — intentional per dogfood caveat in [.harness/ARCHITECTURE.md](.harness/ARCHITECTURE.md)).
 
 ## Open Questions
 None.
@@ -37,4 +39,4 @@ None.
 - Stop-hook loop does not auto-continue in this Claude Code session (ISSUE_001 workspace fix would take effect in a new session). Manual `/invoke-development-harness` required between units for this session.
 
 ---
-*Updated: 2026-04-19T00:30:00Z*
+*Updated: 2026-04-19T01:00:00Z*

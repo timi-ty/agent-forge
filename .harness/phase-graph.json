@@ -57,8 +57,15 @@
         {
           "id": "unit_005",
           "description": "Bump SCHEMA_VERSION from 1.0 to 2.0 in skills/development-harness/scripts/harness_utils.py; check_schema_version emits actionable re-create error on mismatch",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/harness_utils.py: SCHEMA_VERSION constant is now '2.0'",
+            "check_schema_version mismatch and missing-version errors now include actionable 'Re-run /create-development-harness' pointer",
+            "All five skill schema templates (config, issue, manifest, phase-graph, state) bumped to schema_version '2.0'",
+            "test_harness_utils.py extended with test_schema_version_is_v2 and test_check_schema_version_v1_rejected_with_recreate_pointer; wrong-version fixture updated to '1.0'",
+            "test_validate_harness.py fixtures updated to reference the SCHEMA_VERSION constant (no more hardcoded '1.0')",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (38/38 pass)"
+          ]
         },
         {
           "id": "unit_006",

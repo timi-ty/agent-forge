@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "skill_version": "1.0",
   "_comment": "Example state.json illustrating the v2 execution.fleet block. fleet.mode is 'idle' when no batch is in flight; 'dispatched' while sub-agents run in their worktrees; 'merging' during serial fan-in. Per-unit fleet entries carry worktree path, branch, status, timestamps, agent summary path, and conflict metadata (null unless a conflict was recorded).",
   "created": "2025-03-11T10:00:00Z",

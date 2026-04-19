@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "skill_version": "1.0",
   "_comment": "Example config.json illustrating the v2 execution_mode object. execution_mode is now a nested block with four sub-sections: location (runtime mode), parallelism (opt-in batch execution policy), agent_delegation (helper-agent preferences), versioning (back-compat stance on schema bumps). Defaults are chosen to be conservative: parallelism off, versioning breaks on schema bump.",
   "project": {

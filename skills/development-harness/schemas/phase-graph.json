@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "skill_version": "1.0",
   "_comment": "Example phase-graph illustrating the v2 unit fields. Every unit declares depends_on (required). touches_paths is required when parallel_safe is true and lists repo-relative globs the unit may modify. parallel_safe=false opts the unit out of parallel batches; touches_paths is optional in that case.",
   "phases": [
