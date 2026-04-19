@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T07:50:00Z",
+  "last_updated": "2026-04-20T08:15:00Z",
   "execution": {
     "active_phase": "PHASE_010",
-    "active_unit": "unit_042",
-    "last_completed_unit": "unit_041",
-    "next_unit": "unit_042",
-    "session_count": 39,
+    "active_unit": "unit_043",
+    "last_completed_unit": "unit_042",
+    "next_unit": "unit_043",
+    "session_count": 40,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T07:50:00Z",
+    "last_run": "2026-04-20T08:15:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_checkpoint_template -v passes 4/4 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 210/210 (33.6s, up from 206 -- 4 new cases for unit_041)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_harness_state_docs -v passes 5/5 (0.002s); python -m unittest discover skills/development-harness/scripts/tests passes 215/215 (33.5s, up from 210 -- 5 new cases for unit_042)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_041 complete (PHASE_010 started). Extended skills/development-harness/templates/checkpoint-template.md with a new 'Batch (current or last)' second-level heading carrying four placeholders -- {{BATCH_ID_OR_NONE}}, {{FLEET_MODE}}, {{BATCH_UNIT_ROWS_OR_NONE}}, {{BATCH_CONFLICTS_OR_NONE}} -- plus a per-unit markdown table with the six columns that already exist on state.execution.fleet.units (Unit, Phase, Status, Branch, Started, Ended). The section reflects state.execution.fleet directly, so no reshape is needed when an agent or script renders the checkpoint. A guidance paragraph documents the idle-with-no-prior-batch render. Grep confirmed no runtime script programmatically substitutes these placeholders -- the template is seed material for create.md's initial checkpoint, so the additive edit is safe. New test_checkpoint_template.py module with 4 cases pins the heading, each placeholder, each table column, and -- importantly -- that all 7 pre-PHASE_010 placeholders survive the edit (guard against accidental deletion in future template edits). Suite 206 -> 210. PHASE_009 merged as PR #33, squashed into main at 4a02920; new branch feat/phase-010-observability cut and pushed.",
+    "summary": "unit_042 complete. Both /harness-state docs (skills/development-harness/commands/state.md + templates/workspace-commands/harness-state.md) updated to render three new sections in the output report: Fleet & Batch (from state.execution.fleet, mirroring checkpoint-template.md's Batch columns so consumers cross-reference), Orphans (from sync_harness.py -- the three divergence categories orphan_worktree, stale_fleet_entry, orphan_branch, with explicit 'No orphans detected.' empty render), and Batch Timings (from .harness/logs/<batch_id>/ with the exact one-line format 'Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns', with explicit 'Batch timings: unavailable' fallback and explicit ban on git-timestamp inference). New Honesty Rules pin the never-omit behavior for Orphans + Batch Timings -- absence is a reported fact. New test_harness_state_docs.py module with 5 cases locks the contract: Fleet & Batch heading + fleet.* references; Orphans heading + sync_harness.py mention + all three divergence categories + empty-case render; Batch Timings heading + exact format string + fallback render; .harness/logs/ directory reference; git-timestamp inference ban. Suite 210 -> 215.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_042 (PHASE_010): update skills/development-harness/commands/state.md and skills/development-harness/templates/workspace-commands/harness-state.md to render three things -- (1) fleet status from state.execution.fleet (reuse the Batch section shape from unit_041); (2) orphaned worktrees via sync_harness.py --dry-run (already implemented in PHASE_006 timeframe); (3) per-batch timings (dispatch start, merge complete, total wall-clock) -- likely derived from .harness/logs/<batch_id>/ once unit_043 lands, but unit_042 can at least specify the timing format ('Batch <id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns'). Validation: grep both docs + structural presence test in the test module.",
-    "timestamp": "2026-04-20T07:50:00Z"
+    "next_action": "Complete unit_043 (PHASE_010): implement log-directory creation logic in dispatch_batch.py (creates .harness/logs/<batch_id>/batch.json at dispatch time with the full batch plan + overlap analysis) and merge_batch.py (writes merge.log with the merge output, validation.log with post-merge validation output). Sub-agent <unit_id>.md summaries are written by sub-agents per the harness-unit contract -- no orchestrator code needed there, but confirm the path. Logs must be harness-owned and gitignored -- add .harness/logs/ to .gitignore if not present. Wrap all log writes in try/except so merge is not blocked by log-dir issues. Validation: new test_batch_logs.py module asserting dispatch+merge produce the expected artifacts in a temp-dir fixture.",
+    "timestamp": "2026-04-20T08:15:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

@@ -29,6 +29,44 @@ Read all of these files:
 - `.harness/ARCHITECTURE.md`
 - All files in `PHASES/` directory
 
+### 2b. Read Fleet & Batch State
+
+Parse `state.execution.fleet` from `state.json`. This is the authoritative per-turn batch state. Extract:
+
+- `fleet.mode` — one of `idle`, `dispatched`, `merging`.
+- `fleet.batch_id` — the current (or most recent) batch identifier.
+- `fleet.units[]` — per-unit records with `unit_id`, `phase_id`, `status`, `branch`, `started_at`, `ended_at`, `conflict`.
+
+Then run the orphan-detector:
+
+```
+$PY .harness/scripts/sync_harness.py
+```
+
+`sync_harness.py` is read-only. Its `divergences[]` output surfaces three conditions:
+
+- `orphan_worktree` — a directory under `.harness/worktrees/<batch>/<unit>/` exists on disk but has no matching `fleet.units` entry.
+- `stale_fleet_entry` — a `fleet.units` entry references a `worktree_path` that no longer exists on disk.
+- `orphan_branch` — a local git branch matching `harness/batch_*/*` exists without a corresponding on-disk worktree + fleet entry.
+
+These indicate a crashed mid-batch turn. Recovery runs through `/sync-development-harness` + `teardown_batch.py`.
+
+### 2c. Read Per-Batch Timings
+
+If `.harness/logs/<batch_id>/` exists for the current or most recent `fleet.batch_id`, extract timings from the artifacts (introduced in unit_043):
+
+- Dispatch start = earliest `started_at` among `fleet.units` (or `batch.json` timestamp).
+- Merge complete = `ended_at` on the last-merged unit (or `merge.log` mtime).
+- Total wall-clock = merge_complete − dispatch_start.
+
+Render each batch timing as one line using this **exact** format so downstream tooling (and later `/sync`) can parse the report:
+
+```
+Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns
+```
+
+If no `.harness/logs/` data exists yet (pre-unit_043 installs, or no parallel batch has run), render `Batch timings: unavailable` and note that this is expected on fresh installs.
+
 ### 3. Quick Checks (Optional)
 
 Run these if the project supports them. Skip silently if not configured.
@@ -72,6 +110,17 @@ Use this exact format:
 ## Harness State
 (active phase, progress, issue counts, last sync time)
 
+## Fleet & Batch
+(fleet.mode; fleet.batch_id; per-unit table with unit_id, phase_id, status, branch, started_at, ended_at; conflicts summary. Mirrors the Batch section of checkpoint-template.md — reuse the same column set so consumers can cross-reference.)
+
+## Orphans
+(divergences[] from sync_harness.py grouped by type: orphan_worktree, stale_fleet_entry, orphan_branch. If empty, render "No orphans detected." Never omit this section — absence is itself a reported fact.)
+
+## Batch Timings
+(one line per batch in `.harness/logs/`, most recent first, formatted exactly as:
+`Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns`.
+If no timings are available, render "Batch timings: unavailable".)
+
 ## Alignment
 (each metric with how it was derived)
 
@@ -98,3 +147,5 @@ Use this exact format:
 - If percentages are reported, show the numerator and denominator (e.g., "3 / 7 units completed (43%)").
 - If a quick check was skipped, say so. Do not fabricate results.
 - If `state.json` or `phase-graph.json` is missing or corrupt, report the structural failure rather than guessing state.
+- The **Orphans** section is never omitted. "No orphans detected." is a fact and must be rendered when `sync_harness.py` returns an empty `divergences[]`.
+- The **Batch Timings** section is never omitted. If no timings exist, render `Batch timings: unavailable`. Do not infer timings from git timestamps — they are authoritative only when sourced from `.harness/logs/`.
