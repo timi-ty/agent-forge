@@ -55,22 +55,54 @@ $PY .harness/scripts/select_next_unit.py
 
 - If `found: false` and `all_complete: true` → report completion, stop
 - If `found: false` and `all_complete: false` → report blocked, stop
-- If `phase_complete: true` → run phase completion review (step 12) before proceeding
+- If `phase_complete: true` → run phase completion review (step 13) before proceeding
 - If `found: true` → continue with the selected unit
 
 ## 6. Read Phase Context
 
 Read `PHASES/PHASE_XXX_<slug>.md` for the selected unit's phase. Note the unit's acceptance criteria and validation method from the Units of Work table.
 
-## 7. Plan Internally
+## 7. Exploration (conditional)
+
+If the selected unit's description implies modifying an **existing** system, dispatch an `Explore` sub-agent **before** planning so its output feeds the plan without filling the main context with file reads.
+
+Trigger keywords (run exploration first): `refactor`, `extend`, `fix`, `migrate`, `update`.
+
+Skip keywords (from-scratch units; reading 1–2 sibling files during planning is sufficient): `add`, `new`, `create`, `insert`, `scaffold`.
+
+Dispatch in the same message you plan from. Thoroughness defaults to `medium`; bump to `very thorough` only for cross-cutting concerns (auth, config loading, hook integration, schema migration):
+
+```
+Agent(
+  description: "<5-word task summary>",
+  subagent_type: "Explore",
+  prompt: """
+    Explore the <area> touched by unit <unit_id>.
+
+    Unit goal: <one-line paraphrase of unit_description>.
+
+    Report: (1) every file that currently implements the behavior,
+    (2) any nearby tests that will need to change,
+    (3) conventions the new code must match (naming, error handling, test harness),
+    (4) risks or prior-art gotchas that the plan needs to account for.
+    Under 400 words.
+  """
+)
+```
+
+Absorb the report into section 8's plan — specifically the files-to-modify list and dependencies. Do not re-read files the Explore agent already reported on. Exploration is a tool for the main agent, not a delegation of the implementation; the main agent still does the editing, testing, and commit.
+
+## 8. Plan Internally
 
 Determine files to create/modify, tests to write, and validation to run. Do not switch to Plan Mode. Do not ask the user unless requirements are genuinely ambiguous.
 
-## 8. Implement
+## 9. Implement
 
 Write production code and tests. Match existing codebase patterns.
 
-## 9. Validate
+**Multi-file parallel edits.** When the plan from section 8 touches **≥4 independent files** whose edits do not depend on each other, fan the work out in a **single assistant message** with **2–3 `Agent(subagent_type: "general-purpose")` tool calls**. More than 3 concurrent agents creates coordination overhead; fewer than 2 means you should edit in the main context. Group by independence, not file count — any edit that reads the output of another (e.g., a rename with cascading callsite updates) belongs in one place. Below the ≥4 threshold, prefer direct `Edit` / `Write` calls in the main context.
+
+## 10. Validate
 
 Run applicable validation layers:
 
@@ -87,7 +119,7 @@ On failure:
 On success:
 - Record concrete evidence (e.g., `"tests/auth.test.ts passes (5/5)"`)
 
-## 10. Update State
+## 11. Update State
 
 Update all three files:
 
@@ -102,7 +134,7 @@ Update all three files:
 **checkpoint.md:**
 - What completed, evidence, what's next, any blockers
 
-## 11. Commit
+## 12. Commit
 
 Check for `commit-agent-changes` skill:
 ```bash
@@ -114,7 +146,9 @@ If found, delegate to the skill. Otherwise, commit directly following `.harness/
 - Write conventional commit message
 - Push if on a feature branch with a remote
 
-## 12. Phase Completion Review
+At **phase completion**, this may already have been dispatched in parallel with `code-review` per section 13's parallel-dispatch paragraph; in that case skip the separate delegation above.
+
+## 13. Phase Completion Review
 
 When all units in a phase are done:
 
@@ -125,6 +159,8 @@ When all units in a phase are done:
    - If verifier fails → add blocker, stop
 3. Mark phase `"completed"` in `phase-graph.json` only after review passes
 
-## 13. Turn Ends
+**Parallel dispatch.** When **both** `code-review` and `commit-agent-changes` are installed, dispatch them concurrently at phase completion in a **single assistant message** containing **two `Agent(subagent_type: "general-purpose")` tool calls** — one running `code-review` read-only on the current branch diff, the other running `commit-agent-changes` to commit pending changes, push, and open or update the phase PR. They cannot conflict (one reads, one writes disjoint state). Wait for both reports, then resolve any High/Medium code-review findings in the main context and re-push. If only one skill is installed, fall back to serial — no parallel dispatch.
+
+## 14. Turn Ends
 
 The stop hook (`continue-loop.py`) fires automatically. It checks for the `.harness/.invoke-active` flag first -- if absent, the hook is a no-op. If present, it checks loop budget, blockers, open questions, and runs `select_next_unit.py` to determine whether to continue. When the hook decides to stop, it deletes the flag. Do not manually loop.

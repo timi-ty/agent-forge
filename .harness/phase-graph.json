@@ -140,40 +140,71 @@
     {
       "id": "PHASE_003",
       "slug": "intra-unit-helper-agent-delegation",
-      "status": "pending",
+      "status": "completed",
       "depends_on": [],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-19T21:45:00Z",
+      "completed": "2026-04-19T23:20:00Z",
       "units": [
         {
           "id": "unit_011",
           "description": "Insert Exploration step in skills/development-harness/commands/invoke.md; dispatch Agent(Explore) for refactor/extend/fix/migrate/update keywords before implementation",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: inserted new 'Step 6: Exploration (conditional)' between 'Step 5: Read Phase Context' and the former 'Step 6: Plan the Unit' (now Step 7). The new step lists the five trigger keywords (refactor / extend / fix / migrate / update), a skip rule for from-scratch units (add / new / create / insert / scaffold), a concrete Agent(subagent_type='Explore', thoroughness='medium') call with a reusable prompt template, and guidance on absorbing the agent's report into the Step 7 plan",
+            "Steps 7-13 renumbered (old Step 6 Plan -> Step 7, old Step 7 Implement -> Step 8, ..., old Step 12 Turn Ends -> Step 13); subsection labels 9a/9b/9c -> 10a/10b/10c",
+            "Three internal cross-references updated to match the new numbering: 'phase completion review (Step 9)' -> '(Step 10)' in Step 4's output interpretation; 'see Step 8' -> 'see Step 9' in Step 7 Plan; 'Step 11 (commit/PR workflow)' -> 'Step 12' and 'Step 9 (phase completion review)' -> 'Step 10' in the Skills Integration block",
+            "Grep verification: 'Step 6: Exploration' matches at line 94; the five trigger keywords ('refactor', 'extend', 'fix', 'migrate', 'update') appear on consecutive bullet lines 102-106; 'Agent(' with subagent_type='Explore' appears at line 115",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_012",
           "description": "Mirror Exploration step in skills/development-harness/templates/workspace-commands/invoke-development-harness.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: inserted new '## 7. Exploration (conditional)' between the existing '## 6. Read Phase Context' and the former '## 7. Plan Internally' (now '## 8. Plan Internally'). The new section mirrors the command-doc (skills/development-harness/commands/invoke.md Step 6) content in the compact template style: same five trigger keywords (refactor/extend/fix/migrate/update), same five skip keywords (add/new/create/insert/scaffold), same Agent(subagent_type='Explore', thoroughness='medium') call template, same guidance on absorbing the report into the plan",
+            "Sections 8-14 renumbered: old 7 Plan -> 8, 8 Implement -> 9, 9 Validate -> 10, 10 Update State -> 11, 11 Commit -> 12, 12 Phase Completion Review -> 13, 13 Turn Ends -> 14",
+            "Two internal cross-references updated to the new numbering: 'phase completion review (step 12)' -> '(step 13)' on line 58; new section 7 prose references 'Step 8's plan' to match the renumbered Plan Internally section",
+            "Grep verification: 'Exploration (conditional)' matches at line 65; the five trigger keywords appear inline on line 69; 'Agent(' appears at line 76; every '## N.' heading appears exactly once in order 0 through 14",
+            "Cross-doc consistency check: command doc and template both carry identical trigger keywords, skip keywords, Agent call shape, and 'main agent still does the editing' framing. Template is tighter (compact-section style) but semantically identical",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_013",
           "description": "Add multi-file parallel-edit guidance (fan out to 2-3 Agent calls in one message when >=4 independent files) to both invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added '### Multi-file parallel edits' sub-section inside Step 8 (Implement the Unit). States the >=4-independent-files threshold, the single-assistant-message / 2-3 Agent(subagent_type='general-purpose') fan-out shape, why bounding at 3 (coordination overhead above; round-trip cost isn't worth it below), and groups-by-independence vs file-count. Two worked examples: parallel-safe (mirrored template docs) and NOT-parallel-safe (symbol rename with cascading callsites)",
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a **bold-label** 'Multi-file parallel edits.' paragraph inside section 9 (Implement). Semantically identical to the command-doc version (same threshold, same shape, same grouping rule, same 'below threshold: direct Edit/Write' fallback) but compressed to the template's single-paragraph style",
+            "Grep verification: '>=4 independent files' appears in both files; 'single assistant message' appears in both files; '2-3 `Agent' appears in both files; `subagent_type: \"general-purpose\"` appears in both files",
+            "Cross-doc consistency: both docs cite the same numeric threshold, the same fan-out shape (single message, 2-3 calls, general-purpose subagent), and the same 'group by independence' rule. Command doc carries worked examples; template stays minimal",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_014",
           "description": "Add parallel phase-review dispatch guidance (run code-review skill concurrently with commit-agent-changes) in both invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added 'Parallel dispatch with commit-agent-changes' sub-section at the top of Step 10 (Phase Completion Review). Rule states: when both code-review and commit-agent-changes are installed, dispatch them in a single assistant message containing two Agent(subagent_type='general-purpose') tool calls. Carries a concrete code sample of the two parallel Agent calls, explains why they cannot conflict (one reads, one writes disjoint state), and documents the single-skill-fallback path (serial, no parallel dispatch)",
+            "skills/development-harness/commands/invoke.md Step 12 (Commit): added a call-out pointer referencing Step 10's parallel-dispatch sub-section so the agent skips the separate delegation when phase-completion already fan-out the commit work",
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a 'Parallel dispatch.' bold-label paragraph to section 13 (Phase Completion Review) mirroring the command-doc rule -- same single-assistant-message + two-Agent-call shape, same disjoint-state justification, same single-skill-fallback fallback; section 12 (Commit) gained the same call-out pointer",
+            "Grep verification: 'Parallel dispatch' heading + rule appears in both files; both docs cite 'single assistant message' with 'two `Agent(subagent_type: \"general-purpose\")` tool calls' at phase completion; command doc line 224, template line 152",
+            "Cross-doc consistency: both docs state the same trigger (both skills installed), the same shape (one message, two Agent calls), the same disjoint-state justification, and the same serial fallback when only one skill is installed",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_015",
           "description": "Update skills/development-harness/templates/claude-code/rules/harness-core.md and the Cursor mirror with delegate-vs-inline guidance",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/rules/harness-core.md: added a new '## Delegation (when to dispatch sub-agents)' section below 'Quality'. Consolidates the three dispatch shapes introduced by PHASE_003: Agent(Explore) before planning when unit description carries refactor/extend/fix/migrate/update; fan-out of 2-3 Agent(general-purpose) calls when >=4 independent files; parallel code-review + commit-agent-changes at phase completion. Each bullet names the Step in commands/invoke.md where the concrete prompt template lives. Section opens with 'Default to inline' and closes with 'Stay inline' fallbacks so the main agent's default remains the direct Edit/Write path",
+            "skills/development-harness/templates/rules/harness-core.mdc (Cursor mirror): added the same '## Delegation' section. Block is byte-identical to the Claude Code version; `diff` confirms the only differences between the two files remain the pre-existing frontmatter delimiter (paths: vs globs:) and the rules-directory path (.claude/rules/ vs .cursor/rules/)",
+            "Grep verification: '## Delegation (when to dispatch sub-agents)' matches exactly once in each of the two files",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         }
       ]
     },
@@ -435,6 +466,21 @@
           "status": "pending",
           "validation_evidence": [],
           "issue_id": "ISSUE_001"
+        },
+        {
+          "id": "unit_bugfix_002",
+          "description": "ISSUE_002 fix: retire the Stop-hook-as-continuation-driver for Claude Code (Cursor hook stays unchanged). (a) Add new doc skills/development-harness/references/claude-code-continuation.md explaining why Cursor's followup_message protocol cannot port to Claude Code's one-shot stop_hook_active guard. (b) Rewrite skills/development-harness/templates/claude-code/hooks/continue-loop.py to a precondition-only shape: run the authority chain (flag, budget, blockers, open_questions, selector-vs-checkpoint agreement), print an advisory to stdout describing next_unit or the reason to stop, always exit 0; do not attempt exit-2 block-continue. (c) Add 'Claude Code: run under /loop' sections to skills/development-harness/commands/invoke.md and skills/development-harness/templates/workspace-commands/invoke-development-harness.md pointing Claude Code users at '/loop /invoke-development-harness' as the autonomous-run primitive; document that direct /invoke-development-harness runs exactly one unit per turn on Claude Code by protocol. (d) Update skills/development-harness/commands/create.md Phase 5 (Hook configuration) so Claude Code installs wire the hook as a precondition checker (not a continue-driver) and the generated .claude/settings.local.json reflects the new role. After this lands, PHASE_008 (Stop-hook fleet-awareness, units 034-036) needs to be re-scoped so its fleet-mode checks layer onto the precondition-checker shape, not the retired block-continue shape.",
+          "acceptance_criteria": [
+            "references/claude-code-continuation.md exists and names the one-shot stop_hook_active guard and Cursor's followup_message as the structural mismatch",
+            "templates/claude-code/hooks/continue-loop.py contains no sys.exit(2) and no {'decision': 'block'} emission; authority chain remains but output is advisory-only",
+            "commands/invoke.md and workspace-commands/invoke-development-harness.md both carry a 'Claude Code: run under /loop' section naming '/loop /invoke-development-harness' as the autonomous-run entry point",
+            "commands/create.md Phase 5 describes the Claude Code hook as a precondition checker and does not describe block-continue semantics for Claude Code",
+            "Cursor hook templates/hooks/continue-loop.py is unchanged (diff: 0 lines)"
+          ],
+          "validation_method": "docs-linter tests asserting each acceptance bullet; hook exit-code test for the rewritten Claude Code template (precondition-only shape)",
+          "status": "pending",
+          "validation_evidence": [],
+          "issue_id": "ISSUE_002"
         },
         {
           "id": "unit_045",

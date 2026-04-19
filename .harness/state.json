@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T21:30:00Z",
+  "last_updated": "2026-04-19T23:20:00Z",
   "execution": {
-    "active_phase": "PHASE_003",
+    "active_phase": "PHASE_004",
     "active_unit": null,
-    "last_completed_unit": "unit_010",
-    "next_unit": "unit_011",
-    "session_count": 10,
+    "last_completed_unit": "unit_015",
+    "next_unit": "unit_016",
+    "session_count": 15,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-19T21:30:00Z",
+    "last_run": "2026-04-19T23:20:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109)"
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only phase, test suite unchanged end-to-end"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -22,8 +22,8 @@
     "evidence": "Not deploy-affecting; skill distribution repo."
   },
   "issues": {
-    "total": 1,
-    "open": 1,
+    "total": 2,
+    "open": 2,
     "resolved": 0
   },
   "drift": {
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_002 complete. All four units (unit_007 selector rewrite, unit_008 topology coverage, unit_009 compute_parallel_batch, unit_010 exclusion-reason tests) landed; code-review skill ran on PR #26 and cleared with two Low nits (unused `import re`, unused `root` parameter) both fixed on the same branch. Test suite 65 -> 109 over the phase. PHASE_003 (unit_011: insert Exploration step in invoke.md) is the next head.",
+    "summary": "PHASE_003 complete. All five units landed: unit_011 (Exploration step in commands/invoke.md), unit_012 (mirror in workspace-commands template), unit_013 (multi-file parallel-edit guidance in both docs), unit_014 (parallel code-review + commit-agent-changes dispatch guidance in both docs), unit_015 (Delegation block in both harness-core rule files consolidating the three dispatch shapes). Phase is pure docs; 109/109 tests unchanged across the phase. Invoke-command doc grew a full Step 6 Exploration section and sub-sections under Step 10/Step 12 for parallel dispatch; the rules files now carry a central Delegation section that consolidates the decision rule with pointers back to the command-doc Steps.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Merge PR #26 (autonomous squash-merge per harness-git.md), then start PHASE_003 unit_011 on a fresh branch.",
-    "timestamp": "2026-04-19T21:30:00Z"
+    "next_action": "Run PHASE_003 phase completion review (pr-review-checklist + parallel code-review + commit-agent-changes dispatch), open PR, autonomous squash-merge per harness-git.md, then advance to unit_016 in PHASE_004 (parallel-validation-layers: rewrite validation step in invoke.md for concurrent Layer 1/Layer 2 Bash calls).",
+    "timestamp": "2026-04-19T23:20:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-002-frontier-selector",
+    "current_branch": "feat/phase-003-intra-unit-delegation",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
