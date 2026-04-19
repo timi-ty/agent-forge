@@ -41,25 +41,119 @@ On success, every unit with ``status="merged"`` has its worktree removed
 ``fleet.mode`` ends at ``"idle"``; units with ``status="running"`` (deferred
 by ``serialize_conflicted``) keep their worktree and branch.
 
+The whole flow is wrapped in an ``.harness/.lock`` ``O_EXCL`` file mutex
+so two concurrent invokers cannot interleave merges. A second caller
+blocks until the first releases; a lock file older than
+``lock_stale_after`` seconds (default 600) is treated as abandoned and
+taken over.
+
 Uses only Python 3 stdlib. Imports from ``harness_utils``.
 """
 import argparse
 import fnmatch
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from harness_utils import find_harness_root, now_iso, read_json, write_json
 
 
 HARNESS_DIR = ".harness"
+LOCK_FILENAME = ".lock"
 
 VALID_STRATEGIES = ("abort_batch", "serialize_conflicted")
+
+DEFAULT_LOCK_TIMEOUT = 300.0        # wait up to 5 min for the lock
+DEFAULT_LOCK_STALE_AFTER = 600.0    # a lock mtime older than 10 min is stale
+DEFAULT_LOCK_POLL_INTERVAL = 0.1
 
 
 class MergeError(RuntimeError):
     """Raised when merge_batch encounters a non-recoverable failure."""
+
+
+class _MergeLock:
+    """File-based mutex backed by ``os.O_EXCL`` on ``<root>/.harness/.lock``.
+
+    The first acquirer wins immediately; subsequent acquirers **block**,
+    polling on ``poll_interval`` until either the file is removed by the
+    holder (normal release) or the file's mtime exceeds
+    ``stale_after_seconds`` (take-over after a crashed holder). If
+    ``timeout`` elapses without acquisition, ``MergeError`` is raised.
+
+    The lock file's body is ``"<pid> <iso_ts>\\n"`` for human inspection
+    and for stale-detection debugging.
+    """
+
+    def __init__(
+        self,
+        root,
+        *,
+        timeout=DEFAULT_LOCK_TIMEOUT,
+        stale_after_seconds=DEFAULT_LOCK_STALE_AFTER,
+        poll_interval=DEFAULT_LOCK_POLL_INTERVAL,
+    ):
+        self.path = Path(root) / HARNESS_DIR / LOCK_FILENAME
+        self.timeout = float(timeout)
+        self.stale_after_seconds = float(stale_after_seconds)
+        self.poll_interval = float(poll_interval)
+        self._fd = None
+
+    def acquire(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        start = time.monotonic()
+        body = f"{os.getpid()} {now_iso()}\n".encode("utf-8")
+        while True:
+            try:
+                self._fd = os.open(
+                    str(self.path),
+                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                )
+                os.write(self._fd, body)
+                return
+            except FileExistsError:
+                if self._is_stale():
+                    try:
+                        os.unlink(self.path)
+                    except OSError:
+                        pass
+                    continue
+                if time.monotonic() - start >= self.timeout:
+                    raise MergeError(
+                        f"timed out waiting for merge lock at {self.path} "
+                        f"(timeout={self.timeout}s, stale_after={self.stale_after_seconds}s)"
+                    )
+                time.sleep(self.poll_interval)
+
+    def release(self):
+        if self._fd is not None:
+            try:
+                os.close(self._fd)
+            except OSError:
+                pass
+            self._fd = None
+        try:
+            os.unlink(self.path)
+        except OSError:
+            pass
+
+    def _is_stale(self):
+        try:
+            age = time.time() - self.path.stat().st_mtime
+        except OSError:
+            return False
+        return age >= self.stale_after_seconds
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+        return False
 
 
 def _run_git(args, root, check=True):
@@ -186,8 +280,16 @@ def merge_batch(
     conflict_strategy="abort_batch",
     run_post_merge_validation=None,
     now=None,
+    lock_timeout=DEFAULT_LOCK_TIMEOUT,
+    lock_stale_after=DEFAULT_LOCK_STALE_AFTER,
+    lock_poll_interval=DEFAULT_LOCK_POLL_INTERVAL,
 ):
     """Serially fan-in the batch recorded in ``state.execution.fleet``.
+
+    Wraps the full flow in a ``.harness/.lock`` ``O_EXCL`` mutex so two
+    concurrent invokers cannot interleave merges. Blocks on acquisition
+    (polling every ``lock_poll_interval`` seconds up to ``lock_timeout``)
+    or takes over a lock whose file mtime exceeds ``lock_stale_after``.
 
     Args:
       state: state.json dict. Mutated in place; the caller persists.
@@ -197,6 +299,11 @@ def merge_batch(
         ``(root, merged_unit_ids) -> (ok_bool, evidence_str)``. Defaults to
         a no-op that always returns True.
       now: optional ISO-8601 timestamp for deterministic tests.
+      lock_timeout: seconds to wait for ``.harness/.lock`` before raising
+        ``MergeError``. Default: 300.
+      lock_stale_after: seconds after which an existing lock file is
+        treated as abandoned and forcibly taken over. Default: 600.
+      lock_poll_interval: seconds between acquisition retries. Default: 0.1.
 
     Returns:
       ``{"batch_id", "outcome", "merged", "conflicted", "skipped",
@@ -211,6 +318,31 @@ def merge_batch(
             f"unknown conflict_strategy: {conflict_strategy!r} "
             f"(expected one of {VALID_STRATEGIES})"
         )
+
+    with _MergeLock(
+        root,
+        timeout=lock_timeout,
+        stale_after_seconds=lock_stale_after,
+        poll_interval=lock_poll_interval,
+    ):
+        return _merge_batch_locked(
+            state,
+            root,
+            conflict_strategy=conflict_strategy,
+            run_post_merge_validation=run_post_merge_validation,
+            now=now,
+        )
+
+
+def _merge_batch_locked(
+    state,
+    root,
+    *,
+    conflict_strategy,
+    run_post_merge_validation,
+    now,
+):
+    """Internal core: runs inside the held merge lock. See ``merge_batch``."""
 
     execution = state.setdefault("execution", {})
     fleet = execution.setdefault("fleet", {})
@@ -360,6 +492,24 @@ def main():
         default="abort_batch",
         help="How to handle merge conflicts (default: abort_batch).",
     )
+    parser.add_argument(
+        "--lock-timeout",
+        type=float,
+        default=DEFAULT_LOCK_TIMEOUT,
+        help=(
+            "Seconds to wait for .harness/.lock before aborting. Default: "
+            f"{DEFAULT_LOCK_TIMEOUT}."
+        ),
+    )
+    parser.add_argument(
+        "--lock-stale-after",
+        type=float,
+        default=DEFAULT_LOCK_STALE_AFTER,
+        help=(
+            "Seconds after which an existing lock file is treated as "
+            f"abandoned and forcibly taken over. Default: {DEFAULT_LOCK_STALE_AFTER}."
+        ),
+    )
     args = parser.parse_args()
 
     root = args.root or find_harness_root()
@@ -378,6 +528,8 @@ def main():
             state,
             root=Path(root),
             conflict_strategy=args.conflict_strategy,
+            lock_timeout=args.lock_timeout,
+            lock_stale_after=args.lock_stale_after,
         )
     except MergeError as exc:
         print(f"Error: {exc}", file=sys.stderr)

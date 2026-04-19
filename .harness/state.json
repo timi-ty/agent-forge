@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T01:50:00Z",
+  "last_updated": "2026-04-20T02:10:00Z",
   "execution": {
     "active_phase": "PHASE_005",
-    "active_unit": "unit_023",
-    "last_completed_unit": "unit_022",
-    "next_unit": "unit_023",
-    "session_count": 22,
+    "active_unit": "unit_024",
+    "last_completed_unit": "unit_023",
+    "next_unit": "unit_024",
+    "session_count": 23,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T01:50:00Z",
+    "last_run": "2026-04-20T02:10:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on both new files exits 0 (0.14s); python -m unittest skills.development-harness.scripts.tests.test_scope_violation passes 16/16 (4.0s); python -m unittest discover skills/development-harness/scripts/tests passes 160/160 up from 144 (27.8s)"
+    "evidence": "python -m py_compile on merge_batch.py exits 0 (0.14s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention passes 4/4 (1.6s); python -m unittest discover skills/development-harness/scripts/tests passes 164/164 up from 160 (34.5s)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_022 complete. Scope-violation detector integrated into merge_batch.py as three new helpers -- _is_within_scope (fnmatch-based, recursive-glob-aware), _scope_violations (git merge-base + git diff --name-only, returns files matching no declared glob), _read_worktree_touches_paths (reads from WORKTREE_UNIT.json seeded by dispatch_batch). Per-unit loop now runs the scope check BEFORE _merge_unit; violators get status='failed', conflict={paths, category:'scope_violation'}, NO merge attempted, HEAD unchanged, branch preserved for inspection. Scope failures are always hard rejects (don't interact with conflict_strategy). Well-scoped peers still merge. 16 new tests (4 classes) cover helper semantics + three end-to-end rejection/partial-success/allow-through cases. Existing merge-conflict dicts now also carry category='merge_conflict' (strategy_applied preserved so unit_020 tests stay green). Test suite 144 -> 160.",
+    "summary": "unit_023 complete. .harness/.lock O_EXCL mutex now wraps merge_batch(). New _MergeLock context manager in merge_batch.py: O_CREAT|O_EXCL|O_WRONLY on <root>/.harness/.lock, polls every 0.1s up to a 300s timeout, takes over after 600s staleness (mtime-based), writes '<pid> <iso_ts>' body for inspection. Releases on both normal and exception exit paths. merge_batch()'s full flow is now `with _MergeLock(...): _merge_batch_locked(...)`. CLI gained --lock-timeout and --lock-stale-after. 4 new tests: blocking contention (threaded, event-barriered for determinism), exception-path cleanup, stale-lock take-over, fresh-lock timeout raising MergeError with preserved pre-existing lock file. Lock wrapper is transparent to existing tests (fresh tempdirs, no cross-test contention). Test suite 160 -> 164.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_023 (PHASE_005): .harness/.lock file-based mutex around merge_batch.py using O_EXCL. Wrap merge_batch() invocations with acquisition at entry and release at exit (normal + exception paths). Contention case: second concurrent invocation blocks until first releases. Also document stale-lock detection (e.g., PID file contents; fallback on very old mtime).",
-    "timestamp": "2026-04-20T01:50:00Z"
+    "next_action": "Complete unit_024 (PHASE_005): extend skills/development-harness/scripts/sync_harness.py to detect orphaned worktrees on disk not in state.fleet, stale fleet entries whose worktrees are missing, and harness/batch_*/ branches without fleet entries. Add new cases to test_sync_harness.py.",
+    "timestamp": "2026-04-20T02:10:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

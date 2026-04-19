@@ -307,8 +307,13 @@
         {
           "id": "unit_023",
           "description": "Add .harness/.lock file-based mutex around merge_batch.py with O_EXCL; contention test verifies serialization",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/merge_batch.py: added _MergeLock context manager backed by os.open(path, O_CREAT | O_EXCL | O_WRONLY) on <root>/.harness/.lock. First acquirer wins immediately; subsequent acquirers block, polling on lock_poll_interval (default 0.1s) until the file is unlinked (normal release) or its mtime exceeds stale_after_seconds (take-over after crashed holder). If lock_timeout (default 300s) elapses, MergeError is raised. Lock file body is '<pid> <iso_ts>\\n' for human inspection and stale debugging. Release removes the file on both normal exit AND exception paths (via __exit__ always calling unlink, verified by test_release_removes_lock_file_even_on_exception). merge_batch() wraps its full flow in `with _MergeLock(root, timeout=..., stale_after_seconds=..., poll_interval=...)` -- factored the original body into _merge_batch_locked(). CLI gets new --lock-timeout and --lock-stale-after flags passing through to merge_batch. Defaults: DEFAULT_LOCK_TIMEOUT=300.0, DEFAULT_LOCK_STALE_AFTER=600.0, DEFAULT_LOCK_POLL_INTERVAL=0.1",
+            "skills/development-harness/scripts/tests/test_merge_batch.py: added TestLockContention with 4 cases. test_second_acquirer_blocks_until_first_releases: thread A acquires + holds for 0.4s; thread B blocks then acquires; assertion `b_time >= 0.3` verifies B waited. Event-barrier ensures A owns the lock before B tries, making the test robust against scheduling jitter. test_release_removes_lock_file_even_on_exception: raising RuntimeError inside `with _MergeLock(...)` still unlinks the lock file. test_stale_lock_is_taken_over: writes a lock file with mtime 10000s old, acquires with stale_after=300 in <0.5s. test_timeout_raises_merge_error_when_lock_is_fresh: pre-existing FRESH lock, lock_timeout=0.3s, merge_batch raises MergeError after >=0.25s wall-clock with 'timed out' in the error text; the pre-existing lock file is preserved (not stomped)",
+            "Backward compatibility: the lock wrapper is transparent to existing tests. test_merge_batch + test_scope_violation (32 cases) pass unchanged after the wrapper was introduced -- the fresh tempdir per test means no cross-test lock contention",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/merge_batch.py` exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention` passes 4/4 (1.6s); `python -m unittest discover skills/development-harness/scripts/tests` passes 164/164 up from 160 (34.5s)"
+          ]
         },
         {
           "id": "unit_024",

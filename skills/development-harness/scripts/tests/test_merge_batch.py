@@ -1,15 +1,24 @@
-"""Tests for merge_batch.py -- unit 020 scope.
+"""Tests for merge_batch.py -- unit 020 + unit 023 scope.
 
 Each test builds a throwaway git repo in a temp dir. Per-unit branches
 are created directly (no worktree) for most cases because the behaviors
 under test are merge semantics, not worktree lifecycle. One end-to-end
 case uses dispatch_batch to cover the worktree-removal path after a
 successful merge.
+
+TestLockContention (unit 023) exercises the .harness/.lock O_EXCL
+mutex: a thread holding the lock forces a second acquirer to block
+until release; a stale lock file is taken over after its mtime
+exceeds stale_after_seconds; a pre-existing lock with a long timeout
+and a fresh mtime makes merge_batch time out with MergeError.
 """
 import json
+import os
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -18,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dispatch_batch import dispatch_batch  # noqa: E402
 from merge_batch import (  # noqa: E402
     MergeError,
+    _MergeLock,
     merge_batch,
 )
 
@@ -479,6 +489,102 @@ class TestCliSmoke(MergeBatchBase):
         persisted = json.loads(state_path.read_text(encoding="utf-8"))
         self.assertEqual(persisted["execution"]["fleet"]["mode"], "idle")
         self.assertIn("last_updated", persisted)
+
+
+class TestLockContention(MergeBatchBase):
+    """unit_023 -- .harness/.lock file-based mutex around merge_batch."""
+
+    def _lock_path(self):
+        return self.temp_dir / ".harness" / ".lock"
+
+    def test_second_acquirer_blocks_until_first_releases(self):
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+        results = []
+        barrier = threading.Event()
+
+        def worker(label, hold_seconds):
+            started = time.monotonic()
+            with _MergeLock(self.temp_dir, timeout=5.0, poll_interval=0.02):
+                acquired_at = time.monotonic() - started
+                results.append((label, acquired_at))
+                if label == "A":
+                    barrier.set()
+                    time.sleep(hold_seconds)
+
+        t_a = threading.Thread(target=worker, args=("A", 0.4))
+        t_b = threading.Thread(target=worker, args=("B", 0.0))
+
+        t_a.start()
+        # Wait until A has the lock before B tries, so the test is
+        # deterministic regardless of thread scheduling.
+        barrier.wait(timeout=2.0)
+        t_b.start()
+        t_a.join()
+        t_b.join()
+
+        a_time = next(t for lbl, t in results if lbl == "A")
+        b_time = next(t for lbl, t in results if lbl == "B")
+
+        self.assertLess(a_time, 0.2, f"first acquirer should not block; took {a_time}s")
+        self.assertGreaterEqual(
+            b_time, 0.3,
+            f"second acquirer should block until first releases (~0.4s); took {b_time}s",
+        )
+
+    def test_release_removes_lock_file_even_on_exception(self):
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+        lock = _MergeLock(self.temp_dir, timeout=1.0)
+        with self.assertRaises(RuntimeError):
+            with lock:
+                self.assertTrue(self._lock_path().exists())
+                raise RuntimeError("boom")
+        self.assertFalse(
+            self._lock_path().exists(),
+            "lock file must be removed on exception path",
+        )
+
+    def test_stale_lock_is_taken_over(self):
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+        lock_path = self._lock_path()
+        lock_path.write_text("99999 stale-holder\n", encoding="utf-8")
+        # Push mtime well past stale_after threshold.
+        old = time.time() - 10_000
+        os.utime(lock_path, (old, old))
+
+        start = time.monotonic()
+        with _MergeLock(self.temp_dir, timeout=2.0, stale_after_seconds=300.0):
+            elapsed = time.monotonic() - start
+        # Take-over is immediate on the first retry (no blocking).
+        self.assertLess(
+            elapsed, 0.5,
+            f"stale lock should be taken over immediately; took {elapsed}s",
+        )
+        # After release the lock file is gone.
+        self.assertFalse(lock_path.exists())
+
+    def test_timeout_raises_merge_error_when_lock_is_fresh(self):
+        (self.temp_dir / ".harness").mkdir(exist_ok=True)
+        lock_path = self._lock_path()
+        # Fresh lock file (mtime=now) -- NOT stale. merge_batch should
+        # wait up to lock_timeout then raise MergeError.
+        lock_path.write_text("12345 holder\n", encoding="utf-8")
+
+        state = _fleet_state(self.batch_id, [])
+        start = time.monotonic()
+        with self.assertRaises(MergeError) as ctx:
+            merge_batch(
+                state,
+                root=self.temp_dir,
+                lock_timeout=0.3,
+                lock_stale_after=3600.0,
+                lock_poll_interval=0.05,
+            )
+        elapsed = time.monotonic() - start
+        self.assertGreaterEqual(elapsed, 0.25, "should have waited ~lock_timeout")
+        self.assertIn("timed out", str(ctx.exception).lower())
+        # The pre-existing lock file is still there; the would-be acquirer
+        # did not stomp on it.
+        self.assertTrue(lock_path.exists())
 
 
 if __name__ == "__main__":
