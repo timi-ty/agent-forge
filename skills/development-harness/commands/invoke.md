@@ -69,7 +69,7 @@ Interpret the JSON output:
 
 - **`found: false` and `all_complete: true`** — All phases are complete. Report completion to the user and **stop**.
 - **`found: false` and `all_complete: false`** — No executable unit (likely blocked by dependencies). Report the situation and **stop**.
-- **`phase_complete: true`** — A previous phase has all units completed but is not yet marked complete. Run the **phase completion review** (Step 9) for that phase before proceeding to the selected unit.
+- **`phase_complete: true`** — A previous phase has all units completed but is not yet marked complete. Run the **phase completion review** (Step 10) for that phase before proceeding to the selected unit.
 - **`found: true`** — Proceed with the selected `phase_id`, `unit_id`, and `unit_description`.
 
 ---
@@ -91,20 +91,56 @@ Where `XXX` and `<slug>` come from the phase containing the selected unit. Under
 
 ---
 
-## Step 6: Plan the Unit
+## Step 6: Exploration (conditional)
+
+If the selected unit's description implies modifying an **existing** system, dispatch an `Explore` sub-agent **before** planning. Exploration runs in a separate context, so its output feeds the plan without filling the main context with file reads.
+
+### Trigger keywords
+
+If the unit description (or the phase scope it belongs to) contains any of these keywords, run exploration first:
+
+- `refactor`
+- `extend`
+- `fix`
+- `migrate`
+- `update`
+
+For units that clearly create a new module, script, or test file from scratch (keywords `add`, `new`, `create`, `insert`, `scaffold`), skip exploration — reading 1–2 sibling files during planning is sufficient.
+
+### How to dispatch
+
+Use the `Agent` tool in the same message you plan from. Thoroughness defaults to `medium`; bump to `very thorough` only when the unit touches a cross-cutting concern (auth, config loading, hook integration, schema migration).
+
+```
+Agent(
+  description: "<5-word task summary>",
+  subagent_type: "Explore",
+  prompt: "Explore the <area> touched by unit <unit_id>.\n\nUnit goal: <one-line paraphrase of unit_description>.\n\nReport: (1) every file that currently implements the behavior, (2) any nearby tests that will need to change, (3) conventions the new code must match (naming, error handling, test harness), (4) risks or prior-art gotchas that the plan needs to account for. Under 400 words."
+)
+```
+
+### Using the findings
+
+The agent's report arrives as a single tool result. Absorb it into Step 7's plan — specifically the "Files to create or modify" list and the "Dependencies" list. Do not re-read files the Explore agent already reported on unless its summary is missing a detail you need.
+
+Exploration is a tool for the **main agent**, not a delegation of the implementation. After exploration the main agent still does the editing, testing, and commit.
+
+---
+
+## Step 7: Plan the Unit
 
 Internally determine (do NOT switch to Plan Mode):
 
 1. **Files to create or modify** — identify each file and the nature of the change
 2. **Tests to write** — unit tests are mandatory for testable code; integration/E2E if applicable
-3. **Validation to run** — which layers of the validation hierarchy apply (see Step 8)
+3. **Validation to run** — which layers of the validation hierarchy apply (see Step 9)
 4. **Dependencies** — any packages to install, configs to update, migrations to run
 
 Do not ask the user unless requirements are genuinely ambiguous. If the phase document and codebase provide enough information, proceed autonomously.
 
 ---
 
-## Step 7: Implement the Unit
+## Step 8: Implement the Unit
 
 Write the code:
 
@@ -115,7 +151,7 @@ Write the code:
 
 ---
 
-## Step 8: Validate
+## Step 9: Validate
 
 Run applicable layers of the validation hierarchy. Only run layers that are relevant to the changes made:
 
@@ -168,11 +204,11 @@ Record specific evidence for each passing layer. Evidence must be concrete:
 
 ---
 
-## Step 9: Phase Completion Review
+## Step 10: Phase Completion Review
 
 This step runs when all units in a phase are completed (signaled by `phase_complete: true` from select_next_unit.py, or when the unit just completed was the last pending unit in its phase).
 
-### 9a: Run Review Checklist
+### 10a: Run Review Checklist
 
 Read `.harness/pr-review-checklist.md` (workspace copy) or fall back to `templates/rules/pr-review-checklist.md` from this skill. Verify each item:
 
@@ -186,7 +222,7 @@ Read `.harness/pr-review-checklist.md` (workspace copy) or fall back to `templat
 - [ ] All changes committed following git policy
 - [ ] Checkpoint updated with completion summary
 
-### 9b: Deployment Truth Gate
+### 10b: Deployment Truth Gate
 
 Check the phase document's **Deployment Implications** section.
 
@@ -198,7 +234,7 @@ If the phase is **deploy-affecting**:
 
 If the phase is **not deploy-affecting**, skip this gate.
 
-### 9c: Mark Phase Complete
+### 10c: Mark Phase Complete
 
 Only after the review checklist passes and deployment gate (if applicable) passes:
 - Set the phase's `status` to `"completed"` in `phase-graph.json`
@@ -206,7 +242,7 @@ Only after the review checklist passes and deployment gate (if applicable) passe
 
 ---
 
-## Step 10: Update State
+## Step 11: Update State
 
 After each completed unit, update all three state files atomically (complete all updates before moving on):
 
@@ -240,7 +276,7 @@ Update the human-readable checkpoint:
 
 ---
 
-## Step 11: Commit
+## Step 12: Commit
 
 ### Check for commit-agent-changes skill
 
@@ -268,7 +304,7 @@ ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE
 
 ---
 
-## Step 12: Turn Ends
+## Step 13: Turn Ends
 
 The agent's turn ends here. The stop hook (`continue-loop.py`) fires automatically after the agent completes. It will:
 
@@ -315,7 +351,7 @@ ls $GLOBAL_SKILLS_DIR/commit-agent-changes/SKILL.md 2>/dev/null || ls $WORKSPACE
 ls $GLOBAL_SKILLS_DIR/code-review/SKILL.md 2>/dev/null || ls $WORKSPACE_SKILLS_DIR/code-review/SKILL.md 2>/dev/null
 ```
 
-- **commit-agent-changes**: If available, use it for Step 11 (commit/PR workflow)
-- **code-review**: If available, use it during Step 9 (phase completion review) to get an AI code review of the phase's changes before marking complete
+- **commit-agent-changes**: If available, use it for Step 12 (commit/PR workflow)
+- **code-review**: If available, use it during Step 10 (phase completion review) to get an AI code review of the phase's changes before marking complete
 
 Note their availability but only invoke them at the appropriate steps.

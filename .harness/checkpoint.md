@@ -1,28 +1,30 @@
 # Harness Checkpoint
 
 ## Last Completed
-**PHASE_002 (all four units):** Frontier selector and batch computation landed and merged (pending squash).
+**unit_011 (PHASE_003):** Inserted **Step 6: Exploration (conditional)** in [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md).
 
-- **unit_007** — [select_next_unit.py](skills/development-harness/scripts/select_next_unit.py) rewritten around `compute_frontier(phases, max_items)`; `--frontier` and `--max N` flags added; no-flag call preserves the v1 stop-hook JSON contract; `MalformedPhaseGraph` (exit 2) replaces the legacy list-order fallback.
-- **unit_008** — `TestFrontierTopologies` locks the frontier contract on linear, diamond, disconnected, partially-completed, and phase-complete-pending graphs; `TestNoLegacyFallback` expanded to four malformed-unit cases (missing `depends_on`, non-list `depends_on`, non-dict unit, missing `id`).
-- **unit_009** — [compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): stdlib-only greedy pack with `fnmatch` + literal-prefix glob-overlap matrix, `_parallelism_config` with v1-safe fallback, UTC-timestamped `batch_id`, CLI (`--input`, `--config`, `--root`).
-- **unit_010** — `TestExclusionReasons` pins each machine-readable reason (`not_parallel_safe`, `path_overlap_with:<unit_id>`, `capacity_cap`) on the narrowest crafted input, with test names embedding the reason literal so a dropped/renamed constant surfaces as a named failure.
+- New step sits between the existing "Step 5: Read Phase Context" and the (now-renumbered) "Step 7: Plan the Unit".
+- Lists the five **trigger keywords** that require a pre-plan Explore dispatch: `refactor`, `extend`, `fix`, `migrate`, `update`.
+- Lists the five **skip keywords** (from-scratch units): `add`, `new`, `create`, `insert`, `scaffold`.
+- Shows a concrete `Agent(subagent_type: "Explore", thoroughness: "medium")` call with a reusable prompt template covering files, tests to change, conventions to match, and prior-art gotchas.
+- Explains how to absorb the agent's report into Step 7's plan and that the main agent — not the Explore agent — still does the editing, testing, and commit.
 
-Phase completion review ran the `code-review` skill against PR #26 and cleared the phase with two Low findings (unused `import re`, unused `root` parameter); both addressed in a follow-up commit on the same branch.
+Side work: renumbered old Steps 6–12 to 7–13 (and subsection labels 9a/9b/9c → 10a/10b/10c), and updated three internal cross-references so the numbering stays coherent.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**PHASE_003, unit_011** — Insert an Exploration step in [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md) that dispatches `Agent(Explore)` for refactor / extend / fix / migrate / update keywords before implementation. New branch off main after PR #26 merges.
+**Complete unit_012 (PHASE_003):** Mirror the Exploration step in [skills/development-harness/templates/workspace-commands/invoke-development-harness.md](skills/development-harness/templates/workspace-commands/invoke-development-harness.md) so the workspace-installed copy is consistent with the canonical command doc landed in unit_011.
 
 ## Blocked By
 None.
 
 ## Evidence
-- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (PHASE_001 end: 65 → PHASE_002 end: 109).
-- PR #26 at https://github.com/timi-ty/agent-forge/pull/26: 8 commits across 7 files, +1483 / -243.
-- Code-review report: [pr-26-review.md](pr-26-review.md) (zero High, zero Medium, two Low — both fixed).
+- [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md): `+42 / -7` for the new Step 6 block plus renumbering and cross-reference fixes.
+- Grep: `## Step 6: Exploration` at line 94; the five trigger keywords on consecutive bullet lines 102–106; `Agent(` with `subagent_type: "Explore"` at line 115.
+- Grep: every `## Step N` heading appears exactly once, in order 0 → 13. No stale step numbers remain in prose or sub-section labels.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (docs-only change; test suite unaffected).
 
 ## Open Questions
 None.
@@ -31,8 +33,8 @@ None.
 - **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_002 → PR #26 (squash-merge pending).
-- **Branch:** `feat/phase-002-frontier-selector` (delete on merge).
+- **PR cadence:** one PR per phase. PHASE_003 PR opens after unit_015.
+- **Branch:** `feat/phase-003-intra-unit-delegation`.
 - **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
@@ -40,4 +42,4 @@ None.
 - `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
 
 ---
-*Updated: 2026-04-19T21:30:00Z*
+*Updated: 2026-04-19T21:50:00Z*

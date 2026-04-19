@@ -140,16 +140,22 @@
     {
       "id": "PHASE_003",
       "slug": "intra-unit-helper-agent-delegation",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [],
-      "started": null,
+      "started": "2026-04-19T21:45:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_011",
           "description": "Insert Exploration step in skills/development-harness/commands/invoke.md; dispatch Agent(Explore) for refactor/extend/fix/migrate/update keywords before implementation",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: inserted new 'Step 6: Exploration (conditional)' between 'Step 5: Read Phase Context' and the former 'Step 6: Plan the Unit' (now Step 7). The new step lists the five trigger keywords (refactor / extend / fix / migrate / update), a skip rule for from-scratch units (add / new / create / insert / scaffold), a concrete Agent(subagent_type='Explore', thoroughness='medium') call with a reusable prompt template, and guidance on absorbing the agent's report into the Step 7 plan",
+            "Steps 7-13 renumbered (old Step 6 Plan -> Step 7, old Step 7 Implement -> Step 8, ..., old Step 12 Turn Ends -> Step 13); subsection labels 9a/9b/9c -> 10a/10b/10c",
+            "Three internal cross-references updated to match the new numbering: 'phase completion review (Step 9)' -> '(Step 10)' in Step 4's output interpretation; 'see Step 8' -> 'see Step 9' in Step 7 Plan; 'Step 11 (commit/PR workflow)' -> 'Step 12' and 'Step 9 (phase completion review)' -> 'Step 10' in the Skills Integration block",
+            "Grep verification: 'Step 6: Exploration' matches at line 94; the five trigger keywords ('refactor', 'extend', 'fix', 'migrate', 'update') appear on consecutive bullet lines 102-106; 'Agent(' with subagent_type='Explore' appears at line 115",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_012",
