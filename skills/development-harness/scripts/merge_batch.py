@@ -2,9 +2,18 @@
 """Serially merge a dispatched batch's per-unit branches back into HEAD.
 
 Consumes ``state.execution.fleet`` as left behind by ``dispatch_batch.py``.
-For each unit in ``fleet.units`` (in list order), runs::
+For each unit in ``fleet.units`` (in list order) the flow is:
 
-    git merge --no-ff harness/<batch_id>/<unit_id> -m "harness: merge <unit_id>"
+  1. **Scope check** -- read the unit's declared ``touches_paths`` from its
+     ``WORKTREE_UNIT.json`` and compute ``git diff --name-only
+     <merge-base>..<branch>``. Any changed file matching none of the
+     declared globs is a scope violation; the unit is rejected before
+     any merge attempt with ``conflict = {paths: [...], category:
+     "scope_violation"}``. The sub-agent's self-report is never trusted
+     for blast radius. Scope failures are always hard rejects regardless
+     of ``conflict_strategy``.
+  2. **Merge** -- ``git merge --no-ff harness/<batch_id>/<unit_id> -m
+     "harness: merge <unit_id>"``.
 
 Outcomes per unit:
 
@@ -35,6 +44,7 @@ by ``serialize_conflicted``) keep their worktree and branch.
 Uses only Python 3 stdlib. Imports from ``harness_utils``.
 """
 import argparse
+import fnmatch
 import json
 import subprocess
 import sys
@@ -102,6 +112,59 @@ def _remove_worktree_and_branch(root, worktree_path, branch):
 def _noop_validate(root, merged_unit_ids):
     """Default validator: always succeeds. Caller wires in a real one."""
     return True, f"no-op validator: skipped {len(merged_unit_ids)} merged unit(s)"
+
+
+def _is_within_scope(file_path, touches_paths):
+    """True if ``file_path`` matches at least one glob in ``touches_paths``.
+
+    fnmatch's ``*`` already matches path separators, so patterns like
+    ``src/auth/**`` naturally cover recursive descendants without extra
+    translation.
+    """
+    for pattern in touches_paths or []:
+        if fnmatch.fnmatchcase(file_path, pattern):
+            return True
+    return False
+
+
+def _scope_violations(root, branch, touches_paths):
+    """Return files on ``branch`` that touch outside the declared globs.
+
+    Computes ``git diff --name-only <merge-base>..<branch>`` against
+    ``HEAD`` (the integration target) and returns the subset of changed
+    files that match none of ``touches_paths``. A unit whose declared
+    scope is empty (``touches_paths == []``) violates on any touched file.
+    """
+    merge_base = _run_git(
+        ["merge-base", "HEAD", branch], root, check=False
+    ).stdout.strip()
+    if not merge_base:
+        return []
+    diff = _run_git(
+        ["diff", "--name-only", f"{merge_base}..{branch}"], root, check=False
+    )
+    if diff.returncode != 0:
+        return []
+    changed = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+    return [f for f in changed if not _is_within_scope(f, touches_paths)]
+
+
+def _read_worktree_touches_paths(root, worktree_path):
+    """Read declared ``touches_paths`` from the worktree's WORKTREE_UNIT.json.
+
+    Returns the list as written by dispatch_batch, or ``None`` when the
+    sentinel file is missing / unreadable (in which case the scope check
+    is skipped -- the file is the source of truth and we refuse to
+    fabricate a scope from elsewhere).
+    """
+    unit_json = Path(root) / worktree_path / HARNESS_DIR / "WORKTREE_UNIT.json"
+    if not unit_json.exists():
+        return None
+    try:
+        data = json.loads(unit_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return list(data.get("touches_paths") or [])
 
 
 def _compute_outcome(merged, conflicted, skipped, aborted):
@@ -187,6 +250,25 @@ def merge_batch(
 
         branch = unit["branch"]
         unit_id = unit["unit_id"]
+
+        # Scope check: the sub-agent's self-report is not trusted for blast
+        # radius -- the diff is the source of truth. A unit whose changed
+        # files fall outside its declared touches_paths is rejected before
+        # we even attempt the merge. Scope failures are always hard
+        # rejects; conflict_strategy has no effect here.
+        touches_paths = _read_worktree_touches_paths(root, unit["worktree_path"])
+        if touches_paths is not None:
+            violations = _scope_violations(root, branch, touches_paths)
+            if violations:
+                unit["status"] = "failed"
+                unit["ended_at"] = ts
+                unit["conflict"] = {
+                    "paths": violations,
+                    "category": "scope_violation",
+                }
+                conflicted.append(unit_id)
+                continue
+
         clean, paths = _merge_unit(branch, unit_id, root)
         if clean:
             unit["status"] = "merged"
@@ -196,7 +278,11 @@ def merge_batch(
             continue
 
         conflicted.append(unit["unit_id"])
-        unit["conflict"] = {"paths": paths, "strategy_applied": conflict_strategy}
+        unit["conflict"] = {
+            "paths": paths,
+            "category": "merge_conflict",
+            "strategy_applied": conflict_strategy,
+        }
         unit["ended_at"] = ts
         if conflict_strategy == "abort_batch":
             unit["status"] = "failed"

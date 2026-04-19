@@ -296,8 +296,13 @@
         {
           "id": "unit_022",
           "description": "Scope-violation detector in merge_batch.py: computes git diff --name-only <merge-base>..<branch> and rejects any unit whose diff exceeds declared touches_paths, regardless of sub-agent self-report",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/merge_batch.py: added three new helpers -- _is_within_scope(file_path, touches_paths) using fnmatch.fnmatchcase (fnmatch's `*` already matches path separators so `src/auth/**` naturally covers descendants); _scope_violations(root, branch, touches_paths) that runs `git merge-base HEAD <branch>` then `git diff --name-only <merge-base>..<branch>` and returns files matching no declared glob; _read_worktree_touches_paths(root, worktree_path) that reads the WORKTREE_UNIT.json sentinel seeded by dispatch_batch. Integration: the per-unit loop in merge_batch() now calls _scope_violations before _merge_unit. On violation, the unit is rejected with status='failed' and conflict={paths: <violators>, category: 'scope_violation'} -- NO merge is attempted and HEAD does not advance. Scope failures are always hard rejects regardless of conflict_strategy (don't conflate with merge conflicts). Other well-scoped units in the same batch still get their chance to merge",
+            "Also added `category` field to the existing merge-conflict conflict dict ('merge_conflict') for taxonomy consistency; `strategy_applied` is preserved so existing tests stay green",
+            "skills/development-harness/scripts/tests/test_scope_violation.py: new 276-line test module with 16 cases across 4 classes. TestIsWithinScope (6): literal match, recursive glob, non-recursive glob, non-match, empty scope rejects all, multi-glob any-match. TestScopeViolationsHelper (4): in-scope branch returns []; out-of-scope files returned verbatim; empty touches_paths flags every changed file; unknown branch yields []. TestReadWorktreeTouchesPaths (3): reads what dispatch seeded; missing sentinel returns None (skip check); empty list is preserved (not coerced to None). TestMergeBatchRejectsScopeViolator (3): scope violator rejected before merge with HEAD unchanged + branch preserved; well-scoped sibling merges alongside scope violator (scope failures don't trigger abort_batch); within-scope changes merge cleanly",
+            "Validation evidence with per-layer timing: `python -m py_compile` on the edited module + new test file exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_scope_violation -v` passes 16/16 (4.0s); `python -m unittest discover skills/development-harness/scripts/tests` passes 160/160 up from 144 (27.8s) -- zero regressions in existing test_merge_batch.py despite merge_batch.py's internal changes"
+          ]
         },
         {
           "id": "unit_023",
