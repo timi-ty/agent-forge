@@ -504,16 +504,21 @@
     {
       "id": "PHASE_009",
       "slug": "safety-rails-and-automatic-fallback",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_007"],
-      "started": null,
+      "started": "2026-04-20T05:30:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_037",
           "description": "Session-scoped kill switch: write .harness/.parallel-disabled after 2 scope_violation or ambiguity failures in a session; cleared when .invoke-active clears",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/safety_rails.py: new 165-line stdlib-only module with record_failure(root, category, unit_id, now) (appends a JSON line to .harness/.parallel-failures.jsonl and writes .harness/.parallel-disabled when counted-category failures reach KILL_SWITCH_THRESHOLD=2), is_parallel_disabled(root) (presence check), clear_safety_rails(root) (idempotent removal of both files). COUNTED_CATEGORIES = ('scope_violation', 'ambiguity'). Failures in other categories are still logged for observability but don't count toward the kill switch. CLI: record / status / clear subcommands with --root --category --unit-id",
+            "skills/development-harness/templates/claude-code/hooks/continue-loop.py + templates/hooks/continue-loop.py: both hooks' _stop() helpers now remove .invoke-active AND .parallel-disabled AND .parallel-failures.jsonl in one sweep. Session-scoped safety-rail state is cleared whenever the hook decides to stop, so the next invoke session starts clean. Cursor's _stop derives harness_dir from the invoke_flag path (os.path.dirname(invoke_flag)); Claude Code's uses cwd directly",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new 225-line test module with 15 cases across 5 classes. TestRecordFailureThreshold (6): single failure doesn't trip; two failures trip; mixed scope_violation+ambiguity trip together; third call is idempotent; non-counted categories never count; counted + non-counted mix counts only the counted ones. TestHelpers (3): is_parallel_disabled file-presence reflection; clear removes both files; clear is idempotent on missing files. TestCliSmoke (2): record-then-status round trip; CLI clear. TestHookStopClearsSafetyRails (2): Claude Code AND Cursor hooks' _stop() wipe .parallel-disabled + .parallel-failures.jsonl along with .invoke-active. TestConstants (2): threshold=2; COUNTED_CATEGORIES set",
+            "Validation evidence with per-layer timing: `python -m py_compile` on all four changed/new files exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` passes 15/15 (0.7s); `python -m unittest discover skills/development-harness/scripts/tests` passes 198/198 up from 183 (38.4s). Pre-existing test_continue_loop_claude + test_continue_loop_cursor (10 cases) pass unchanged despite the _stop() changes -- the additional file removals target missing files in those tests, which the unlink try/except handles cleanly"
+          ]
         },
         {
           "id": "unit_038",

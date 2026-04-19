@@ -112,11 +112,16 @@ def main():
 
 
 def _stop(invoke_flag=None):
+    # Clear .invoke-active AND the session-scoped safety-rail files
+    # (kill switch + failure log). invoke_flag carries the absolute
+    # path to .invoke-active; the companion files live alongside it.
     if invoke_flag:
-        try:
-            os.remove(invoke_flag)
-        except OSError:
-            pass
+        harness_dir = os.path.dirname(invoke_flag)
+        for name in (".invoke-active", ".parallel-disabled", ".parallel-failures.jsonl"):
+            try:
+                os.remove(os.path.join(harness_dir, name))
+            except OSError:
+                pass
     print(json.dumps({}))
 
 

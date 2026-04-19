@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T05:20:00Z",
+  "last_updated": "2026-04-20T05:45:00Z",
   "execution": {
     "active_phase": "PHASE_009",
-    "active_unit": null,
-    "last_completed_unit": "unit_036",
-    "next_unit": "unit_037",
-    "session_count": 34,
+    "active_unit": "unit_038",
+    "last_completed_unit": "unit_037",
+    "next_unit": "unit_038",
+    "session_count": 35,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T05:20:00Z",
+    "last_run": "2026-04-20T05:45:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on Cursor hook + test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_continue_loop_cursor -v passes 5/5 (0.6s); python -m unittest discover skills/development-harness/scripts/tests passes 183/183 up from 178 (44.5s). PHASE_008 end-to-end green."
+    "evidence": "python -m py_compile on 4 changed/new files exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v passes 15/15 (0.7s); python -m unittest discover skills/development-harness/scripts/tests passes 198/198 up from 183 (38.4s)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_008 complete. All three units landed: unit_034 (fleet-mode guard in Claude Code continue-loop.py + test_continue_loop_claude.py with 5 cases), unit_035 (same guard mirrored into the Cursor continue-loop.py + test_continue_loop_cursor.py with 5 cases -- Cursor protocol differs: always exits 0, stop vs continue encoded in stdout JSON), unit_036 (unit-test acceptance pre-satisfied by 034+035 test files; manual verification checklist added as a new subsection under 'Rollback / Failure Considerations' in PHASE_008_stop-hook-fleet-awareness.md walking through mid-batch kill -> new session -> hook stops cleanly -> /sync surfaces orphans -> teardown_batch recovers -> /invoke restarts). Test suite 173 -> 183 (+10 across both hook test files). The Stop hook now refuses to auto-continue into an inconsistent post-crash state regardless of whether the caller is Cursor (followup_message protocol) or Claude Code (exit-2 block-continue protocol).",
+    "summary": "unit_037 complete. New safety_rails.py (165 LOC) + hook updates + 15 new tests. Public API: record_failure(root, category, unit_id, now) appends a JSON line to .harness/.parallel-failures.jsonl and writes the .harness/.parallel-disabled kill switch when counted-category failures reach the 2-strike threshold; is_parallel_disabled(root) is a presence check; clear_safety_rails(root) is idempotent. Counted categories are scope_violation and ambiguity only -- other failures are logged for observability but don't count toward the switch. Both continue-loop.py hooks' _stop() now clear .invoke-active AND the session-scoped safety-rail files in one sweep so the next invoke session starts clean. 15 tests cover threshold logic (below/at/above, mixed categories, non-counted filtering), helpers (presence reflection, idempotent clear), CLI (record + status + clear), AND hook-stop side effects (Claude Code + Cursor both wipe the rail files). Pre-existing 10 hook tests pass unchanged -- the additional unlink calls target missing files in those tests, which the try/except handles cleanly. Test suite 183 -> 198.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Run PHASE_008 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_037 in PHASE_009 (safety-rails-and-automatic-fallback: session-scoped kill switch that writes .harness/.parallel-disabled after 2 scope_violation or ambiguity failures).",
-    "timestamp": "2026-04-20T05:20:00Z"
+    "next_action": "Complete unit_038 (PHASE_009): verify batch-of-1 uses the in-tree path (no special case in invoke doc) AND integration test asserts final state equivalence. Grep + potential addition of an assertion in the existing tests/integration/test_invoke_rewrite.py TestBatchOfOneDispatchModeEquivalence class (or a new regression test). Most of the acceptance is pre-satisfied by PHASE_007's unit_029 rewrite which collapsed the sequential/parallel fork; this unit is the grep+integration verification of that collapse.",
+    "timestamp": "2026-04-20T05:45:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-008-stop-hook-fleet-awareness",
+    "current_branch": "feat/phase-009-safety-rails",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
