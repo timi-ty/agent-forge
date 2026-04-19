@@ -83,16 +83,23 @@
     {
       "id": "PHASE_002",
       "slug": "frontier-selector-and-batch-computation",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_001"],
-      "started": null,
+      "started": "2026-04-19T18:15:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_007",
           "description": "Rewrite skills/development-harness/scripts/select_next_unit.py around frontier computation; add --frontier and --max N flags; no legacy list-order fallback; preserve stop-hook JSON contract on no-flag call",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/select_next_unit.py rewritten around compute_frontier(phases, max_items): deterministic frontier from v2 phase/unit depends_on; MalformedPhaseGraph raised (exit 2, stderr) when a unit is missing depends_on or has non-list depends_on -- no silent legacy fallback",
+            "No-flag CLI invocation preserves the v1 stop-hook JSON contract (found/phase_id/phase_slug/unit_id/unit_description/phase_complete/all_complete); phase_complete signal reinstated via _phase_completion_pending",
+            "New --frontier flag prints the full frontier as a JSON array with phase_id, phase_slug, id, description, status, depends_on, touches_paths, parallel_safe on each entry; --max N caps the list; ordering is phase-list then unit-list (deterministic)",
+            "test_select_next_unit.py fixtures upgraded to v2 shape (every unit carries depends_on + parallel_safe); added TestFrontierFlag (4 cases: all-ready, --max cap, v2 field pass-through, empty-on-all-complete) and TestNoLegacyFallback (2 cases: missing depends_on, non-list depends_on -- both exit 2)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (71/71 pass, up from 65)",
+            "Manual smoke: running the new selector against this workspace's v1-shaped phase-graph errors loudly with 'Run validate_harness.py -- the graph is not v2-conformant', confirming the no-fallback stance"
+          ]
         },
         {
           "id": "unit_008",
