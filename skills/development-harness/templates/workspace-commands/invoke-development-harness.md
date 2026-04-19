@@ -111,6 +111,8 @@ Run applicable validation layers:
 3. **Integration tests** — if integration points were touched
 4. **E2E tests** — if configured and user-facing flows were affected
 
+**Parallel Layer 1 + Layer 2 (when enabled).** When `config.agent_delegation.parallel_validation_layers == true`, fan Layer 1 (lint + typecheck + formatter) and Layer 2 (unit tests) out as concurrent `Bash` tool calls in a **single assistant message** (lint, typecheck, and unit-test calls share no state). The unit passes only if every parallel call exits 0; any failure falls into the On Failure flow below and **no** Layer 3 or Layer 4 advancement. **Layers 3 and 4 stay serial** — integration + E2E commonly contend on ports, fixtures, databases, and test accounts. When the flag is `false` (default), run the four layers sequentially as listed above — flag-off behavior is unchanged from v1.
+
 On failure:
 - Attempt fix (up to 2 retries per failure type)
 - If still failing: add to `checkpoint.blockers`, update `checkpoint.md`, stop

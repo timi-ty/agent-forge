@@ -230,8 +230,13 @@
         {
           "id": "unit_017",
           "description": "Mirror parallel-validation-layer step in skills/development-harness/templates/workspace-commands/invoke-development-harness.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a '**Parallel Layer 1 + Layer 2 (when enabled).**' bold-label paragraph inside section 10 (Validate), between the four-layer numbered list and the 'On failure' block. Semantically identical to the command-doc unit_016 version -- same trigger (config.agent_delegation.parallel_validation_layers == true), same single-assistant-message + multiple-Bash-calls shape, same all-must-pass failure semantics with no Layer 3/4 advancement on red, same Layers-3-and-4-stay-serial rule with the same port/fixture/DB/test-account justification, same flag-off default preservation",
+            "Grep verification: 'Parallel Layer 1' + 'config.agent_delegation.parallel_validation_layers' + 'single assistant message' all appear in section 10 at line 114; byte 'unchanged from v1' is present in the flag-off clause",
+            "Cross-doc consistency check: both docs cite the same flag name, the same fan-out shape, the same all-must-pass semantics, the same Layers-3/4-stay-serial rule, and the same flag-off default. Command doc has concrete Bash call sample and heading-level sub-section; template compresses to a single bold-label paragraph matching its compact style",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only change, test suite unchanged"
+          ]
         },
         {
           "id": "unit_018",
