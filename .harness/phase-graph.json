@@ -173,8 +173,14 @@
         {
           "id": "unit_013",
           "description": "Add multi-file parallel-edit guidance (fan out to 2-3 Agent calls in one message when >=4 independent files) to both invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added '### Multi-file parallel edits' sub-section inside Step 8 (Implement the Unit). States the >=4-independent-files threshold, the single-assistant-message / 2-3 Agent(subagent_type='general-purpose') fan-out shape, why bounding at 3 (coordination overhead above; round-trip cost isn't worth it below), and groups-by-independence vs file-count. Two worked examples: parallel-safe (mirrored template docs) and NOT-parallel-safe (symbol rename with cascading callsites)",
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a **bold-label** 'Multi-file parallel edits.' paragraph inside section 9 (Implement). Semantically identical to the command-doc version (same threshold, same shape, same grouping rule, same 'below threshold: direct Edit/Write' fallback) but compressed to the template's single-paragraph style",
+            "Grep verification: '>=4 independent files' appears in both files; 'single assistant message' appears in both files; '2-3 `Agent' appears in both files; `subagent_type: \"general-purpose\"` appears in both files",
+            "Cross-doc consistency: both docs cite the same numeric threshold, the same fan-out shape (single message, 2-3 calls, general-purpose subagent), and the same 'group by independence' rule. Command doc carries worked examples; template stays minimal",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_014",

@@ -90,6 +90,8 @@ Determine files to create/modify, tests to write, and validation to run. Do not 
 
 Write production code and tests. Match existing codebase patterns.
 
+**Multi-file parallel edits.** When the plan from section 8 touches **≥4 independent files** whose edits do not depend on each other, fan the work out in a **single assistant message** with **2–3 `Agent(subagent_type: "general-purpose")` tool calls**. More than 3 concurrent agents creates coordination overhead; fewer than 2 means you should edit in the main context. Group by independence, not file count — any edit that reads the output of another (e.g., a rename with cascading callsite updates) belongs in one place. Below the ≥4 threshold, prefer direct `Edit` / `Write` calls in the main context.
+
 ## 10. Validate
 
 Run applicable validation layers:

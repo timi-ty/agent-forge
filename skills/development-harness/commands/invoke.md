@@ -149,6 +149,19 @@ Write the code:
 3. Write or update tests that prove the acceptance criteria are met
 4. If the unit involves new APIs or interfaces, ensure they align with the phase document's scope
 
+### Multi-file parallel edits
+
+When the plan from Step 7 touches **≥4 independent files** whose edits do not depend on each other (e.g., mirrored changes across N template copies, or disjoint tests added in separate test files), fan the work out in parallel:
+
+- **Shape:** a **single assistant message** with **2–3 `Agent(subagent_type: "general-purpose")` tool calls**. More than 3 concurrent agents creates coordination overhead that erodes the speedup; fewer than 2 means you should just edit in the main context.
+- **Group by independence**, not file count. If one edit reads the output of another (e.g., "rename the function, then update every caller"), those belong in the same agent — or in the main context — so the second step sees the first step's result. Only fan out when the edits have no read-after-write order.
+
+Example (parallel-safe): "update the five mirrored docs under `templates/rules/*.mdc` to add the same section" — split the five files across 2–3 agents.
+
+Example (NOT parallel-safe): "rename `select_unit()` to `pick_unit()` across the repo" — one symbol rename with cascading callsite updates; keep in the main context or give it to a single agent.
+
+Below the ≥4 threshold, prefer direct `Edit` / `Write` tool calls in the main context — the round-trip cost of spawning sub-agents isn't worth it for 1–3 files.
+
 ---
 
 ## Step 9: Validate
