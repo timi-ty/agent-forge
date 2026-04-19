@@ -1,33 +1,34 @@
 # Harness Checkpoint
 
 ## Last Completed
-**PHASE_005 complete (all 7 units).** The worktree-per-unit parallel execution substrate is now fully implemented and test-covered.
+**unit_026 (PHASE_006):** New `harness-unit` agent template landed — the first time this skill ships a Claude-Code-native agent definition.
 
-- **unit_019** — [dispatch_batch.py](skills/development-harness/scripts/dispatch_batch.py): per-unit `git worktree add -b harness/<batch_id>/<unit_id>` + `WORKTREE_UNIT.json` seed + `state.execution.fleet` writes; atomic `_rollback` on any per-unit failure.
-- **unit_020** — [merge_batch.py](skills/development-harness/scripts/merge_batch.py): serial `git merge --no-ff` fan-in with `abort_batch` / `serialize_conflicted` strategies; post-merge validator hook with `git reset --hard <pre_merge_ref>` rollback on failure; cleanup of merged units' worktrees + branches.
-- **unit_021** — [teardown_batch.py](skills/development-harness/scripts/teardown_batch.py): idempotent scoped / global cleanup of harness batch worktrees + branches; tolerates every missing-state case.
-- **unit_022** — scope-violation detector in `merge_batch.py` (three helpers `_is_within_scope`, `_scope_violations`, `_read_worktree_touches_paths`): every unit's diff is checked against its declared `touches_paths` before merge; violators get `conflict.category="scope_violation"` and are hard-rejected regardless of `conflict_strategy`.
-- **unit_023** — `_MergeLock` `O_EXCL` mutex on `.harness/.lock` wraps `merge_batch()`; blocking acquire with configurable timeout / stale-after / poll interval; exception-path release; `MergeError` when fresh lock holds past `lock_timeout`.
-- **unit_024** — `sync_harness.py` now reports three fleet-drift divergence types (`orphan_worktree`, `stale_fleet_entry`, `orphan_branch`), each carrying `batch_id` + `unit_id` for downstream cleanup wiring.
-- **unit_025** — new [tests/integration/test_parallel_invoke.py](skills/development-harness/scripts/tests/integration/test_parallel_invoke.py) exercises the full pipeline end-to-end: dispatch → fake agents committing canned files in each worktree → `merge_batch` → assertions on final fleet state, files-on-main, merge-commit messages, and cleanup (no residual worktrees, no residual branches). Added a `_prune_empty_dir` helper to `merge_batch.py` so the `.harness/worktrees/<batch_id>/` parent dir is removed when the whole batch resolves.
-
-**Test-suite growth across the phase:** 134 → 144 → 160 → 164 → 169 → **171** (+37 cases in PHASE_005 alone). Three new scripts (`dispatch_batch.py`, `merge_batch.py`, `teardown_batch.py`), one extended (`sync_harness.py`), one new integration package.
+- File: [skills/development-harness/templates/claude-code/agents/harness-unit.md](skills/development-harness/templates/claude-code/agents/harness-unit.md) (~170 lines) under a brand-new `templates/claude-code/agents/` directory.
+- **YAML frontmatter:** `name: harness-unit`; one-paragraph `description` (execute one unit inside its dispatched worktree, commit on the pre-created branch, emit the structured JSON report); `tools: [Read, Edit, Write, Glob, Grep, Bash]`.
+- **System-prompt body** — five sections:
+  1. **Identity** — read `.harness/WORKTREE_UNIT.json` first (carries `batch_id`, `unit_id`, `phase_id`, `touches_paths`). Stop immediately if the file is missing.
+  2. **Tool allowlist** — hard rules with an explicit forbidden list: `git push`, `git merge`, `git rebase`, `git reset --hard`, `git checkout -b`, `git worktree add/remove`, writes outside the worktree, writes to `.harness/`.
+  3. **Workflow** — read identity → read phase doc → (optional) explore → implement → validate → commit on pre-created branch → emit report.
+  4. **Required JSON report** — `unit_id`, `status`, `validation_evidence`, `commits`, `touched_paths_actual`, `failure` (nullable with `category` enum: `validation` | `scope_violation` | `ambiguity` | `infrastructure`). Per-field semantics spelled out.
+  5. **Reporting examples** — three worked ones: success, validation failure (after 2 fix attempts), scope-violation realised mid-work.
+- Explicit "fail honestly" guidance on scope violations: **don't expand scope silently**; the orchestrator's diff-based check will catch it regardless.
 
 ## What Failed (if anything)
-On the first run of the integration test, the happy-path assertion "no residual worktrees" failed because `merge_batch` left the now-empty `.harness/worktrees/<batch_id>/` parent directory behind. Fixed by adding a `_prune_empty_dir` helper that matches the pattern already in `teardown_batch.py`. Re-run: both integration cases pass, and no existing `test_merge_batch` case regresses.
+None.
 
 ## What Is Next
-**Run PHASE_005 phase completion review**, open the phase PR, autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, advance to **unit_026 (PHASE_006, orchestrator-agent-contract)** — a new `templates/claude-code/agents/harness-unit.md` with system prompt, tool allowlist (no `git push`, no writes to `.harness/`, no writes outside the worktree), and the required JSON report schema.
+**Complete unit_027 (PHASE_006):** Update [skills/development-harness/templates/claude-code/rules/harness-core.md](skills/development-harness/templates/claude-code/rules/harness-core.md) with three orchestrator-vs-sub-agent boundary rules:
+1. Only the **orchestrator** modifies `.harness/` or runs `git merge`.
+2. Sub-agents commit only within their worktree branch; **never** push, **never** rebase.
+3. A worktree containing `.harness/WORKTREE_UNIT.json` is a fan-out environment — follow the `harness-unit` agent contract exactly.
 
 ## Blocked By
 None.
 
 ## Evidence
-- 3 new scripts + 1 extended: `dispatch_batch.py` (207 LOC), `merge_batch.py` (363 LOC after unit_023 + unit_024), `teardown_batch.py` (146 LOC), extended `sync_harness.py`.
-- 5 new test modules + 1 extended: `test_dispatch_batch.py` (9 cases), `test_merge_batch.py` (16 unit_020 + 4 unit_023 = 20 cases), `test_teardown_batch.py` (10 cases), `test_scope_violation.py` (16 cases), extended `test_sync_harness.py` (+5 cases = 8 total), new integration `test_parallel_invoke.py` (2 cases).
-- `python -m py_compile` on every new/changed file exits 0 (~0.1s).
-- `python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v` passes 2/2 (2.9s).
-- `python -m unittest discover skills/development-harness/scripts/tests` passes **171/171** in 36.1s.
+- [skills/development-harness/templates/claude-code/agents/harness-unit.md](skills/development-harness/templates/claude-code/agents/harness-unit.md): new 170-line agent definition file.
+- Grep verification on acceptance criteria: `name: harness-unit` (line 2), `tools:` block (line 8), `.harness/WORKTREE_UNIT.json` references throughout (lines 21, 23, 25, 40, 48, 49, 59, 90, 166), JSON report schema with exact fields (unit_id, status, validation_evidence, commits, touched_paths_actual, failure), forbidden-tool list.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 171/171 pass (docs-only change; test suite unchanged).
 
 ## Open Questions
 None.
@@ -37,14 +38,15 @@ None.
 - **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot; this session continues under `/loop /invoke-development-harness`. Skill-source fix scheduled as `unit_bugfix_002` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_005 PR opens now with all seven units.
-- **Branch:** `feat/phase-005-worktree-dispatch` (delete on merge).
+- **PR cadence:** one PR per phase. PHASE_006 PR opens after unit_028.
+- **Branch:** `feat/phase-006-orchestrator-contract`.
 - **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 25 / `loop_budget` 12 — `/loop` remains the driver; 13 units have now been completed end-to-end under `/loop`-driven continuation this session (unit_014 through unit_025 plus the ISSUE_002 injection turn).
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → **171** across phases so far.
+- `session_count` is 26 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_006 progress: **1/3 units done** (026 agent template). Remaining: 027 orchestrator/sub-agent boundary rules in Claude Code's `harness-core.md`, 028 Cursor mirror in `harness-core.mdc`.
+- Test-suite count unchanged at 171 (docs-only phase).
 
 ---
-*Updated: 2026-04-20T03:00:00Z*
+*Updated: 2026-04-20T03:25:00Z*

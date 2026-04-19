@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T03:00:00Z",
+  "last_updated": "2026-04-20T03:25:00Z",
   "execution": {
     "active_phase": "PHASE_006",
-    "active_unit": null,
-    "last_completed_unit": "unit_025",
-    "next_unit": "unit_026",
-    "session_count": 25,
+    "active_unit": "unit_027",
+    "last_completed_unit": "unit_026",
+    "next_unit": "unit_027",
+    "session_count": 26,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T03:00:00Z",
+    "last_run": "2026-04-20T03:25:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on merge_batch.py + test_parallel_invoke.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_parallel_invoke -v passes 2/2 (2.9s); python -m unittest discover skills/development-harness/scripts/tests passes 171/171 up from 169 (36.1s). PHASE_005 end-to-end green."
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_005 complete. unit_025 added the end-to-end integration test test_parallel_invoke.py under a new tests/integration/ package, plus a _prune_empty_dir helper on merge_batch's success path so .harness/worktrees/<batch_id>/ and the shared worktrees root get cleaned up when the whole batch resolves. Two integration cases cover the happy path (3 disjoint-file units -> dispatch -> fake agents -> merge -> cleanup) and the mixed case (two good + one scope violator -> partial outcome, violator's branch/worktree preserved for inspection). All seven PHASE_005 units landed: 019 dispatch, 020 merge, 021 teardown, 022 scope-violation, 023 lock mutex, 024 sync drift, 025 integration test. Test suite 65 -> 171 across the roadmap so far.",
+    "summary": "unit_026 complete. New skills/development-harness/templates/claude-code/agents/harness-unit.md (new templates/claude-code/agents/ directory). YAML frontmatter: name=harness-unit, description (one-unit-in-isolated-worktree-then-emit-JSON-report), tools=[Read, Edit, Write, Glob, Grep, Bash]. System-prompt body has five sections -- Identity (read WORKTREE_UNIT.json first; fail loudly if missing), Tool allowlist with hard forbidden list (no git push/merge/rebase/reset --hard/checkout -b/worktree add-remove; no .harness/ edits; no writes outside the worktree), Workflow (read identity -> read phase doc -> optional explore -> implement -> validate -> commit on pre-created branch -> emit report), JSON report schema with exact fields from the phase doc (unit_id, status, validation_evidence, commits, touched_paths_actual, failure with category enum), and three worked report examples (success, validation failure, scope_violation failure). Docs-only; 171/171 tests unchanged.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Run PHASE_005 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_026 in PHASE_006 (orchestrator-agent-contract: new templates/claude-code/agents/harness-unit.md with system prompt, tool allowlist, required JSON report schema).",
-    "timestamp": "2026-04-20T03:00:00Z"
+    "next_action": "Complete unit_027 (PHASE_006): update skills/development-harness/templates/claude-code/rules/harness-core.md with three orchestrator-vs-sub-agent boundary rules (only orchestrator modifies .harness/ or runs git merge; sub-agents commit only within their worktree branch and never push/rebase; a worktree containing .harness/WORKTREE_UNIT.json is a fan-out environment).",
+    "timestamp": "2026-04-20T03:25:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-005-worktree-dispatch",
+    "current_branch": "feat/phase-006-orchestrator-contract",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"

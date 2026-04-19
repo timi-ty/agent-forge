@@ -343,16 +343,22 @@
     {
       "id": "PHASE_006",
       "slug": "orchestrator-agent-contract",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [],
-      "started": null,
+      "started": "2026-04-20T03:15:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_026",
           "description": "New skills/development-harness/templates/claude-code/agents/harness-unit.md: system prompt, tool allowlist (no git push; no writes to .harness/; no writes outside worktree), required JSON report schema",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/agents/harness-unit.md: new ~170-line agent definition file under a new templates/claude-code/agents/ directory. YAML frontmatter carries name='harness-unit', a one-paragraph description of the agent's role (execute one unit inside its dispatched worktree, commit on the pre-created branch, emit structured JSON report), and tools=[Read, Edit, Write, Glob, Grep, Bash]",
+            "System-prompt body has 5 sections: Identity (read .harness/WORKTREE_UNIT.json first -- carries batch_id/unit_id/phase_id/touches_paths; stop immediately if the file is missing); Tool allowlist hard rules (Read/Edit/Write worktree-only, no .harness/ edits, Glob/Grep read-only, Bash restricted to git status/diff/log/add/commit + project test/lint commands, forbidden list covers git push/merge/rebase/reset --hard/checkout -b/worktree add/remove and anything writing outside the worktree or touching .harness/); Workflow (read identity -> read phase doc -> optional explore -> implement -> validate -> commit on pre-created branch -> emit JSON report); Report schema (unit_id, status, validation_evidence, commits, touched_paths_actual, failure) with per-field semantics; Reporting examples (success + validation failure + scope_violation failure); Hard rules summary",
+            "JSON report schema is baked in verbatim: unit_id (verbatim from WORKTREE_UNIT.json), status='succeeded'|'failed', validation_evidence as list of timed evidence strings, commits as list of full SHAs, touched_paths_actual as subset of the declared touches_paths globs, failure=null or {category: 'validation'|'scope_violation'|'ambiguity'|'infrastructure', detail: <prose>}",
+            "Acceptance criteria met: file exists; frontmatter + prompt + allowlist + report schema all present; prompt references .harness/WORKTREE_UNIT.json multiple times (grep finds it at lines 21, 23, 25, 40, 48, 49, 59, 90, 166)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
+          ]
         },
         {
           "id": "unit_027",
