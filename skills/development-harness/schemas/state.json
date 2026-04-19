@@ -1,15 +1,58 @@
 {
   "schema_version": "1.0",
   "skill_version": "1.0",
+  "_comment": "Example state.json illustrating the v2 execution.fleet block. fleet.mode is 'idle' when no batch is in flight; 'dispatched' while sub-agents run in their worktrees; 'merging' during serial fan-in. Per-unit fleet entries carry worktree path, branch, status, timestamps, agent summary path, and conflict metadata (null unless a conflict was recorded).",
   "created": "2025-03-11T10:00:00Z",
   "last_updated": "2025-03-11T14:30:00Z",
   "execution": {
-    "active_phase": "PHASE_001",
-    "active_unit": "unit_002",
-    "last_completed_unit": "unit_001",
-    "next_unit": "unit_003",
-    "session_count": 3,
-    "loop_budget": 10
+    "active_phase": "PHASE_002",
+    "active_unit": "unit_004",
+    "last_completed_unit": "unit_003",
+    "next_unit": "unit_005",
+    "session_count": 5,
+    "loop_budget": 10,
+    "fleet": {
+      "mode": "dispatched",
+      "batch_id": "batch_2025-03-11T14-25-00Z",
+      "units": [
+        {
+          "unit_id": "unit_004",
+          "phase_id": "PHASE_002",
+          "worktree_path": ".harness/worktrees/batch_2025-03-11T14-25-00Z/unit_004",
+          "branch": "harness/batch_2025-03-11T14-25-00Z/unit_004",
+          "status": "succeeded",
+          "started_at": "2025-03-11T14:25:12Z",
+          "ended_at": "2025-03-11T14:29:43Z",
+          "agent_summary_path": ".harness/logs/batch_2025-03-11T14-25-00Z/unit_004.md",
+          "conflict": null
+        },
+        {
+          "unit_id": "unit_005",
+          "phase_id": "PHASE_002",
+          "worktree_path": ".harness/worktrees/batch_2025-03-11T14-25-00Z/unit_005",
+          "branch": "harness/batch_2025-03-11T14-25-00Z/unit_005",
+          "status": "running",
+          "started_at": "2025-03-11T14:25:12Z",
+          "ended_at": null,
+          "agent_summary_path": null,
+          "conflict": null
+        },
+        {
+          "unit_id": "unit_006",
+          "phase_id": "PHASE_002",
+          "worktree_path": ".harness/worktrees/batch_2025-03-11T14-25-00Z/unit_006",
+          "branch": "harness/batch_2025-03-11T14-25-00Z/unit_006",
+          "status": "failed",
+          "started_at": "2025-03-11T14:25:12Z",
+          "ended_at": "2025-03-11T14:28:01Z",
+          "agent_summary_path": ".harness/logs/batch_2025-03-11T14-25-00Z/unit_006.md",
+          "conflict": {
+            "paths": ["src/middleware/errors.ts"],
+            "strategy_applied": "abort_batch"
+          }
+        }
+      ]
+    }
   },
   "validation_summary": {
     "last_run": "2025-03-11T14:25:00Z",
@@ -31,10 +74,10 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "Implementing auth flow. Unit 002 in progress.",
+    "summary": "Dispatched batch_2025-03-11T14-25-00Z for PHASE_002 units 004/005/006; unit_004 succeeded, unit_005 running, unit_006 failed with merge conflict on src/middleware/errors.ts (strategy: abort_batch).",
     "blockers": [],
     "open_questions": ["Should we add rate limiting to login endpoint?"],
-    "next_action": "Complete unit_002: Add JWT validation middleware",
+    "next_action": "Complete unit_005 and run merge_batch.py to handle the partial-success batch.",
     "timestamp": "2025-03-11T14:30:00Z"
   },
   "execution_mode": "local"

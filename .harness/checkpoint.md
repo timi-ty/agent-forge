@@ -1,20 +1,20 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_001 (PHASE_001):** Extended `skills/development-harness/schemas/phase-graph.json` with three new unit fields — `depends_on`, `touches_paths`, `parallel_safe` — and refreshed the example data to illustrate the v2 shape across 2 phases and 6 units.
+**unit_002 (PHASE_001):** Extended `skills/development-harness/schemas/state.json` with the `execution.fleet` block. Fleet tracks `mode` ('idle'/'dispatched'/'merging'), `batch_id`, and per-unit entries carrying worktree path, branch, status, timestamps, agent summary path, and conflict metadata.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_002:** Extend `skills/development-harness/schemas/state.json` with the `execution.fleet` block (mode, batch_id, per-unit fleet entries carrying worktree path, branch, status, conflict metadata, agent summary path) and illustrative example data.
+**Complete unit_003:** Extend `skills/development-harness/schemas/config.json` with three new blocks under `execution_mode`: `parallelism`, `agent_delegation`, and `versioning` (the back-compat preference field).
 
 ## Blocked By
 None.
 
 ## Evidence
-- `skills/development-harness/schemas/phase-graph.json` now declares `depends_on`, `touches_paths`, `parallel_safe` on every unit.
-- Example showcases: serial chain (`unit_002` depends on `unit_001`), independent siblings (PHASE_002 units), `parallel_safe: false` without `touches_paths` (unit_001 foundation), `parallel_safe: true` with `touches_paths` globs (5 other units).
+- `skills/development-harness/schemas/state.json` carries `execution.fleet` with mode, batch_id, units[].
+- Example shows a dispatched batch: unit_004 succeeded, unit_005 running, unit_006 failed with conflict metadata (paths + strategy_applied).
 - `python -m unittest discover skills/development-harness/scripts/tests` → 36/36 tests pass.
 
 ## Open Questions
@@ -32,4 +32,4 @@ None.
 - Parallelism stays off in this bootstrap's config until PHASE_007 lands.
 
 ---
-*Updated: 2026-04-19T00:10:00Z*
+*Updated: 2026-04-19T00:15:00Z*

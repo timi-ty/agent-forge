@@ -23,8 +23,13 @@
         {
           "id": "unit_002",
           "description": "Extend skills/development-harness/schemas/state.json: add execution.fleet block (mode, batch_id, per-unit fleet entries) with example",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/schemas/state.json now carries execution.fleet with mode ('idle'/'dispatched'/'merging'), batch_id, and units[]",
+            "Per-unit fleet entries carry unit_id, phase_id, worktree_path, branch, status ('running'/'succeeded'/'failed'/'merged'), started_at, ended_at, agent_summary_path, and conflict (null or {paths, strategy_applied})",
+            "Example demonstrates a dispatched batch with three units: one succeeded, one running, one failed with conflict metadata",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36)"
+          ]
         },
         {
           "id": "unit_003",
