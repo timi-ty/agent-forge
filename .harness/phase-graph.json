@@ -504,34 +504,54 @@
     {
       "id": "PHASE_009",
       "slug": "safety-rails-and-automatic-fallback",
-      "status": "pending",
+      "status": "completed",
       "depends_on": ["PHASE_007"],
-      "started": null,
-      "completed": null,
+      "started": "2026-04-20T05:30:00Z",
+      "completed": "2026-04-20T07:30:00Z",
       "units": [
         {
           "id": "unit_037",
           "description": "Session-scoped kill switch: write .harness/.parallel-disabled after 2 scope_violation or ambiguity failures in a session; cleared when .invoke-active clears",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/safety_rails.py: new 165-line stdlib-only module with record_failure(root, category, unit_id, now) (appends a JSON line to .harness/.parallel-failures.jsonl and writes .harness/.parallel-disabled when counted-category failures reach KILL_SWITCH_THRESHOLD=2), is_parallel_disabled(root) (presence check), clear_safety_rails(root) (idempotent removal of both files). COUNTED_CATEGORIES = ('scope_violation', 'ambiguity'). Failures in other categories are still logged for observability but don't count toward the kill switch. CLI: record / status / clear subcommands with --root --category --unit-id",
+            "skills/development-harness/templates/claude-code/hooks/continue-loop.py + templates/hooks/continue-loop.py: both hooks' _stop() helpers now remove .invoke-active AND .parallel-disabled AND .parallel-failures.jsonl in one sweep. Session-scoped safety-rail state is cleared whenever the hook decides to stop, so the next invoke session starts clean. Cursor's _stop derives harness_dir from the invoke_flag path (os.path.dirname(invoke_flag)); Claude Code's uses cwd directly",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new 225-line test module with 15 cases across 5 classes. TestRecordFailureThreshold (6): single failure doesn't trip; two failures trip; mixed scope_violation+ambiguity trip together; third call is idempotent; non-counted categories never count; counted + non-counted mix counts only the counted ones. TestHelpers (3): is_parallel_disabled file-presence reflection; clear removes both files; clear is idempotent on missing files. TestCliSmoke (2): record-then-status round trip; CLI clear. TestHookStopClearsSafetyRails (2): Claude Code AND Cursor hooks' _stop() wipe .parallel-disabled + .parallel-failures.jsonl along with .invoke-active. TestConstants (2): threshold=2; COUNTED_CATEGORIES set",
+            "Validation evidence with per-layer timing: `python -m py_compile` on all four changed/new files exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` passes 15/15 (0.7s); `python -m unittest discover skills/development-harness/scripts/tests` passes 198/198 up from 183 (38.4s). Pre-existing test_continue_loop_claude + test_continue_loop_cursor (10 cases) pass unchanged despite the _stop() changes -- the additional file removals target missing files in those tests, which the unlink try/except handles cleanly"
+          ]
         },
         {
           "id": "unit_038",
           "description": "Verify batch-of-1 uses the same in-tree path as parallelism=false; re-assert via test that no special-case branch exists in invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md step 4 'Pick the dispatch mode' gates the in-tree fast path on `len(batch) == 1 AND config.execution_mode.parallelism.enabled == false`; the companion 'Worktree fan-out' bullet explicitly covers `len(batch) == 1` when parallelism is on, so batch-of-1 is NOT a sequential-path special case. skills/development-harness/templates/workspace-commands/invoke-development-harness.md step 4 mirrors the same two-clause gating. No 'batch-of-1 -> sequential' fork remains anywhere in the invoke docs post-PHASE_007 rewrite",
+            "skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py TestBatchOfOneDispatchModeEquivalence (landed in PHASE_007 unit_033) already asserts logical-state equivalence between a single unit run through the in-tree fast path and a single unit run through the worktree fan-out (unit status, evidence count, touches_paths file contents on main). It also pins the substantive invariant that the in-tree path leaves state.execution.fleet byte-identical via a copy.deepcopy before/after compare -- the integration half of unit_038's acceptance is pre-satisfied",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new class TestInvokeDocHasNoBatchOfOneSpecialCase (3 cases) promotes the grep-level check into a regression test so a future doc edit can't silently reintroduce the fork. test_in_tree_gating_always_includes_parallelism_clause asserts every in-tree-gating line in both docs names the parallelism=false clause. test_no_batch_of_one_sequential_antipattern rejects the pre-PHASE_007 'batch-of-1 -> sequential' phrasings. test_batch_of_one_with_parallelism_on_goes_to_worktree pins the sentence that routes batch-of-1 through worktree fan-out when parallelism is on",
+            "Validation evidence with per-layer timing: `python -m py_compile skills/development-harness/scripts/tests/test_safety_rails.py` exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_safety_rails -v` passes 18/18 (0.77s, up from 15 -- 3 new cases for unit_038); `python -m unittest discover skills/development-harness/scripts/tests` passes 201/201 (46.6s, up from 198)"
+          ]
         },
         {
           "id": "unit_039",
           "description": "Document scope-violation always-on policy in skills/development-harness/references/phase-contract.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/references/phase-contract.md: added new 'Scope-Violation Enforcement Policy' top-level section (after 'Contract Enforcement') that states scope-violation detection is always on regardless of configuration, explains that `config.execution_mode.parallelism.require_touches_paths` is an admission-control knob on compute_parallel_batch (not a merge-time enforcement toggle), and gives the trust-boundary rationale: touches_paths is a trust boundary declaration, the sub-agent is untrusted (worktree-confined tool allowlist, no push/merge/rebase), and the git diff against declared globs is the orchestrator's only guarantee that the sub-agent didn't step outside its lane. Includes three sub-subsections: 'What require_touches_paths does NOT do', 'Rationale: trust boundary, not feature toggle', and 'Downstream consequences' (scope violation is a hard reject regardless of conflict_strategy; counts toward the session kill switch; is a per-phase contract invariant that no phase doc may opt out of)",
+            "Policy grounding verified in code: skills/development-harness/scripts/merge_batch.py L400-411 runs the scope check unconditionally when WORKTREE_UNIT.json carries a non-null touches_paths list -- require_touches_paths is never read there. skills/development-harness/scripts/compute_parallel_batch.py L148 is the only site that reads require_touches_paths; it gates batch admission for units that lack a touches_paths declaration. Both file+line references match the doc's claims",
+            "skills/development-harness/scripts/tests/test_safety_rails.py: new TestScopeViolationAlwaysOnPolicy class (3 cases). test_policy_section_present: 'Scope-Violation Enforcement Policy' heading is present AND 'always on, regardless of configuration' statement is present (normalized for markdown bold). test_policy_explains_require_touches_paths_is_admission_control: the doc classifies the knob as 'admission-control', names compute_parallel_batch as the site, and contrasts admission-time vs merge-time enforcement. test_policy_gives_trust_boundary_rationale: the doc frames touches_paths as a 'trust-boundary', names the 'sub-agent' as the untrusted producer, and names 'diff' as the source of truth",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_safety_rails.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_safety_rails.TestScopeViolationAlwaysOnPolicy -v passes 3/3 (0.001s); python -m unittest discover skills/development-harness/scripts/tests passes 204/204 (41.0s, up from 201 -- 3 new cases for unit_039)"
+          ]
         },
         {
           "id": "unit_040",
           "description": "Concurrent merge serialization test: two merge_batch.py invocations contend on .harness/.lock; second waits for first",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/test_merge_batch.py TestLockContention: acceptance largely pre-satisfied by PHASE_005 unit_023's four existing cases (test_second_acquirer_blocks_until_first_releases via two threads, test_release_removes_lock_file_even_on_exception, test_stale_lock_is_taken_over, test_timeout_raises_merge_error_when_lock_is_fresh). All four continue to pass",
+            "unit_040 adds two new cases to close the 'two merge_batch.py invocations' wording in the acceptance -- the prior thread test proves the _MergeLock primitive; the new subprocess test proves OS-level O_EXCL semantics hold across processes (the production scenario when two CLI invocations race from two shells or schedulers). test_two_subprocess_acquirers_serialize_on_disk_lock: spawn a Python subprocess that acquires _MergeLock against the same .harness/.lock, signals 'HELD' on stdout, sleeps hold_seconds=0.5s, releases. The main process then acquires the same lock in-process and measures elapsed -- must be >= hold_seconds - 0.1s. After both release, the lock file is gone. PIPE handles explicitly closed to avoid Python 3.12 ResourceWarnings (verified via `python -W error::ResourceWarning`)",
+            "test_lock_path_is_exactly_harness_dot_lock: pin the on-disk location. If anyone moves LOCK_FILENAME in merge_batch.py or changes the <root>/.harness/.lock layout, cross-process serialization would silently break (each invocation would acquire a different lock). This test trips before that can ship",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_merge_batch.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention -v passes 6/6 (2.2s, up from 4 -- 2 new cases for unit_040); python -W error::ResourceWarning single-test run confirms clean handle management; python -m unittest discover skills/development-harness/scripts/tests passes 206/206 (34.7s, up from 204)"
+          ]
         }
       ]
     },

@@ -116,11 +116,13 @@ def main():
 
 
 def _stop(cwd):
-    invoke_flag = os.path.join(cwd, ".harness", ".invoke-active")
-    try:
-        os.remove(invoke_flag)
-    except OSError:
-        pass
+    # Clear .invoke-active AND session-scoped safety-rail files (kill
+    # switch + failure log). The next invoke session starts clean.
+    for name in (".invoke-active", ".parallel-disabled", ".parallel-failures.jsonl"):
+        try:
+            os.remove(os.path.join(cwd, ".harness", name))
+        except OSError:
+            pass
     sys.exit(0)  # Allow Claude to stop
 
 

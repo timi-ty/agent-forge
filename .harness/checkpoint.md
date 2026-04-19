@@ -1,46 +1,69 @@
 # Harness Checkpoint
 
 ## Last Completed
-**PHASE_008 complete (all 3 units).** The Stop hook is now fleet-aware on both Cursor and Claude Code. A turn that crashed mid-batch can no longer trick the hook into auto-continuing into an inconsistent state.
+**unit_040 (PHASE_009) — PHASE_009 CLOSED.** Concurrent merge serialization proven end-to-end across real OS processes, not just threads.
 
-- **unit_034** — fleet-mode guard in [Claude Code continue-loop.py](skills/development-harness/templates/claude-code/hooks/continue-loop.py); new [test_continue_loop_claude.py](skills/development-harness/scripts/tests/test_continue_loop_claude.py) with 5 cases.
-- **unit_035** — mirror in [Cursor continue-loop.py](skills/development-harness/templates/hooks/continue-loop.py) with the Cursor protocol (always exits 0; stop = `print({})`, continue = `print({"followup_message": ...})`); new [test_continue_loop_cursor.py](skills/development-harness/scripts/tests/test_continue_loop_cursor.py) with 5 cases structurally mirroring the Claude Code test.
-- **unit_036** — the unit-test half of the acceptance is covered by unit_034 + unit_035's 10 cases total (dispatched + merging + idle-falls-through + missing-fleet-treated-as-idle + positive-control reaches-continue, per hook variant). The manual-verification half landed as a new subsection under "Rollback / Failure Considerations" in [PHASES/PHASE_008_stop-hook-fleet-awareness.md](PHASES/PHASE_008_stop-hook-fleet-awareness.md) — a step-by-step checklist for mid-batch kill → new session → hook stops cleanly → `/sync-development-harness` surfaces orphans → `teardown_batch.py --batch-id <id>` recovers → `/invoke-development-harness` restarts cleanly.
+- **Pre-existing coverage from PHASE_005 unit_023** still green: `TestLockContention` in [test_merge_batch.py](skills/development-harness/scripts/tests/test_merge_batch.py) holds 4 cases — two-thread contention, exception-path cleanup, stale-lock takeover, and fresh-lock timeout.
+- **Two new unit_040 cases** close the "two `merge_batch.py` invocations" wording in the acceptance:
+  - `test_two_subprocess_acquirers_serialize_on_disk_lock` — spawns a Python subprocess that acquires [_MergeLock](skills/development-harness/scripts/merge_batch.py) against the same `.harness/.lock`, signals `HELD` on stdout, sleeps 0.5s, releases. The main process then acquires the same lock in-process and asserts elapsed ≥ 0.4s, proving OS-level `O_EXCL` semantics hold across processes — the production scenario when two CLI invocations race from two shells or schedulers. PIPE handles explicitly closed; `python -W error::ResourceWarning` confirms no Python 3.12 handle leaks.
+  - `test_lock_path_is_exactly_harness_dot_lock` — pins the on-disk lock location at `<root>/.harness/.lock`. If someone moves `LOCK_FILENAME` or the harness-dir layout, cross-process serialization would silently break (each invocation would acquire a different file); this test trips first.
 
-**Test-suite growth this phase:** 173 → **183** (+10 hook tests). The hook tests use subprocess + controlled stdin payloads + observable contract (exit code / stdout JSON / `.invoke-active` presence); they ship a one-off `select_next_unit.py` stub for the positive-control case so the tests don't drift when the real selector evolves.
+### PHASE_009 at a glance
+| Unit | Done | Evidence |
+|------|------|----------|
+| unit_037 | Session kill switch | `safety_rails.py` + 15 tests + both hooks' `_stop()` sweeps |
+| unit_038 | Batch-of-1 no-special-case | 3 grep-as-test cases pin invoke.md + workspace-commands gating |
+| unit_039 | Scope-violation always-on policy | Policy section in `phase-contract.md` + 3 policy-presence tests |
+| unit_040 | Cross-process merge lock | 2 subprocess-level tests + lock-location pin |
+
+Suite: 183 → 198 → 201 → 204 → **206** across the phase.
+
+### PR review checklist (pr-review-checklist.md)
+- [x] All units have `validation_evidence` in phase-graph.json
+- [x] No linter/type errors in changed files (stdlib-only Python)
+- [x] Codebase patterns followed (testing style matches existing harness test modules)
+- [x] Unit tests pass (206/206)
+- [x] Integration tests pass (pre-existing `test_invoke_rewrite.py` cases cover the integration half of unit_038)
+- [x] Not deploy-affecting (skill distribution repo; `config.json` deployment target is `"none"`)
+- [x] Phase doc + checkpoint + state current
+- [x] All changes committed; PR to be opened next
 
 ## What Failed (if anything)
-First run of `test_continue_loop_claude.py` had a `HOOK_PATH` bug (`parents[3]` vs `parents[2]`) that made every case fail with a "no such file" stderr. Fixed by adjusting to `SKILL_ROOT = parents[2]`; the Cursor test was written correctly from the start using the fixed pattern.
+None.
 
 ## What Is Next
-**Run PHASE_008 phase completion review** (pr-review-checklist + code-review skill), open the phase PR, autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, advance to **unit_037 (PHASE_009, safety-rails-and-automatic-fallback)** — a session-scoped kill switch that writes `.harness/.parallel-disabled` after 2 `scope_violation` or `ambiguity` failures in a session; cleared when `.invoke-active` clears.
+**Open PHASE_009 PR** (`feat/phase-009-safety-rails` → `main`), run the `code-review` skill, squash-merge per [harness-git.md](.claude/rules/harness-git.md) autonomous-merge authorization.
+
+**Then PHASE_010 unit_041:** Extend [skills/development-harness/templates/checkpoint-template.md](skills/development-harness/templates/checkpoint-template.md) with a Batch section (batch ID, mode, per-unit status and branch, conflicts summary) so live invoke turns render batch state visibly in the checkpoint. PHASE_010 is observability — three units total (041 checkpoint batch section, 042 logs layout, 043 status summarizer).
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/templates/claude-code/hooks/continue-loop.py](skills/development-harness/templates/claude-code/hooks/continue-loop.py) + [templates/hooks/continue-loop.py](skills/development-harness/templates/hooks/continue-loop.py): fleet-mode guards, identical logic adapted per tool protocol.
-- [skills/development-harness/scripts/tests/test_continue_loop_claude.py](skills/development-harness/scripts/tests/test_continue_loop_claude.py) + [test_continue_loop_cursor.py](skills/development-harness/scripts/tests/test_continue_loop_cursor.py): 5 cases each, 10 cases total.
-- [PHASES/PHASE_008_stop-hook-fleet-awareness.md](PHASES/PHASE_008_stop-hook-fleet-awareness.md): Rollback section expanded with the manual-verification checklist.
-- `python -m unittest discover skills/development-harness/scripts/tests` → **183/183** pass (up from 173 at PHASE_007 end) in 44.5s.
+- [skills/development-harness/scripts/tests/test_merge_batch.py](skills/development-harness/scripts/tests/test_merge_batch.py): +2 cases in `TestLockContention`.
+- [skills/development-harness/scripts/merge_batch.py](skills/development-harness/scripts/merge_batch.py) `_MergeLock` unchanged; unit_040 is test-only.
+- `python -m py_compile skills/development-harness/scripts/tests/test_merge_batch.py` exits 0 (~0.1s).
+- `python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention -v` → **6/6** in 2.2s.
+- `python -W error::ResourceWarning -m unittest ...test_two_subprocess_acquirers_serialize_on_disk_lock` → OK, no handle-leak warnings.
+- `python -m unittest discover skills/development-harness/scripts/tests` → **206/206** (up from 204) in 34.7s.
 
 ## Open Questions
 None.
 
 ## Tracked Issues
 - **ISSUE_001** (high, open): Windows Python-detection in create.md Phase 5. Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
-- **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot. PHASE_008's fleet-mode guard is **complementary** to the ISSUE_002 fix — the guard is a precondition check that remains valuable regardless of whether the hook drives continuation. `unit_bugfix_002` at head of PHASE_011 will retire the block-continue part; the fleet-mode guard stays.
+- **ISSUE_002** (high, open): Claude Code Stop-hook continuation is one-shot. Skill-source fix scheduled as `unit_bugfix_002` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_008 PR opens now with all three units.
-- **Branch:** `feat/phase-008-stop-hook-fleet-awareness` (delete on merge).
-- **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
+- **PR cadence:** one PR per phase. PHASE_009 PR opens now (phase closed).
+- **Branch:** `feat/phase-009-safety-rails` → squash-merge to `main`.
+- **Next branch:** `feat/phase-010-observability` (to be cut after PHASE_009 squashes in).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 34 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE progress so far: PHASE_001–008 complete (36 units). Remaining: PHASE_009–013 (≈22 units).
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → **183** across phases so far.
+- `session_count` is 38 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_009 progress: **4/4 units done** — phase CLOSED.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → **206** across phases so far.
 
 ---
-*Updated: 2026-04-20T05:20:00Z*
+*Updated: 2026-04-20T07:30:00Z*
