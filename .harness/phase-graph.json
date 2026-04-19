@@ -255,16 +255,21 @@
     {
       "id": "PHASE_005",
       "slug": "worktree-dispatch-and-merge-infrastructure",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_001", "PHASE_002"],
-      "started": null,
+      "started": "2026-04-20T00:35:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_019",
           "description": "New skills/development-harness/scripts/dispatch_batch.py: creates git worktrees under .harness/worktrees/<batch_id>/<unit_id>, creates harness/<batch_id>/<unit_id> branches, seeds WORKTREE_UNIT.json, writes state.execution.fleet; atomic teardown on failure",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/dispatch_batch.py: new 207-line stdlib-only module. Public API: dispatch_batch(batch_result, root, state=None, now=None) takes the {batch_id, batch, excluded} dict from compute_parallel_batch and per unit runs 'git worktree add -b harness/<batch_id>/<unit_id> .harness/worktrees/<batch_id>/<unit_id> HEAD' (via subprocess), seeds '<worktree>/.harness/WORKTREE_UNIT.json' with batch_id/unit_id/phase_id/touches_paths, and returns the updated fleet block. When a 'state' dict is passed, state.execution.fleet is replaced in place with {mode='dispatched', batch_id, units=[...]} where every entry matches the v2 state schema (status='running', started_at=now, ended_at=null, agent_summary_path=null, conflict=null). Atomic failure semantics: any subprocess.CalledProcessError, OSError, or KeyError raised during per-unit processing triggers _rollback(root, created) which best-effort 'git worktree remove --force' + 'git branch -D' every worktree/branch the call created before re-raising as DispatchError. CLI: --batch <file> --root <dir> --state <file>",
+            "skills/development-harness/scripts/tests/test_dispatch_batch.py: new 194-line test module with 9 cases across 3 classes. TestHappyPath: creates worktrees + branches + WORKTREE_UNIT.json contents + fleet-entry shape + empty-batch edge + state-is-written-in-place. TestAtomicRollback: pre-creates a colliding branch on unit_b so the second 'git worktree add' fails and asserts unit_a's worktree + branch are removed after DispatchError (pre-existing unit_b branch untouched); second case exercises the KeyError path by omitting 'id' on the second unit and asserts same rollback shape. TestCliSmoke: end-to-end via subprocess asserting stdout JSON, state.json mutation including last_updated, plus --help",
+            "Test fixtures use a real tempdir git repo (git init + user config + one commit) because worktree ops require a non-trivial commit graph. The helper _init_repo(path) is local to the test module; this is the first git-subprocess-using test file in the suite",
+            "Validation evidence with per-layer timing (per unit_018 rule): `python -m py_compile skills/development-harness/scripts/dispatch_batch.py skills/development-harness/scripts/tests/test_dispatch_batch.py` exits 0 (0.14s); `python -m unittest skills.development-harness.scripts.tests.test_dispatch_batch -v` passes 9/9 (3.5s); `python -m unittest discover skills/development-harness/scripts/tests` passes 118/118 up from 109 (11.3s wall-clock)"
+          ]
         },
         {
           "id": "unit_020",
