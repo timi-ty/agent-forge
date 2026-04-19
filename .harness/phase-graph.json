@@ -427,14 +427,23 @@
         {
           "id": "unit_031",
           "description": "Document one-turn-per-batch semantics in skills/development-harness/references/architecture.md (session_count increments once per turn)",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/references/architecture.md: new '## Batch Semantics — one turn per batch' subsection inserted after Loop Mechanics and before Git Integration. Makes three load-bearing statements: (1) a single invoke turn processes a whole BATCH not a single unit; (2) execution.session_count increments by exactly 1 per turn REGARDLESS of batch size (so loop_budget is denominated in turns, not units); (3) the full fleet-mode transition idle -> dispatched -> merging -> idle completes within one turn in the worktree path, so the stop hook never sees a partial fleet. Links to commands/invoke.md Steps 4-9 and to parallel-execution.md (PHASE_011 unit_047 will create that doc; this reference is a forward-link placeholder)",
+            "Acceptance criteria met: new paragraph explicitly states session_count increments once per turn; explicitly links to PHASE_007 rewrite rationale via the commands/invoke.md Steps 4-9 reference",
+            "Grep verification: '## Batch Semantics — one turn per batch' matches at line 81; 'session_count increments by exactly 1 per turn, regardless of batch size' present at line 85",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only change"
+          ]
         },
         {
           "id": "unit_032",
           "description": "Wire parallel phase-review dispatch (code-review skill concurrent with commit-agent-changes) into the rewritten flow",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "Pre-satisfied by unit_029 and unit_030. The batch-driven invoke rewrite landed the parallel phase-review dispatch rule directly in Step 10 (Commit) of both commands/invoke.md and the workspace-commands template. At phase close with both code-review and commit-agent-changes installed, the flow dispatches them in ONE assistant message with two Agent(subagent_type='general-purpose') tool calls -- one runs code-review read-only on the branch diff, the other runs commit-agent-changes to commit/push/open-PR. Serial fallback when only one skill is installed or no phase closed this turn",
+            "Grep verification (acceptance: 'single assistant message with both Agent calls'): commands/invoke.md line 262 carries 'in one assistant message with two Agent(subagent_type: \"general-purpose\") tool calls'; templates/workspace-commands/invoke-development-harness.md line 111 carries the same phrasing compressed to the template style. Both include the two-call code sample and the serial fallback",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- no additional file changes this unit; acceptance was landed in earlier commits this phase"
+          ]
         },
         {
           "id": "unit_033",

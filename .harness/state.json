@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T04:20:00Z",
+  "last_updated": "2026-04-20T04:35:00Z",
   "execution": {
     "active_phase": "PHASE_007",
-    "active_unit": "unit_031",
-    "last_completed_unit": "unit_030",
-    "next_unit": "unit_031",
-    "session_count": 30,
+    "active_unit": "unit_033",
+    "last_completed_unit": "unit_032",
+    "next_unit": "unit_033",
+    "session_count": 31,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T04:20:00Z",
+    "last_run": "2026-04-20T04:35:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only unit, test suite unchanged"
+    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- docs-only turn (unit_031 + unit_032 pre-satisfied), test suite unchanged"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_030 complete. Whole-file rewrite of templates/workspace-commands/invoke-development-harness.md to mirror the unit_029 command-doc batch-driven structure in the compact-template style (121 LOC, single paragraph per section where possible). 12 monotonic sections 0-11 matching the command doc verbatim. Sections 5/6 are the only branches (in-tree vs worktree fan-out); every other step is single-flow. fleet.mode transitions present at sections 3/5/8. Section 11 carries the ISSUE_002 /loop workaround note for Claude Code. Zero 'sequential path'/'parallel path' language. 171/171 tests unchanged.",
+    "summary": "unit_031 AND unit_032 complete in one turn. unit_031: added '## Batch Semantics -- one turn per batch' subsection to references/architecture.md after Loop Mechanics, stating session_count increments by exactly 1 per turn regardless of batch size, the full idle->dispatched->merging->idle fleet transition completes within one turn, and loop_budget is denominated in turns not units. Links to commands/invoke.md Steps 4-9 and forward-references parallel-execution.md (PHASE_011 unit_047). unit_032 grep-verified as pre-satisfied: the parallel phase-review dispatch rule ('in one assistant message with two Agent(subagent_type=general-purpose) tool calls') is already in Step 10 of both commands/invoke.md (line 262) and the workspace-commands template (line 111) courtesy of the unit_029 + unit_030 rewrites. 171/171 tests unchanged. PHASE_007 progress 4/5 -- only the closing integration test unit_033 remains.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_031 (PHASE_007): document one-turn-per-batch semantics in skills/development-harness/references/architecture.md with a new paragraph stating session_count increments once per turn regardless of batch size, and link to PHASE_007's rewrite rationale.",
-    "timestamp": "2026-04-20T04:20:00Z"
+    "next_action": "Complete unit_033 (PHASE_007, closes the phase): new skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py -- fixture 3-unit parallel phase completes in one turn; batch-of-1 in-tree produces same final state as a batch-of-1 worktree run would. Asserts final phase-graph.json shows all units completed with evidence and fleet.mode==idle. Test validates the end-to-end single-flow pipeline against both dispatch modes.",
+    "timestamp": "2026-04-20T04:35:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
