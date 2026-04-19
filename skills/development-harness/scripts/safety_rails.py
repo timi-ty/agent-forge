@@ -124,7 +124,7 @@ def clear_safety_rails(root):
     for path in (_kill_switch_path(root), _failures_path(root)):
         try:
             path.unlink()
-        except (OSError, FileNotFoundError):
+        except OSError:
             pass
 
 

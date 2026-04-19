@@ -600,7 +600,7 @@ class TestLockContention(MergeBatchBase):
         # merge_batch.py) and hold it for HOLD seconds. We run it as a
         # subprocess so it's a separate OS process, not a Python thread.
         sidecar = (
-            "import sys, time, json\n"
+            "import sys, time\n"
             f"sys.path.insert(0, {str(SCRIPT_DIR)!r})\n"
             "from merge_batch import _MergeLock\n"
             f"lock = _MergeLock({str(self.temp_dir)!r}, timeout=5.0, poll_interval=0.02)\n"
