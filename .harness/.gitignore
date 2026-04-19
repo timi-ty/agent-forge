@@ -1,1 +1,5 @@
 .invoke-active
+worktrees/
+logs/
+.parallel-disabled
+.lock

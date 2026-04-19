@@ -1,21 +1,21 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_003 (PHASE_001):** Extended `skills/development-harness/schemas/config.json` by promoting `execution_mode` from a string to an object with four sub-blocks: `location`, `parallelism`, `agent_delegation`, and `versioning`.
+**unit_004 (PHASE_001):** Registered `.harness/worktrees/` and `.harness/logs/` in `skills/development-harness/schemas/manifest.json` (both harness-owned transient directories) and updated the `.gitignore` template description in `commands/create.md`. Also hardened this workspace's own `.harness/.gitignore` with the same entries plus `.parallel-disabled` and `.lock` for the later phases.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_004:** Register `.harness/worktrees/` and `.harness/logs/` in `skills/development-harness/schemas/manifest.json` and add them to the `.gitignore` template.
+**Complete unit_005:** Bump `SCHEMA_VERSION` in `skills/development-harness/scripts/harness_utils.py` from `"1.0"` to `"2.0"` and update `check_schema_version` to emit an actionable "re-run `/create-development-harness`" error on mismatch.
 
 ## Blocked By
 None.
 
 ## Evidence
-- `config.json.execution_mode.parallelism`: `enabled=false`, `max_concurrent_units=3`, `conflict_strategy=abort_batch`, `require_touches_paths=true`, `allow_cross_phase=false`.
-- `config.json.execution_mode.agent_delegation`: `use_explore_for_research=true`, `use_code_review_skill_for_phase_review=true`, `parallel_validation_layers=false`.
-- `config.json.execution_mode.versioning.break_on_schema_bump=true` (matches the clean-code direction chosen for this project).
+- `skills/development-harness/schemas/manifest.json`: two new entries for `worktrees/` and `logs/` with notes.
+- `skills/development-harness/commands/create.md`: `.gitignore` template description now mentions `worktrees/` and `logs/`.
+- `.harness/.gitignore` (this workspace) extended with `worktrees/`, `logs/`, `.parallel-disabled`, `.lock`.
 - `python -m unittest discover skills/development-harness/scripts/tests` → 36/36 tests pass.
 
 ## Open Questions
@@ -34,6 +34,7 @@ None.
 ## Reminders
 - All skill edits go to `skills/development-harness/**`. `.harness/scripts/` is a frozen runtime copy.
 - Parallelism stays off in this bootstrap's config until PHASE_007 lands.
+- Stop-hook loop does not auto-continue in this Claude Code session (ISSUE_001 workspace fix would take effect in a new session). Manual `/invoke-development-harness` required between units for this session.
 
 ---
-*Updated: 2026-04-19T00:20:00Z*
+*Updated: 2026-04-19T00:30:00Z*

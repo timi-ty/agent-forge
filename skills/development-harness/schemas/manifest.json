@@ -83,6 +83,20 @@
       "removable": true
     },
     {
+      "path": ".harness/worktrees/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true,
+      "note": "Transient per-batch git worktrees for parallel execution. Gitignored. Cleaned by teardown_batch.py and /clear."
+    },
+    {
+      "path": ".harness/logs/",
+      "ownership": "harness-owned",
+      "type": "directory",
+      "removable": true,
+      "note": "Per-batch execution logs (batch.json, <unit>.md, merge.log, validation.log). Gitignored. Retained until /clear."
+    },
+    {
       "path": "PHASES/",
       "ownership": "harness-owned",
       "type": "directory",

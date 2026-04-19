@@ -46,8 +46,13 @@
         {
           "id": "unit_004",
           "description": "Register .harness/worktrees/ and .harness/logs/ in skills/development-harness/schemas/manifest.json and add entries to the .gitignore template",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/schemas/manifest.json: added entries for .harness/worktrees/ (transient per-batch worktrees) and .harness/logs/ (per-batch execution logs), both harness-owned directories with notes on their purpose",
+            "skills/development-harness/commands/create.md: .gitignore template description updated to include 'worktrees/' and 'logs/' alongside '.invoke-active'",
+            ".harness/.gitignore in this workspace also updated with worktrees/, logs/, .parallel-disabled, and .lock entries",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36)"
+          ]
         },
         {
           "id": "unit_005",

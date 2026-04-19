@@ -2,17 +2,17 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T00:25:00Z",
+  "last_updated": "2026-04-19T00:30:00Z",
   "execution": {
     "active_phase": "PHASE_001",
-    "active_unit": "unit_004",
-    "last_completed_unit": "unit_003",
-    "next_unit": "unit_005",
-    "session_count": 3,
+    "active_unit": "unit_005",
+    "last_completed_unit": "unit_004",
+    "next_unit": "unit_006",
+    "session_count": 4,
     "loop_budget": 10
   },
   "validation_summary": {
-    "last_run": "2026-04-19T00:20:00Z",
+    "last_run": "2026-04-19T00:30:00Z",
     "status": "passing",
     "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36)"
   },
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_003 complete (config schema promoted). Injected ISSUE_001 (high): Windows stop-hook portability — skill-source fix scheduled as unit_bugfix_001 at the head of PHASE_011's unit list. Workspace-level fix already committed as c3e2428.",
+    "summary": "unit_004 complete: worktrees/ and logs/ registered in manifest schema, .gitignore template updated, workspace .gitignore hardened with future transient files too.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_004: Register .harness/worktrees/ and .harness/logs/ in skills/development-harness/schemas/manifest.json and add entries to the .gitignore template",
-    "timestamp": "2026-04-19T00:25:00Z"
+    "next_action": "Complete unit_005: Bump SCHEMA_VERSION from 1.0 to 2.0 in skills/development-harness/scripts/harness_utils.py; update check_schema_version to emit actionable re-create error on mismatch",
+    "timestamp": "2026-04-19T00:30:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
