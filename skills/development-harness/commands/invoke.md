@@ -115,7 +115,17 @@ Use the `Agent` tool in the same message you plan from. Thoroughness defaults to
 Agent(
   description: "<5-word task summary>",
   subagent_type: "Explore",
-  prompt: "Explore the <area> touched by unit <unit_id>.\n\nUnit goal: <one-line paraphrase of unit_description>.\n\nReport: (1) every file that currently implements the behavior, (2) any nearby tests that will need to change, (3) conventions the new code must match (naming, error handling, test harness), (4) risks or prior-art gotchas that the plan needs to account for. Under 400 words."
+  prompt: """
+    Explore the <area> touched by unit <unit_id>.
+
+    Unit goal: <one-line paraphrase of unit_description>.
+
+    Report: (1) every file that currently implements the behavior,
+    (2) any nearby tests that will need to change,
+    (3) conventions the new code must match (naming, error handling, test harness),
+    (4) risks or prior-art gotchas that the plan needs to account for.
+    Under 400 words.
+  """
 )
 ```
 
