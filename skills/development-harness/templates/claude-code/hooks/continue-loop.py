@@ -7,13 +7,17 @@ Claude Code hook protocol:
 - Exit 2: block stopping; stdout JSON with decision/reason is fed back
 
 Authority chain:
-0. Respect stop_hook_active (Claude Code's built-in loop guard)
-1. Check .invoke-active flag (only harness invoke sessions create this)
-2. Read state.json for loop budget, blockers, open questions
-3. Run select_next_unit.py for authoritative next unit
-4. Compare against checkpoint.next_action
-5. If they disagree, STOP (disagreement = ambiguity)
-6. Otherwise, exit 2 to block stopping and continue
+0. Respect stop_hook_active (Claude Code's built-in loop guard).
+1. Check .invoke-active flag (only harness invoke sessions create this).
+2. Read state.json. **Fleet-mode guard:** if
+   `state.execution.fleet.mode != "idle"`, a previous turn crashed
+   mid-batch -- stop and require `/sync-development-harness` to
+   recover. Missing `fleet` block (v1-style state) is treated as idle.
+3. Check loop budget, blockers, open questions.
+4. Run select_next_unit.py for authoritative next unit.
+5. Compare against checkpoint.next_action.
+6. If they disagree, STOP (disagreement = ambiguity).
+7. Otherwise, exit 2 to block stopping and continue.
 """
 import json
 import os
@@ -43,8 +47,17 @@ def main():
     with open(state_path, "r") as f:
         state = json.load(f)
 
-    # Read loop count from state (Claude Code doesn't provide loop_count)
+    # Fleet-mode guard: if a previous turn crashed mid-batch, fleet.mode
+    # is still 'dispatched' or 'merging'. Stop immediately -- recovery
+    # goes through /sync-development-harness. Missing fleet block (v1
+    # state shape) is treated as idle so old state files keep working.
     execution = state.get("execution", {})
+    fleet_mode = (execution.get("fleet") or {}).get("mode", "idle")
+    if fleet_mode != "idle":
+        _stop(cwd)
+        return
+
+    # Read loop count from state (Claude Code doesn't provide loop_count)
     loop_count = execution.get("session_count", 0)
     loop_budget = execution.get("loop_budget", 10)
 

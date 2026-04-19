@@ -461,16 +461,21 @@
     {
       "id": "PHASE_008",
       "slug": "stop-hook-fleet-awareness",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_001", "PHASE_007"],
-      "started": null,
+      "started": "2026-04-20T04:55:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_034",
           "description": "Update skills/development-harness/templates/claude-code/hooks/continue-loop.py: pre-check that stops when state.execution.fleet.mode != 'idle'; deletes .invoke-active on stop",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/templates/claude-code/hooks/continue-loop.py: added a fleet-mode pre-check between 'read state.json' and 'check loop budget/blockers/open_questions'. Reads execution.fleet.mode with a safe chain (execution.get('fleet') or {}).get('mode', 'idle'), so a missing fleet block (v1-style state) is treated as idle. If mode is not 'idle' (i.e., 'dispatched' or 'merging'), the hook calls _stop(cwd) which deletes .invoke-active and exits 0. Module docstring updated to reflect the new authority-chain step",
+            "skills/development-harness/scripts/tests/test_continue_loop_claude.py: new 200-line test module with 5 cases across 2 classes. TestFleetModeGuard: fleet.mode='dispatched' stops and removes .invoke-active; fleet.mode='merging' stops and removes flag; fleet.mode='idle' passes the guard (falls through to downstream stop); missing fleet block treated as idle. TestFleetGuardDoesNotMaskContinuePath: positive control -- with fleet.mode='idle' AND a fully-seeded harness (phase-graph, select_next_unit stub, checkpoint.next_action matching the unit id), the hook reaches exit 2 with 'block' decision, proving the guard does not falsely short-circuit on idle state",
+            "Test harness technique: runs the hook as a subprocess with controlled stdin payload; asserts exit code + .invoke-active file presence/absence as the observable contract. Does NOT depend on the real select_next_unit.py -- the positive-control test ships a tiny one-off selector stub to isolate the hook from selector evolution",
+            "Validation evidence with per-layer timing: `python -m py_compile` on hook + test exits 0 (~0.1s); `python -m unittest skills.development-harness.scripts.tests.test_continue_loop_claude -v` passes 5/5 (0.5s); `python -m unittest discover skills/development-harness/scripts/tests` passes 178/178 up from 173 (39.6s)"
+          ]
         },
         {
           "id": "unit_035",
