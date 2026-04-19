@@ -13,8 +13,12 @@
         {
           "id": "unit_001",
           "description": "Extend skills/development-harness/schemas/phase-graph.json: add required depends_on, touches_paths (required when parallel_safe: true), and parallel_safe on units; add illustrative example data",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/schemas/phase-graph.json now declares depends_on, touches_paths, parallel_safe on every unit across 2 example phases and 6 units",
+            "Example demonstrates: depends_on chain in PHASE_001 (unit_002 depends on unit_001), independent siblings in PHASE_002, parallel_safe:false without touches_paths (unit_001), parallel_safe:true with touches_paths globs (5 other units)",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (36/36 tests pass)"
+          ]
         },
         {
           "id": "unit_002",

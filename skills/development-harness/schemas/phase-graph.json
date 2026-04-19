@@ -1,6 +1,7 @@
 {
   "schema_version": "1.0",
   "skill_version": "1.0",
+  "_comment": "Example phase-graph illustrating the v2 unit fields. Every unit declares depends_on (required). touches_paths is required when parallel_safe is true and lists repo-relative globs the unit may modify. parallel_safe=false opts the unit out of parallel batches; touches_paths is optional in that case.",
   "phases": [
     {
       "id": "PHASE_001",
@@ -13,6 +14,9 @@
         {
           "id": "unit_001",
           "description": "Set up project structure and tooling",
+          "depends_on": [],
+          "touches_paths": [],
+          "parallel_safe": false,
           "status": "completed",
           "validation_evidence": [
             "pnpm install succeeds",
@@ -23,6 +27,9 @@
         {
           "id": "unit_002",
           "description": "Implement authentication middleware",
+          "depends_on": ["unit_001"],
+          "touches_paths": ["src/auth/**", "src/middleware/auth.ts"],
+          "parallel_safe": true,
           "status": "in_progress",
           "validation_evidence": [
             "Unit tests for JWT parsing pass"
@@ -31,6 +38,9 @@
         {
           "id": "unit_003",
           "description": "Add protected route decorator",
+          "depends_on": ["unit_002"],
+          "touches_paths": ["src/auth/decorators.ts", "src/routes/**"],
+          "parallel_safe": true,
           "status": "pending",
           "validation_evidence": []
         }
@@ -47,18 +57,27 @@
         {
           "id": "unit_004",
           "description": "Create user CRUD endpoints",
+          "depends_on": [],
+          "touches_paths": ["src/api/users/**", "src/routes/users.ts"],
+          "parallel_safe": true,
           "status": "pending",
           "validation_evidence": []
         },
         {
           "id": "unit_005",
           "description": "Add request validation schemas",
+          "depends_on": [],
+          "touches_paths": ["src/validation/**", "src/schemas/**"],
+          "parallel_safe": true,
           "status": "pending",
           "validation_evidence": []
         },
         {
           "id": "unit_006",
           "description": "Implement error handling middleware",
+          "depends_on": [],
+          "touches_paths": ["src/middleware/errors.ts", "src/errors/**"],
+          "parallel_safe": true,
           "status": "pending",
           "validation_evidence": []
         }
