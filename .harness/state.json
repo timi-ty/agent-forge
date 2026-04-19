@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T03:50:00Z",
+  "last_updated": "2026-04-20T04:50:00Z",
   "execution": {
-    "active_phase": "PHASE_007",
+    "active_phase": "PHASE_008",
     "active_unit": null,
-    "last_completed_unit": "unit_028",
-    "next_unit": "unit_029",
-    "session_count": 28,
+    "last_completed_unit": "unit_033",
+    "next_unit": "unit_034",
+    "session_count": 32,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T03:50:00Z",
+    "last_run": "2026-04-20T04:50:00Z",
     "status": "passing",
-    "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (171/171) -- PHASE_006 end-to-end green, docs-only phase"
+    "evidence": "python -m py_compile on new integration test exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite -v passes 2/2 (3.5s); python -m unittest discover skills/development-harness/scripts/tests passes 173/173 up from 171 (45.0s). PHASE_007 end-to-end green."
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "PHASE_006 complete. All three units landed: unit_026 (new templates/claude-code/agents/harness-unit.md agent template), unit_027 (orchestrator/sub-agent boundary rules in Claude Code harness-core.md), unit_028 (Cursor mirror in harness-core.mdc with a preamble explaining Cursor's lack of a native agent-dispatch primitive; same three bullets with wording adjusted for 'second Cursor session' framing). The JSON report format from the Claude Code agent template is documented as tool-agnostic so Cursor sub-agent sessions emit the same structure. Docs-only phase; 171/171 tests unchanged end-to-end.",
+    "summary": "PHASE_007 complete. All five units landed: unit_029 (whole-file invoke.md rewrite, 432->332 LOC, zero sequential/parallel fork language), unit_030 (workspace-commands template mirror in compact style), unit_031 (Batch Semantics paragraph in architecture.md), unit_032 (parallel phase-review dispatch pre-satisfied + grep-verified), unit_033 (new tests/integration/test_invoke_rewrite.py with 2 classes exercising both dispatch modes end-to-end from a realistic phase-graph). Test suite 171 -> 173. The parallel execution substrate (PHASE_005 scripts + PHASE_006 agent contract) now has a live contract in the invoke doc; the integration test ensures the one-turn-one-batch semantics and dispatch-mode equivalence hold end-to-end.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Run PHASE_006 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_029 in PHASE_007 (invoke-command-rewrite: rewrite commands/invoke.md into a single batch-driven flow where batch-of-1 runs in-tree and batch-of-N fans out via Agent(harness-unit)).",
-    "timestamp": "2026-04-20T03:50:00Z"
+    "next_action": "Run PHASE_007 phase completion review (pr-review-checklist + code-review skill), open PR, autonomous squash-merge per harness-git.md, then advance to unit_034 in PHASE_008 (stop-hook fleet-awareness: update continue-loop.py to stop when state.execution.fleet.mode != 'idle'; deletes .invoke-active on stop). Note: PHASE_008 unit scopes may need re-examination given ISSUE_002 documents the Stop-hook as a precondition checker rather than a continuation driver on Claude Code.",
+    "timestamp": "2026-04-20T04:50:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-006-orchestrator-contract",
+    "current_branch": "feat/phase-007-invoke-rewrite",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"

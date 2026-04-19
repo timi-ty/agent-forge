@@ -78,6 +78,14 @@ When the flag is present, the hook proceeds with its authority chain:
 
 When the hook decides to stop (for any reason), it deletes `.harness/.invoke-active` to reset the gate for the next session. When continuing, the flag is left in place.
 
+## Batch Semantics — one turn per batch
+
+Since PHASE_007's invoke-command rewrite, a single invoke turn processes a whole **batch** (not a single unit). A batch is the output of `compute_parallel_batch.py` over the current frontier; it carries one or more units. `commands/invoke.md` implements a single batch-driven pipeline in which only Steps 5 and 6 branch on batch size — everything else (compute / verify / merge / state / commit) is single-flow.
+
+**`execution.session_count` increments by exactly 1 per turn, regardless of batch size.** Whether the batch held 1 unit (in-tree fast path) or N units (worktree fan-out via `Agent(subagent_type: "harness-unit")`), the stop hook sees one session tick; `loop_budget` is denominated in turns, not in units. The fleet-mode transition `idle → dispatched → merging → idle` also completes within a single turn in the worktree path; the hook never sees a partial fleet.
+
+See `commands/invoke.md` Steps 4–9 for the pipeline and PHASE_007's rewrite rationale; see `parallel-execution.md` for the dispatch lifecycle and conflict-strategy catalogue.
+
 ## Git Integration
 
 Each completed unit results in a commit following `config.json` git policy. Check for commit-agent-changes skill; if installed, delegate. If not, commit directly.
