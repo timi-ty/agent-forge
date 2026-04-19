@@ -2,17 +2,17 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T22:45:00Z",
+  "last_updated": "2026-04-19T23:00:00Z",
   "execution": {
     "active_phase": "PHASE_003",
-    "active_unit": "unit_014",
-    "last_completed_unit": "unit_013",
-    "next_unit": "unit_014",
-    "session_count": 13,
+    "active_unit": "unit_015",
+    "last_completed_unit": "unit_014",
+    "next_unit": "unit_015",
+    "session_count": 14,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-19T22:25:00Z",
+    "last_run": "2026-04-19T23:00:00Z",
     "status": "passing",
     "evidence": "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit, test suite unchanged"
   },
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_013 complete + ISSUE_002 injected. Multi-file parallel-edit guidance landed in both invoke docs. Separately, investigation validated that the Claude Code stop-hook auto-continue is structurally one-shot (stop_hook_active is a persistent session-wide flag; Claude Code's built-in loop-guard enforces the floor even if the hook tries to bypass). Fix captured as unit_bugfix_002 at head of PHASE_011: retire Stop-hook-as-driver for Claude Code, use /loop /invoke-development-harness instead, keep Cursor hook unchanged. PHASE_008 fleet-awareness will need re-scoping once unit_bugfix_002 lands.",
+    "summary": "unit_014 complete. Added parallel phase-review dispatch guidance to both invoke docs. commands/invoke.md Step 10 gains a 'Parallel dispatch with commit-agent-changes' sub-section at the top: when both code-review and commit-agent-changes skills are installed, dispatch them in a single assistant message containing two Agent(subagent_type='general-purpose') tool calls -- one reads the branch diff to produce a review, the other commits + pushes + opens-or-updates the PR. They cannot conflict (read vs. disjoint write). Step 12 (Commit) gained a call-out pointer to skip the separate delegation when phase-completion already fan-out the work. Workspace-commands template section 13 carries the same rule as a 'Parallel dispatch.' bold-label paragraph; section 12 got the same pointer. Single-skill-installed falls back to serial. 109/109 tests unchanged.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_014 (PHASE_003): Add parallel phase-review dispatch guidance (run code-review skill concurrently with commit-agent-changes) in both invoke command docs.",
-    "timestamp": "2026-04-19T22:45:00Z"
+    "next_action": "Complete unit_015 (PHASE_003): Update skills/development-harness/templates/claude-code/rules/harness-core.md and the Cursor mirror templates/rules/harness-core.mdc with delegate-vs-inline guidance (when to use the Explore agent, when to fan out general-purpose agents, when to run inline in the main context).",
+    "timestamp": "2026-04-19T23:00:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

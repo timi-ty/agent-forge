@@ -136,6 +136,8 @@ If found, delegate to the skill. Otherwise, commit directly following `.harness/
 - Write conventional commit message
 - Push if on a feature branch with a remote
 
+At **phase completion**, this may already have been dispatched in parallel with `code-review` per section 13's parallel-dispatch paragraph; in that case skip the separate delegation above.
+
 ## 13. Phase Completion Review
 
 When all units in a phase are done:
@@ -146,6 +148,8 @@ When all units in a phase are done:
    - If verifier not configured → add blocker, stop
    - If verifier fails → add blocker, stop
 3. Mark phase `"completed"` in `phase-graph.json` only after review passes
+
+**Parallel dispatch.** When **both** `code-review` and `commit-agent-changes` are installed, dispatch them concurrently at phase completion in a **single assistant message** containing **two `Agent(subagent_type: "general-purpose")` tool calls** — one running `code-review` read-only on the current branch diff, the other running `commit-agent-changes` to commit pending changes, push, and open or update the phase PR. They cannot conflict (one reads, one writes disjoint state). Wait for both reports, then resolve any High/Medium code-review findings in the main context and re-push. If only one skill is installed, fall back to serial — no parallel dispatch.
 
 ## 14. Turn Ends
 

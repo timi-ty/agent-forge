@@ -185,8 +185,15 @@
         {
           "id": "unit_014",
           "description": "Add parallel phase-review dispatch guidance (run code-review skill concurrently with commit-agent-changes) in both invoke command docs",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/invoke.md: added 'Parallel dispatch with commit-agent-changes' sub-section at the top of Step 10 (Phase Completion Review). Rule states: when both code-review and commit-agent-changes are installed, dispatch them in a single assistant message containing two Agent(subagent_type='general-purpose') tool calls. Carries a concrete code sample of the two parallel Agent calls, explains why they cannot conflict (one reads, one writes disjoint state), and documents the single-skill-fallback path (serial, no parallel dispatch)",
+            "skills/development-harness/commands/invoke.md Step 12 (Commit): added a call-out pointer referencing Step 10's parallel-dispatch sub-section so the agent skips the separate delegation when phase-completion already fan-out the commit work",
+            "skills/development-harness/templates/workspace-commands/invoke-development-harness.md: added a 'Parallel dispatch.' bold-label paragraph to section 13 (Phase Completion Review) mirroring the command-doc rule -- same single-assistant-message + two-Agent-call shape, same disjoint-state justification, same single-skill-fallback fallback; section 12 (Commit) gained the same call-out pointer",
+            "Grep verification: 'Parallel dispatch' heading + rule appears in both files; both docs cite 'single assistant message' with 'two `Agent(subagent_type: \"general-purpose\")` tool calls' at phase completion; command doc line 224, template line 152",
+            "Cross-doc consistency: both docs state the same trigger (both skills installed), the same shape (one message, two Agent calls), the same disjoint-state justification, and the same serial fallback when only one skill is installed",
+            "python -m unittest discover skills/development-harness/scripts/tests exits 0 (109/109) -- docs-only unit"
+          ]
         },
         {
           "id": "unit_015",

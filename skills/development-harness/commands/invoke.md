@@ -221,6 +221,35 @@ Record specific evidence for each passing layer. Evidence must be concrete:
 
 This step runs when all units in a phase are completed (signaled by `phase_complete: true` from select_next_unit.py, or when the unit just completed was the last pending unit in its phase).
 
+### Parallel dispatch with commit-agent-changes
+
+When **both** `code-review` and `commit-agent-changes` are installed (check via the Skills Integration block below), dispatch them concurrently in a **single assistant message** containing **two `Agent` tool calls**. The two activities are naturally parallel at phase completion:
+
+- **`code-review`** reads the branch diff (local or via the PR if already open) and produces a review report. It does not write code.
+- **`commit-agent-changes`** commits any pending unit-work changes, pushes the branch, and opens or updates the PR.
+
+Shape:
+
+```
+# One assistant message containing both calls:
+Agent(
+  description: "phase review PHASE_XXX",
+  subagent_type: "general-purpose",
+  prompt: "Run the code-review skill on the current branch (or the open PR for this branch) covering every commit since the branch diverged from <base>. Report High/Medium/Low findings. Do not open a PR, do not push, read-only."
+)
+Agent(
+  description: "commit + PR for PHASE_XXX",
+  subagent_type: "general-purpose",
+  prompt: "Run the commit-agent-changes skill: group the pending phase changes into logical commits on the current feature branch, push, and open or update the phase PR with the conventional title and body. Do not invoke code-review."
+)
+```
+
+Wait for both reports, then resolve findings in the main context: fix any High/Medium items raised by `code-review`, amend or add commits as needed, and re-push.
+
+If only one of the two skills is installed, fall back to running that one serially — no parallel dispatch.
+
+> ⚠️ Parallel dispatch requires both skills to operate read-only or on disjoint state. `commit-agent-changes` writes commits/branches; `code-review` reads. They do not touch the same files, so they cannot conflict.
+
 ### 10a: Run Review Checklist
 
 Read `.harness/pr-review-checklist.md` (workspace copy) or fall back to `templates/rules/pr-review-checklist.md` from this skill. Verify each item:
@@ -290,6 +319,8 @@ Update the human-readable checkpoint:
 ---
 
 ## Step 12: Commit
+
+> ⚠️ At **phase completion**, this step may already have been dispatched in parallel with `code-review` per Step 10's "Parallel dispatch with commit-agent-changes" call-out. In that case, skip the separate delegation below — it has already happened.
 
 ### Check for commit-agent-changes skill
 
