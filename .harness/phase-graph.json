@@ -83,10 +83,10 @@
     {
       "id": "PHASE_002",
       "slug": "frontier-selector-and-batch-computation",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_001"],
       "started": "2026-04-19T18:15:00Z",
-      "completed": null,
+      "completed": "2026-04-19T21:30:00Z",
       "units": [
         {
           "id": "unit_007",

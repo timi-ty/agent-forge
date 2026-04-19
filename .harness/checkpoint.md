@@ -1,32 +1,28 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_010 (PHASE_002):** Dedicated exclusion-reason regression tests landed in [test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py).
+**PHASE_002 (all four units):** Frontier selector and batch computation landed and merged (pending squash).
 
-- New `TestExclusionReasons` class: one test per machine-readable reason string, each on the narrowest crafted input that can only trigger that one reason.
-  - `test_reason_not_parallel_safe_fires` — single unit with `parallel_safe=False`; asserts `{unit_id:"solo", reason:"not_parallel_safe"}`.
-  - `test_reason_path_overlap_with_fires` — u1=`src/shared/**` vs u2=`src/shared/auth.ts`; asserts `{unit_id:"loser", reason:"path_overlap_with:winner"}` (pins the `<unit_id>` suffix).
-  - `test_reason_capacity_cap_fires` — two disjoint units with `max_concurrent_units=1`; asserts `{unit_id:"u2", reason:"capacity_cap"}`.
-- Test names embed each reason literal so a future refactor that drops or renames a constant surfaces as a named failure rather than a silent regression.
-- Module docstring updated to describe the unit_009 vs unit_010 split.
+- **unit_007** — [select_next_unit.py](skills/development-harness/scripts/select_next_unit.py) rewritten around `compute_frontier(phases, max_items)`; `--frontier` and `--max N` flags added; no-flag call preserves the v1 stop-hook JSON contract; `MalformedPhaseGraph` (exit 2) replaces the legacy list-order fallback.
+- **unit_008** — `TestFrontierTopologies` locks the frontier contract on linear, diamond, disconnected, partially-completed, and phase-complete-pending graphs; `TestNoLegacyFallback` expanded to four malformed-unit cases (missing `depends_on`, non-list `depends_on`, non-dict unit, missing `id`).
+- **unit_009** — [compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py): stdlib-only greedy pack with `fnmatch` + literal-prefix glob-overlap matrix, `_parallelism_config` with v1-safe fallback, UTC-timestamped `batch_id`, CLI (`--input`, `--config`, `--root`).
+- **unit_010** — `TestExclusionReasons` pins each machine-readable reason (`not_parallel_safe`, `path_overlap_with:<unit_id>`, `capacity_cap`) on the narrowest crafted input, with test names embedding the reason literal so a dropped/renamed constant surfaces as a named failure.
 
-With unit_010 done, **all four PHASE_002 units are complete** and the frontier selector / batch computer are ready to be consumed by PHASE_005 and PHASE_007.
+Phase completion review ran the `code-review` skill against PR #26 and cleared the phase with two Low findings (unused `import re`, unused `root` parameter); both addressed in a follow-up commit on the same branch.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Phase completion review for PHASE_002.** Run `pr-review-checklist.md` end-to-end, invoke the `code-review` skill on the PHASE_002 PR, mark PHASE_002 `"completed"` in [phase-graph.json](.harness/phase-graph.json) once the review is green, then autonomous squash-merge per [harness-git.md](.claude/rules/harness-git.md). After merge, PHASE_003 (unit_011) is the next head.
+**PHASE_003, unit_011** — Insert an Exploration step in [skills/development-harness/commands/invoke.md](skills/development-harness/commands/invoke.md) that dispatches `Agent(Explore)` for refactor / extend / fix / migrate / update keywords before implementation. New branch off main after PR #26 merges.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/tests/test_compute_parallel_batch.py](skills/development-harness/scripts/tests/test_compute_parallel_batch.py): `+69 / -2` to add `TestExclusionReasons` and refresh the module docstring.
-- `python -m unittest skills.development-harness.scripts.tests.test_compute_parallel_batch -v` → 26/26 pass (up from 23; three new `TestExclusionReasons` cases).
-- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (up from 106).
-- `python -m py_compile skills/development-harness/scripts/compute_parallel_batch.py skills/development-harness/scripts/tests/test_compute_parallel_batch.py` → no output (Layer 1 clean).
-- `python .harness/scripts/select_next_unit.py` → `phase_complete: true`, next `PHASE_003 / unit_011`.
+- `python -m unittest discover skills/development-harness/scripts/tests` → 109/109 pass (PHASE_001 end: 65 → PHASE_002 end: 109).
+- PR #26 at https://github.com/timi-ty/agent-forge/pull/26: 8 commits across 7 files, +1483 / -243.
+- Code-review report: [pr-26-review.md](pr-26-review.md) (zero High, zero Medium, two Low — both fixed).
 
 ## Open Questions
 None.
@@ -35,13 +31,13 @@ None.
 - **ISSUE_001** (high, open): Stop-hook portability on Windows when only `python` is on PATH. Workspace-level fix active; skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_002 PR opens now with all four units plus the phase-graph completion stamp.
-- **Branch:** `feat/phase-002-frontier-selector`.
-- **Merge:** squash; autonomous.
+- **PR cadence:** one PR per phase. PHASE_002 → PR #26 (squash-merge pending).
+- **Branch:** `feat/phase-002-frontier-selector` (delete on merge).
+- **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
 - `loop_budget` was bumped from 10 to 12 in state.json; revisit as a proper config knob in PHASE_011's doc pass.
 
 ---
-*Updated: 2026-04-19T21:15:00Z*
+*Updated: 2026-04-19T21:30:00Z*
