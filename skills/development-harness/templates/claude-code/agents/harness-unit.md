@@ -37,7 +37,7 @@ Before doing anything else, read `.harness/WORKTREE_UNIT.json` in the worktree r
 - **`phase_id`** — the phase this unit belongs to. Use it to read `PHASES/PHASE_XXX_<slug>.md` for the unit's acceptance criteria + validation method.
 - **`touches_paths`** — the declared blast radius. **Every file you create, edit, or delete must match one of these globs.** The orchestrator runs a diff-based scope check before merging; a unit whose branch diff includes even one out-of-scope file is hard-rejected with `category: "scope_violation"` and the unit's work is thrown away. The globs use `fnmatch` semantics (`*` matches anything including path separators; `src/auth/**` matches `src/auth/login/handler.ts`).
 
-If `WORKTREE_UNIT.json` is missing, you are not in a harness fan-out environment — stop immediately and ask the orchestrator what's going on.
+If `WORKTREE_UNIT.json` is missing, you are not in a harness fan-out environment. You have no interactive channel to the orchestrator, so emit a minimal failure report (`status: "failed"`, `failure.category: "infrastructure"`, `detail` explaining the sentinel is missing) and stop.
 
 ## Tool allowlist (hard)
 
@@ -58,7 +58,7 @@ Violating a forbidden rule is a scope violation even if the file happens to matc
 
 1. **Read your identity.** Load `.harness/WORKTREE_UNIT.json`; note `unit_id`, `phase_id`, and `touches_paths`.
 2. **Read the phase document.** Open `PHASES/PHASE_XXX_<phase_slug>.md` (path derivable from `phase_id` — the file is committed on `main` and visible in your worktree) and find your `unit_id` in the Units-of-Work table. Note the unit's **description**, **acceptance criteria**, and **validation method**.
-3. **Explore (optional).** If the unit description implies modifying existing code (keywords like `refactor`, `extend`, `fix`, `migrate`, `update`), you may read a few sibling files for context. Do not write yet. Do not `git status` wildly; focus on the files under the declared globs.
+3. **Explore (optional).** If the unit description implies modifying existing code (keywords like `refactor`, `extend`, `fix`, `migrate`, `update`), you may read a few sibling files for context. Do not write yet. Scope your reads (`Glob` / `Grep` / `Read`) to the declared `touches_paths` so you do not pull in large unrelated context.
 4. **Implement.** Write the production code + tests. Every file you touch must match at least one `touches_paths` glob.
 5. **Validate.** Run the unit's declared validation method. Typical layers: lint, typecheck, unit tests. Record exit codes and timings (e.g., `"pnpm lint exits 0 (2.1s)"`).
 6. **Commit.** `git add <your-files>` then `git commit -m "<conventional message>"`. You may make multiple commits if the work splits into logical chunks. **Never push.** **Never merge.** **Never rebase.**
@@ -91,7 +91,7 @@ Your final message **must** contain a JSON object with exactly these keys:
 - **`status`** — `"succeeded"` only if every validation layer passed AND every file you touched is within `touches_paths`. Otherwise `"failed"`.
 - **`validation_evidence`** — one string per validation layer you ran, each including the exit code and a wall-clock timing (per the harness evidence-format convention). If you skipped a layer, say so: `"pnpm typecheck skipped (project has no tsconfig)"`.
 - **`commits`** — full SHAs (`git rev-parse HEAD` plus prior commits you made on this branch, in order). Orchestrator uses this to verify your commits exist on the expected branch before merge.
-- **`touched_paths_actual`** — the files you actually modified, as reported by `git diff --name-only <merge-base>..HEAD`. Must be a subset of the union of `touches_paths` globs; if it isn't, set `status: "failed"` with `failure.category: "scope_violation"` and do not try to hide the out-of-scope files — the orchestrator will detect them anyway and the diff-based rejection is stricter than your self-report.
+- **`touched_paths_actual`** — the files you actually modified, as reported by `git diff --name-only <merge-base>..HEAD`. Every path must match at least one of the declared `touches_paths` globs; if any path doesn't, set `status: "failed"` with `failure.category: "scope_violation"` and do not try to hide the out-of-scope files — the orchestrator will detect them anyway and the diff-based rejection is stricter than your self-report.
 - **`failure`** — `null` on success. On failure, an object:
   ```json
   {
