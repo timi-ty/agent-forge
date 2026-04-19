@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-19T00:20:00Z",
+  "last_updated": "2026-04-19T00:25:00Z",
   "execution": {
     "active_phase": "PHASE_001",
     "active_unit": "unit_004",
@@ -22,8 +22,8 @@
     "evidence": "Not deploy-affecting; skill distribution repo."
   },
   "issues": {
-    "total": 0,
-    "open": 0,
+    "total": 1,
+    "open": 1,
     "resolved": 0
   },
   "drift": {
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_003 complete: config.json schema promotes execution_mode to an object with location, parallelism, agent_delegation, and versioning sub-blocks. break_on_schema_bump defaults to true.",
+    "summary": "unit_003 complete (config schema promoted). Injected ISSUE_001 (high): Windows stop-hook portability — skill-source fix scheduled as unit_bugfix_001 at the head of PHASE_011's unit list. Workspace-level fix already committed as c3e2428.",
     "blockers": [],
     "open_questions": [],
     "next_action": "Complete unit_004: Register .harness/worktrees/ and .harness/logs/ in skills/development-harness/schemas/manifest.json and add entries to the .gitignore template",
-    "timestamp": "2026-04-19T00:20:00Z"
+    "timestamp": "2026-04-19T00:25:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

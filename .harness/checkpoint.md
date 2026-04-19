@@ -21,6 +21,9 @@ None.
 ## Open Questions
 None.
 
+## Tracked Issues
+- **ISSUE_001** (high, open): Windows stop-hook portability — shebang `env python3` fails when only `python` is on PATH. Workspace-level fix committed (`c3e2428`). Skill-source fix scheduled as `unit_bugfix_001` at the head of PHASE_011's unit list (to land before the rest of PHASE_011's documentation work).
+
 ## Commit Policy (recorded)
 - **PR cadence:** one PR per phase (13 PRs total).
 - **Bootstrap commit:** separate `chore(harness): bootstrap` commit first on the phase branch, then unit commits follow.

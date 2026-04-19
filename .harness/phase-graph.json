@@ -390,6 +390,13 @@
       "completed": null,
       "units": [
         {
+          "id": "unit_bugfix_001",
+          "description": "ISSUE_001 fix: in skills/development-harness/commands/create.md Phase 5 (Hook configuration), apply the existing Python-detection pattern (PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)) and bake the detected interpreter into the generated .claude/settings.local.json Stop-hook command (\"$PY .claude/hooks/continue-loop.py\"). Mirror the change for .cursor/hooks.json. Keep the hook script's shebang intact but no longer rely on it.",
+          "status": "pending",
+          "validation_evidence": [],
+          "issue_id": "ISSUE_001"
+        },
+        {
           "id": "unit_045",
           "description": "Add 'Parallel Execution Model' section to skills/development-harness/references/architecture.md: worktree-per-unit, orchestrator/sub-agent boundary, frontier+overlap check, dispatch-wait-merge lifecycle, conflict strategies, when to enable/not",
           "status": "pending",
