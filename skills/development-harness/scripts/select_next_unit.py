@@ -163,7 +163,7 @@ def _phase_completion_pending(phases, phase_status_by_id):
     return None
 
 
-def select_next_unit(root, phase_graph_path):
+def select_next_unit(phase_graph_path):
     """Head-of-frontier selector in v1 stop-hook JSON contract."""
     data, err = _read_json_safe(phase_graph_path)
     if err:
@@ -198,7 +198,7 @@ def select_next_unit(root, phase_graph_path):
     }
 
 
-def _print_frontier(root, phase_graph_path, max_items):
+def _print_frontier(phase_graph_path, max_items):
     data, err = _read_json_safe(phase_graph_path)
     if err:
         print(json.dumps([], indent=2, ensure_ascii=False))
@@ -255,14 +255,14 @@ def main():
             if phase_graph_path is None:
                 print(json.dumps([], indent=2, ensure_ascii=False))
             else:
-                _print_frontier(root, phase_graph_path, args.max)
+                _print_frontier(phase_graph_path, args.max)
         else:
             if phase_graph_path is None:
                 print(json.dumps(_empty_result(), indent=2, ensure_ascii=False))
             else:
                 print(
                     json.dumps(
-                        select_next_unit(root, phase_graph_path),
+                        select_next_unit(phase_graph_path),
                         indent=2,
                         ensure_ascii=False,
                     )

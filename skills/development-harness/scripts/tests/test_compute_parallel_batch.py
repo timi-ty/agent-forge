@@ -12,7 +12,6 @@ selector refactor can't silently drop one of the three machine-readable
 values without a named test failure.
 """
 import json
-import re
 import subprocess
 import sys
 import tempfile
