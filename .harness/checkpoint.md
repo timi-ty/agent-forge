@@ -1,59 +1,73 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_055 (PHASE_013):** Captured the `/create-development-harness` output artifacts for the self-test fixture as static, diff-able, grep-able JSON files.
+**unit_056 (PHASE_013):** Programmatic self-test run against the Tasklet fixture — **all 3 seeded conditions fired exactly as designed**.
 
 ### What landed
 
-Rather than running `/create-development-harness` interactively (which would require simulating a multi-step question session across 6+ categories), unit_055 captures the **outputs** `/create` would produce for Tasklet given the documented answer set.
+[test_self_test_run.py](skills/development-harness/scripts/tests/integration/test_self_test_run.py) spawns a temp git repo, reads `fixtures/self-test/phase-graph.json` + `config.json`, and drives the full `compute_parallel_batch → dispatch_batch → fake-sub-agent-commits → merge_batch` pipeline for multiple turns until the fixture reaches a stable terminal state.
 
-**[config.json](skills/development-harness/scripts/tests/fixtures/self-test/config.json):**
-- `schema_version: "2.0"`, `tool: "claude-code"`, `project.name: "tasklet"`.
-- `deployment.target: "none"` — self-test fixture, not deploy-affecting.
-- `testing.unit_framework: "pytest"`, `e2e_framework: "none"`.
-- `execution_mode.parallelism.enabled: true` with the full sub-field shape (`max_concurrent_units: 3`, `conflict_strategy: "abort_batch"`, `require_touches_paths: true`, `allow_cross_phase: false`) — matches the `y` answer for the Phase 2 Execution Mode question from unit_048.
-- `execution_mode.versioning.break_on_schema_bump: true` (default).
+### Trace excerpt ([fixtures/self-test/trace.log](skills/development-harness/scripts/tests/fixtures/self-test/trace.log))
 
-**[phase-graph.json](skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json):**
-- Two phases (`PHASE_A: items`, `PHASE_B: users`) matching the README's ASCII graph exactly.
-- 6 units total, all `parallel_safe: true`, all `depends_on: []`.
-- `unit_a3` description carries a `"SEEDED OVERLAP"` callout + the exact `path_overlap_with:unit_a2` exclusion-reason string operators will see in `batch.json`.
-- `unit_b2` description carries a `"SEEDED SCOPE VIOLATION"` callout + instructs the sub-agent to also write `src/seeds/users.json` + names the expected `conflict.category: "scope_violation"`.
+```
+--- Turn 1 ---
+  Frontier: ['unit_a1', 'unit_a2', 'unit_a3', 'unit_b1', 'unit_b2', 'unit_b3']
+  Batch:    ['unit_a1', 'unit_a2']
+  Excluded: unit_a3 (reason: path_overlap_with:unit_a2)
+  Merge outcome: ok | merged=['unit_a1', 'unit_a2'] conflicted=[]
 
-### New regression tests
-[test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py) grew from 11 → 24 cases:
+--- Turn 2 ---
+  Batch:    ['unit_a3']
+  Merge outcome: ok | merged=['unit_a3'] conflicted=[]
 
-- **TestFixtureConfigJson (4 new)** — schema v2, parallelism enabled, full sub-field shape, not-deploy-affecting.
-- **TestFixturePhaseGraphJson (9 new)** — schema v2, 2-phase structure, 6-unit set, every unit `parallel_safe: true`, seeded overlap (unit_a3 + unit_a2 both declare `src/items/routes.py`), seeded scope violation (unit_b2's touches_paths don't cover `src/seeds/users.json` via `fnmatch`-based pattern check matching runtime semantics), unit descriptions carry the `SEEDED OVERLAP` / `SEEDED SCOPE VIOLATION` callouts + exclusion-reason / conflict-category strings.
+--- Turn 3 ---
+  Batch:    ['unit_b1', 'unit_b2', 'unit_b3']
+  Merge outcome: partial | merged=['unit_b1', 'unit_b3'] conflicted=['unit_b2']
+    failed:  unit_b2 (category: scope_violation)
 
-The `fnmatch`-based scope-violation-pattern-check in `test_seeded_scope_violation_unit_b2_omits_seeds_glob` uses the **same semantics** `compute_parallel_batch.py` uses at runtime, so the test matches reality.
+Batch sizes observed: [2, 1, 3]
+Final status counts: {'completed': 5, 'pending': 1}
+```
+
+### Seeded-condition verification
+| Condition | Expected | Observed | Pass? |
+|-----------|----------|----------|-------|
+| Batch ≥ 2 | ≥ 1 turn with batch size ≥ 2 | Turn 1 size 2, Turn 3 size 3 | ✓ |
+| Overlap-matrix rejection | `unit_a3` excluded with `path_overlap_with:unit_a2` | Exact match on Turn 1 | ✓ |
+| Scope violation | `unit_b2` rejected with `src/seeds/users.json` in `conflict.paths` | Match on Turn 3 | ✓ |
+
+### Final state
+- **5 units completed** (all of PHASE_A + unit_b1 + unit_b3).
+- **1 unit pending** (`unit_b2` — scope violation). The phase-graph leaves b2 pending because the fleet's `failed` status doesn't auto-flip the phase-graph entry; a human must fix the description/touches_paths discrepancy + retry.
+- **Only `unit_b2`'s worktree survives** (scope-violation path preserves it by design in `merge_batch.py`). All other worktrees torn down; no `harness/batch_*/*` branches remain.
+
+### Implementation notes
+Caught two bugs during development:
+1. `FIXTURE_DIR` path from `__file__` had a double `scripts/` component. Fixed by using `parents[1]` which already lands on `tests/`.
+2. Orphan check via `rglob` saw the batch-parent dir in addition to leaf unit dirs, producing false positives. Fixed by iterating only two levels deep (`batch_dir.iterdir()`) and comparing the leaf-name set directly.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_056 (PHASE_013):** run `/invoke-development-harness` iteratively against the fixture until all 2 phases complete. The run must actually exercise all three seeded conditions:
+**Complete unit_057 (PHASE_013):** produce a wall-clock data table comparing parallelism-enabled vs sequential-baseline runs.
 
-1. **Batch ≥ 2** — unit_a1 + unit_a2 in PHASE_A's first batch.
-2. **Overlap-matrix rejection** — unit_a3 excluded from that batch with `path_overlap_with:unit_a2`, picked up in the next turn.
-3. **Scope violation** — unit_b2 dispatched, sub-agent writes `src/seeds/users.json` beyond declared scope, `merge_batch._scope_violations` rejects with `scope_violation` category.
+- The **parallel** timing is captured in `trace.log` from unit_056 (3 turns, ~2s).
+- The **sequential baseline** needs a second run with `config.execution_mode.parallelism.enabled: false` — forces batch-of-1 in-tree fast path throughout, 6 turns one unit at a time.
+- Compare wall-clock between the two; commit the comparison data as a short markdown snippet that will be embedded in POST-MORTEM.md (unit_058).
+- Verify no orphaned worktrees/branches remain (already done in unit_056's test; this just re-confirms in the commit evidence).
 
-Captures trace log showing each batch composition + merge outcome under `fixtures/self-test/trace.log`.
-
-Validation: trace log contents contain each seeded condition firing + final `fleet.mode == "idle"` + no orphan worktrees/branches after the run.
-
-**Dogfood consideration:** unit_056 is an operator task in the phase doc (a human running `/invoke-development-harness` iteratively). Inside this agent-forge dogfood loop, I'll write a Python test harness that exercises the three seeded conditions programmatically (direct calls to `compute_parallel_batch` + `dispatch_batch` + `merge_batch` in a throwaway temp repo) — produces the same evidence more reliably + faster than simulating an interactive session.
+Validation: comparison data committed under the fixture dir; grep verifies the table includes both parallel + sequential rows + a wall-clock ratio.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/tests/fixtures/self-test/config.json](skills/development-harness/scripts/tests/fixtures/self-test/config.json): new.
-- [skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json](skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json): new.
-- [skills/development-harness/scripts/tests/test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py): 11 → 24 cases.
+- [skills/development-harness/scripts/tests/integration/test_self_test_run.py](skills/development-harness/scripts/tests/integration/test_self_test_run.py): new 300-line integration module, 1 case.
+- [skills/development-harness/scripts/tests/fixtures/self-test/trace.log](skills/development-harness/scripts/tests/fixtures/self-test/trace.log): captured trace.
 - `python -m py_compile` → 0 (~0.1s).
-- `python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v` → **24/24** (0.005s).
-- `python -m unittest discover skills/development-harness/scripts/tests` → **344/345** + 1 OS skip in 38.5s (up from 332).
+- `python -m unittest skills.development-harness.scripts.tests.integration.test_self_test_run -v` → **1/1** in 2.1s.
+- `python -m unittest discover skills/development-harness/scripts/tests` → **345/346** + 1 OS skip in 40.6s (up from 345 — 1 new case + trace.log artifact).
 
 ## Open Questions
 None.
@@ -71,9 +85,9 @@ All tracked issues resolved.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 53 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_013 progress: **2/5 units done** (054 fixture scaffold, 055 /create artifacts). Remaining: 056 /invoke iterations, 057 timing table + orphan check, 058 POST-MORTEM.md + parallel-execution.md link.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → 332 → **345** across phases so far.
+- `session_count` is 54 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_013 progress: **3/5 units done** (054 fixture scaffold, 055 /create artifacts, 056 end-to-end self-test + trace.log). Remaining: 057 timing table, 058 POST-MORTEM.md + link from parallel-execution.md.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → 332 → 345 → **346** across phases so far.
 
 ## Batch (current or last)
 
@@ -89,4 +103,4 @@ Reflects `state.execution.fleet`.
 No conflicts.
 
 ---
-*Updated: 2026-04-20T14:10:00Z*
+*Updated: 2026-04-20T14:35:00Z*
