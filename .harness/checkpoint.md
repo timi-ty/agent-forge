@@ -1,73 +1,69 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_056 (PHASE_013):** Programmatic self-test run against the Tasklet fixture — **all 3 seeded conditions fired exactly as designed**.
+**unit_057 (PHASE_013):** Wall-clock comparison run + 2 runtime bugs caught during implementation.
 
 ### What landed
 
-[test_self_test_run.py](skills/development-harness/scripts/tests/integration/test_self_test_run.py) spawns a temp git repo, reads `fixtures/self-test/phase-graph.json` + `config.json`, and drives the full `compute_parallel_batch → dispatch_batch → fake-sub-agent-commits → merge_batch` pipeline for multiple turns until the fixture reaches a stable terminal state.
+**[TestWallClockParallelVsSequential](skills/development-harness/scripts/tests/integration/test_self_test_run.py)** — runs the Tasklet fixture driver twice in fresh temp repos:
 
-### Trace excerpt ([fixtures/self-test/trace.log](skills/development-harness/scripts/tests/fixtures/self-test/trace.log))
+- **Parallel:** `max_concurrent_units=3` (fixture default).
+- **Sequential baseline:** `max_concurrent_units=1` — forces batch-of-1 throughout.
 
+Both runs use worktree fan-out (dispatch + merge) so the only independent variable is batch size. Times each via `time.monotonic()` and writes a comparison markdown to [fixtures/self-test/wall-clock.md](skills/development-harness/scripts/tests/fixtures/self-test/wall-clock.md).
+
+### Driver refactor
+The 126-line in-class `_run_one_turn` method was refactored into a standalone `_drive_fixture` free function shared by both tests (unit_056's `TestSelfTestEndToEnd` and unit_057's `TestWallClockParallelVsSequential`).
+
+### Two runtime bugs caught during implementation
+**Bug 1 — `compute_frontier` missing-filter for `failed` status.** [select_next_unit.py:123](skills/development-harness/scripts/select_next_unit.py#L123) filters out `status == "completed"` but NOT `failed`. So after a scope-violation flips a unit to `failed`, `compute_frontier` keeps surfacing it on subsequent turns. Worked around at driver level (filter `failed` from the frontier before passing to `compute_batch`); the runtime fix is a separate follow-up.
+
+**Bug 2 — Same-second turns share batch_id.** [compute_parallel_batch.py:112](skills/development-harness/scripts/compute_parallel_batch.py#L112) uses 1-second granularity for `_make_batch_id`. Multiple turns in the same second share a batch_id. Combined with Bug 1, this caused `git worktree add` to fail with exit 255 on re-dispatch of scope-violated units — the branch name `harness/<same-second-batch>/unit_b2` already existed from the preserved worktree. The Bug 1 workaround (filter `failed` from frontier) resolves the symptom.
+
+### Scope-violation phase-graph flip
+Both drivers (`_run_one_turn` and `_drive_fixture`) now flip scope-violation units to `status: "failed"` in the phase-graph — more correct terminal state than leaving them `pending` (where they'd be mistaken for work-in-progress). Updated unit_056's end-state assertion accordingly.
+
+### Results
 ```
---- Turn 1 ---
-  Frontier: ['unit_a1', 'unit_a2', 'unit_a3', 'unit_b1', 'unit_b2', 'unit_b3']
-  Batch:    ['unit_a1', 'unit_a2']
-  Excluded: unit_a3 (reason: path_overlap_with:unit_a2)
-  Merge outcome: ok | merged=['unit_a1', 'unit_a2'] conflicted=[]
-
---- Turn 2 ---
-  Batch:    ['unit_a3']
-  Merge outcome: ok | merged=['unit_a3'] conflicted=[]
-
---- Turn 3 ---
-  Batch:    ['unit_b1', 'unit_b2', 'unit_b3']
-  Merge outcome: partial | merged=['unit_b1', 'unit_b3'] conflicted=['unit_b2']
-    failed:  unit_b2 (category: scope_violation)
-
-Batch sizes observed: [2, 1, 3]
-Final status counts: {'completed': 5, 'pending': 1}
+| Run        | max_concurrent_units | Turns | Batch sizes         | Wall-clock (s) |
+|------------|----------------------|-------|---------------------|----------------|
+| Parallel   | 3                    | 3     | [2, 1, 3]           | 1.97           |
+| Sequential | 1                    | 6     | [1, 1, 1, 1, 1, 1]  | 2.00           |
 ```
 
-### Seeded-condition verification
-| Condition | Expected | Observed | Pass? |
-|-----------|----------|----------|-------|
-| Batch ≥ 2 | ≥ 1 turn with batch size ≥ 2 | Turn 1 size 2, Turn 3 size 3 | ✓ |
-| Overlap-matrix rejection | `unit_a3` excluded with `path_overlap_with:unit_a2` | Exact match on Turn 1 | ✓ |
-| Scope violation | `unit_b2` rejected with `src/seeds/users.json` in `conflict.paths` | Match on Turn 3 | ✓ |
+Ratio **1.02x** — small because fake-commits are instantaneous. Turn count (3 vs 6) is the meaningful signal for this fixture. A real project with slow per-unit work will see a larger ratio since fixed overhead stays constant while expensive per-unit work overlaps.
 
-### Final state
-- **5 units completed** (all of PHASE_A + unit_b1 + unit_b3).
-- **1 unit pending** (`unit_b2` — scope violation). The phase-graph leaves b2 pending because the fleet's `failed` status doesn't auto-flip the phase-graph entry; a human must fix the description/touches_paths discrepancy + retry.
-- **Only `unit_b2`'s worktree survives** (scope-violation path preserves it by design in `merge_batch.py`). All other worktrees torn down; no `harness/batch_*/*` branches remain.
-
-### Implementation notes
-Caught two bugs during development:
-1. `FIXTURE_DIR` path from `__file__` had a double `scripts/` component. Fixed by using `parents[1]` which already lands on `tests/`.
-2. Orphan check via `rglob` saw the batch-parent dir in addition to leaf unit dirs, producing false positives. Fixed by iterating only two levels deep (`batch_dir.iterdir()`) and comparing the leaf-name set directly.
+### Shape assertions
+Beyond wall-clock timings:
+- Parallel run must have max batch ≥ 2.
+- Sequential run must have all batches of size 1.
+- **Both** runs record exactly one `unit_b2` scope violation (fixture property, not parallelism-config property).
+- Sequential turns > parallel turns.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_057 (PHASE_013):** produce a wall-clock data table comparing parallelism-enabled vs sequential-baseline runs.
+**Complete unit_058 (PHASE_013) — LAST UNIT OF THE ROADMAP:** write [POST-MORTEM.md](skills/development-harness/scripts/tests/fixtures/self-test/POST-MORTEM.md) with sections:
 
-- The **parallel** timing is captured in `trace.log` from unit_056 (3 turns, ~2s).
-- The **sequential baseline** needs a second run with `config.execution_mode.parallelism.enabled: false` — forces batch-of-1 in-tree fast path throughout, 6 turns one unit at a time.
-- Compare wall-clock between the two; commit the comparison data as a short markdown snippet that will be embedded in POST-MORTEM.md (unit_058).
-- Verify no orphaned worktrees/branches remain (already done in unit_056's test; this just re-confirms in the commit evidence).
+- **Setup** — fixture design, operator recipe.
+- **Results** — embed the wall-clock.md table + trace.log highlights.
+- **Papercuts** — the 2 runtime bugs caught in unit_057 (compute_frontier missing `failed` filter, 1-second batch_id granularity) with prescriptions.
+- **Follow-ups** — file issues via `/inject-harness-issues` for the two bugs (or note they're scope for a future phase).
 
-Validation: comparison data committed under the fixture dir; grep verifies the table includes both parallel + sequential rows + a wall-clock ratio.
+Add a link from [references/parallel-execution.md](skills/development-harness/references/parallel-execution.md) to the new post-mortem.
+
+After unit_058 lands → open the PHASE_013 PR → run `code-review` → squash-merge. **PHASE_013 is the final phase of the roadmap; once it closes, the development-harness skill upgrade is complete.**
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/tests/integration/test_self_test_run.py](skills/development-harness/scripts/tests/integration/test_self_test_run.py): new 300-line integration module, 1 case.
-- [skills/development-harness/scripts/tests/fixtures/self-test/trace.log](skills/development-harness/scripts/tests/fixtures/self-test/trace.log): captured trace.
+- [skills/development-harness/scripts/tests/integration/test_self_test_run.py](skills/development-harness/scripts/tests/integration/test_self_test_run.py): extended with TestWallClockParallelVsSequential + `_drive_fixture` free-function refactor.
+- [skills/development-harness/scripts/tests/fixtures/self-test/wall-clock.md](skills/development-harness/scripts/tests/fixtures/self-test/wall-clock.md): new comparison table.
 - `python -m py_compile` → 0 (~0.1s).
-- `python -m unittest skills.development-harness.scripts.tests.integration.test_self_test_run -v` → **1/1** in 2.1s.
-- `python -m unittest discover skills/development-harness/scripts/tests` → **345/346** + 1 OS skip in 40.6s (up from 345 — 1 new case + trace.log artifact).
+- `python -m unittest skills.development-harness.scripts.tests.integration.test_self_test_run -v` → **2/2** in 6.4s.
+- `python -m unittest discover skills/development-harness/scripts/tests` → **346/347** + 1 OS skip in 45.2s (up from 346).
 
 ## Open Questions
 None.
@@ -76,18 +72,18 @@ None.
 - **ISSUE_001** (high, **resolved 2026-04-20**): Windows Python-detection. Fixed in unit_bugfix_001.
 - **ISSUE_002** (high, **resolved 2026-04-20**): Claude Code Stop-hook one-shot continuation. Fixed in unit_bugfix_002.
 
-All tracked issues resolved.
+All tracked issues resolved. Two **new** runtime bugs surfaced by unit_057 (compute_frontier missing-filter + batch_id 1-sec granularity) will be filed in unit_058's post-mortem as follow-ups.
 
 ## Commit Policy (recorded)
-- **PR cadence:** one PR per phase. PHASE_013 PR opens after unit_058 (last unit).
+- **PR cadence:** one PR per phase. PHASE_013 PR opens after unit_058.
 - **Branch:** `feat/phase-013-harness-self-test`.
 - **Merge:** squash; autonomous per [harness-git.md](.claude/rules/harness-git.md).
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 54 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_013 progress: **3/5 units done** (054 fixture scaffold, 055 /create artifacts, 056 end-to-end self-test + trace.log). Remaining: 057 timing table, 058 POST-MORTEM.md + link from parallel-execution.md.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → 332 → 345 → **346** across phases so far.
+- `session_count` is 55 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_013 progress: **4/5 units done** (054 fixture, 055 artifacts, 056 self-test, 057 timings). Remaining: 058 POST-MORTEM.md + parallel-execution.md link.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → 332 → 345 → 346 → **347** across phases so far.
 
 ## Batch (current or last)
 
@@ -103,4 +99,4 @@ Reflects `state.execution.fleet`.
 No conflicts.
 
 ---
-*Updated: 2026-04-20T14:35:00Z*
+*Updated: 2026-04-20T15:05:00Z*

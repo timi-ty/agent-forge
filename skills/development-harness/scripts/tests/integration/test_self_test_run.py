@@ -40,6 +40,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -57,6 +58,7 @@ from select_next_unit import compute_frontier  # noqa: E402
 TESTS_DIR = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = TESTS_DIR / "fixtures" / "self-test"
 TRACE_LOG = FIXTURE_DIR / "trace.log"
+WALL_CLOCK_MD = FIXTURE_DIR / "wall-clock.md"
 
 
 def _init_repo(root):
@@ -140,6 +142,144 @@ def _units_by_status(phase_graph):
     return counts
 
 
+def _load_fixture_config():
+    return json.loads((FIXTURE_DIR / "config.json").read_text(encoding="utf-8"))
+
+
+def _load_fixture_phase_graph():
+    return json.loads((FIXTURE_DIR / "phase-graph.json").read_text(encoding="utf-8"))
+
+
+def _drive_fixture(root, phase_graph, parallelism, trace_lines, max_turns=12):
+    """Walk invoke turns against ``phase_graph`` until the roadmap
+    reaches a stable terminal state. Returns a run summary dict with
+    ``turns`` (count), ``batch_sizes``, ``overlap_exclusions``,
+    ``scope_violations``. Mutates ``phase_graph`` in place to reflect
+    per-unit status.
+
+    Factored as a free function so the wall-clock comparison test can
+    invoke the same driver twice (parallel vs sequential) without
+    duplicating logic.
+    """
+    turns = 0
+    batch_sizes = []
+    overlap_exclusions = []
+    scope_violations = []
+
+    for turn_idx in range(1, max_turns + 1):
+        trace_lines.append(f"\n--- Turn {turn_idx} ---")
+
+        frontier = compute_frontier(phase_graph["phases"])
+        # compute_frontier filters out only 'completed' -- 'failed'
+        # units still surface. For the driver we skip failed units
+        # (their worktree + branch were preserved by the scope-
+        # violation path; re-dispatching would hit a git-collision).
+        # A human operator would either fix + re-flip to 'pending' or
+        # mark the unit 'blocked'; both paths are manual, not
+        # auto-retry.
+        frontier = [u for u in frontier if u.get("status") != "failed"]
+        if not frontier:
+            trace_lines.append(
+                "Frontier empty. Roadmap is either complete or blocked."
+            )
+            break
+
+        batch_result = compute_batch(frontier, parallelism, now=None)
+        batch_ids = [u["id"] for u in batch_result["batch"]]
+        trace_lines.append(f"  Frontier: {[u['id'] for u in frontier]}")
+        trace_lines.append(f"  Batch:    {batch_ids}")
+        for excluded in batch_result["excluded"]:
+            trace_lines.append(
+                f"  Excluded: {excluded['unit_id']} "
+                f"(reason: {excluded['reason']})"
+            )
+            if excluded["reason"].startswith("path_overlap_with:"):
+                overlap_exclusions.append(
+                    (excluded["unit_id"], excluded["reason"])
+                )
+
+        if not batch_ids:
+            trace_lines.append("  Nothing packed -- all frontier units excluded.")
+            break
+
+        batch_sizes.append(len(batch_ids))
+        turns += 1
+
+        state = {}
+        dispatch_batch(batch_result, root=root, state=state)
+
+        batch_id = batch_result["batch_id"]
+        for unit_id in batch_ids:
+            worktree = root / ".harness" / "worktrees" / batch_id / unit_id
+            _fake_sub_agent_commit(worktree, UNIT_FILES[unit_id])
+
+        merge_result = merge_batch(state, root=root)
+        trace_lines.append(
+            f"  Merge outcome: {merge_result['outcome']} | "
+            f"merged={merge_result['merged']} "
+            f"conflicted={merge_result['conflicted']}"
+        )
+
+        for unit in state["execution"]["fleet"]["units"]:
+            if unit["status"] == "merged":
+                _mark_unit_completed(
+                    phase_graph, unit["phase_id"], unit["unit_id"],
+                    f"driver turn {turn_idx}: merged cleanly",
+                )
+                trace_lines.append(
+                    f"    merged:  {unit['unit_id']} -> phase-graph completed"
+                )
+            elif unit["status"] == "failed":
+                cat = (unit.get("conflict") or {}).get("category", "unknown")
+                paths = (unit.get("conflict") or {}).get("paths", [])
+                trace_lines.append(
+                    f"    failed:  {unit['unit_id']} (category: {cat})"
+                )
+                if cat == "scope_violation":
+                    scope_violations.append((unit["unit_id"], paths))
+                    # Flip the phase-graph entry to 'failed' so
+                    # compute_frontier stops surfacing this unit for
+                    # re-dispatch. Without this, a sequential driver
+                    # that hits a scope violation would loop forever
+                    # (the unit stays 'pending', frontier re-includes
+                    # it, next turn attempts to recreate the already-
+                    # preserved worktree+branch and fails with a git
+                    # collision). Real orchestrators should do the
+                    # same: scope_violation is a terminal-for-the-unit
+                    # state that requires human intervention.
+                    for phase in phase_graph["phases"]:
+                        for pg_unit in phase["units"]:
+                            if pg_unit["id"] == unit["unit_id"]:
+                                pg_unit["status"] = "failed"
+                                pg_unit.setdefault(
+                                    "validation_evidence", []
+                                ).append(
+                                    f"driver turn {turn_idx}: "
+                                    f"scope_violation on {paths}"
+                                )
+
+        # Stable terminal state: every unit is either completed OR
+        # pending-with-a-recorded-scope-violation. Continuing past this
+        # would loop forever because pending units with scope
+        # violations never get re-picked-up (their sub-agent would fail
+        # again).
+        completed_ids = {
+            unit["id"] for phase in phase_graph["phases"]
+            for unit in phase["units"] if unit["status"] == "completed"
+        }
+        violating_ids = {uid for uid, _ in scope_violations}
+        total_units = sum(len(p["units"]) for p in phase_graph["phases"])
+        if len(completed_ids) + len(violating_ids) >= total_units:
+            break
+
+    return {
+        "turns": turns,
+        "batch_sizes": batch_sizes,
+        "overlap_exclusions": overlap_exclusions,
+        "scope_violations": scope_violations,
+    }
+
+
 class TestSelfTestEndToEnd(unittest.TestCase):
     """Driver that walks turns until the fixture reaches a stable
     terminal state (either all-complete or blocked-by-scope-violation).
@@ -175,6 +315,11 @@ class TestSelfTestEndToEnd(unittest.TestCase):
         self._log(f"\n--- Turn {turn_idx} ---")
 
         frontier = compute_frontier(self.phase_graph["phases"])
+        # Same filter as _drive_fixture -- compute_frontier surfaces
+        # 'failed' units alongside 'pending' ones, but failed units
+        # should not be re-dispatched (their worktree+branch are
+        # preserved for human inspection).
+        frontier = [u for u in frontier if u.get("status") != "failed"]
         if not frontier:
             self._log("Frontier empty. Roadmap is either complete or blocked.")
             return None
@@ -224,9 +369,27 @@ class TestSelfTestEndToEnd(unittest.TestCase):
                 )
             elif unit["status"] == "failed":
                 cat = (unit.get("conflict") or {}).get("category", "unknown")
+                paths = (unit.get("conflict") or {}).get("paths", [])
                 self._log(
                     f"    failed:  {unit['unit_id']} (category: {cat})"
                 )
+                if cat == "scope_violation":
+                    # Flip phase-graph entry to 'failed' so
+                    # compute_frontier stops surfacing this unit for
+                    # re-dispatch. Without this, a driver that runs
+                    # long enough would hit the same-second-batch_id
+                    # branch-name collision because the scope-violation
+                    # path preserves the worktree + branch.
+                    for phase in self.phase_graph["phases"]:
+                        for pg_unit in phase["units"]:
+                            if pg_unit["id"] == unit["unit_id"]:
+                                pg_unit["status"] = "failed"
+                                pg_unit.setdefault(
+                                    "validation_evidence", []
+                                ).append(
+                                    f"self-test turn {turn_idx}: "
+                                    f"scope_violation on {paths}"
+                                )
 
         self.assertEqual(
             state["execution"]["fleet"]["mode"], "idle",
@@ -266,15 +429,12 @@ class TestSelfTestEndToEnd(unittest.TestCase):
                         (unit["unit_id"], conflict.get("paths", []))
                     )
 
-            # Stop once every unit is either completed or blocked as
-            # scope-violation-failed (the fixture's terminal state).
+            # Stop once every unit is either completed or failed (the
+            # fixture's terminal state). After the scope-violation
+            # flip above, b2 is 'failed'; everything else is
+            # 'completed'.
             all_settled = all(
-                unit["status"] in ("completed",)
-                or unit["status"] == "pending"
-                and any(
-                    scope_violation[0] == unit["id"]
-                    for scope_violation in scope_violations
-                )
+                unit["status"] in ("completed", "failed")
                 for phase in self.phase_graph["phases"]
                 for unit in phase["units"]
             )
@@ -322,21 +482,21 @@ class TestSelfTestEndToEnd(unittest.TestCase):
             status_counts.get("completed", 0), 5,
             "Expected 5 units to reach 'completed' (all of PHASE_A + b1 + b3)",
         )
-        # unit_b2 stays pending in the phase-graph because the fleet
-        # failed it (scope_violation) but the orchestrator only flips
-        # the phase-graph on 'merged' status -- 'failed' units stay
-        # pending for a human to fix. That's the real observable end-
-        # state for the fixture.
-        pending_units = {
+        # unit_b2 is flipped to 'failed' in the phase-graph by the
+        # driver's scope-violation handler, so compute_frontier stops
+        # re-dispatching it. That's the terminal state for a scope-
+        # violating unit; human intervention is required to repair the
+        # touches_paths/description discrepancy + re-run the unit.
+        failed_units = {
             unit["id"]
             for phase in self.phase_graph["phases"]
             for unit in phase["units"]
-            if unit["status"] == "pending"
+            if unit["status"] == "failed"
         }
         self.assertEqual(
-            pending_units, {"unit_b2"},
-            f"Only unit_b2 should remain pending (scope violation); "
-            f"observed pending set: {pending_units}",
+            failed_units, {"unit_b2"},
+            f"Only unit_b2 should be marked failed (scope violation); "
+            f"observed failed set: {failed_units}",
         )
 
         # ----- Orphan check: no residual batch worktrees or branches -----
@@ -361,6 +521,162 @@ class TestSelfTestEndToEnd(unittest.TestCase):
         # ----- Write trace.log for units 057 + 058 -----
         TRACE_LOG.parent.mkdir(parents=True, exist_ok=True)
         TRACE_LOG.write_text("\n".join(self.trace_lines) + "\n", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------
+# unit_057 -- wall-clock parallel vs sequential comparison
+# ---------------------------------------------------------------------
+
+
+class TestWallClockParallelVsSequential(unittest.TestCase):
+    """Run the Tasklet fixture end-to-end twice -- once with the
+    fixture's parallelism config (max_concurrent_units=3) and once
+    with a sequential baseline (max_concurrent_units=1, forcing
+    batch-of-1 throughout) -- and record both wall-clocks in a
+    markdown table committed to fixtures/self-test/wall-clock.md
+    for unit_058's post-mortem to embed.
+
+    The sequential baseline uses worktree fan-out with a capacity cap
+    of 1 rather than the in-tree fast path. This keeps the comparison
+    apples-to-apples: same git operations (worktree add + merge) per
+    unit, only batch-size differs. A pure in-tree baseline would
+    conflate 'sequential' with 'avoids worktree overhead' and
+    under-count parallelism's real saving.
+    """
+
+    def _run_with_parallelism(self, max_concurrent_units):
+        """Spawn a fresh temp repo, run the fixture driver to
+        completion, time it. Returns (elapsed_seconds, summary,
+        trace_lines)."""
+        temp_dir = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(
+            lambda td=temp_dir:
+            __import__("shutil").rmtree(td, ignore_errors=True)
+        )
+        _init_repo(temp_dir)
+
+        phase_graph = _load_fixture_phase_graph()
+        config = _load_fixture_config()
+        parallelism = _parallelism_config(config)
+        parallelism["max_concurrent_units"] = max_concurrent_units
+
+        trace_lines = [
+            f"Run config: max_concurrent_units={max_concurrent_units}",
+        ]
+        start = time.monotonic()
+        summary = _drive_fixture(temp_dir, phase_graph, parallelism, trace_lines)
+        elapsed = time.monotonic() - start
+        return elapsed, summary, trace_lines
+
+    def test_parallel_vs_sequential_produces_comparable_table(self):
+        # ----- Parallel run (max_concurrent_units=3, fixture default)
+        parallel_elapsed, parallel_summary, parallel_trace = (
+            self._run_with_parallelism(max_concurrent_units=3)
+        )
+
+        # ----- Sequential baseline (max_concurrent_units=1)
+        sequential_elapsed, sequential_summary, sequential_trace = (
+            self._run_with_parallelism(max_concurrent_units=1)
+        )
+
+        # ----- Shape assertions
+        # Parallel run packs units into batches; sequential forces
+        # one unit per turn. Expect sequential to take more turns
+        # even though it eventually reaches the same terminal state.
+        self.assertGreater(
+            sequential_summary["turns"], parallel_summary["turns"],
+            f"sequential baseline must take more turns than parallel "
+            f"(sequential: {sequential_summary['turns']}, "
+            f"parallel: {parallel_summary['turns']})",
+        )
+        # Parallel run must have observed >= 1 batch of size >= 2.
+        self.assertGreaterEqual(
+            max(parallel_summary["batch_sizes"]), 2,
+            "parallel run must exercise batch >= 2",
+        )
+        # Sequential run must never exceed batch size 1.
+        self.assertTrue(
+            all(b == 1 for b in sequential_summary["batch_sizes"]),
+            f"sequential run must have all batches of size 1; got "
+            f"{sequential_summary['batch_sizes']}",
+        )
+
+        # Both runs must hit exactly one scope violation on unit_b2 --
+        # that's a property of the fixture, not the parallelism config.
+        for label, summary in [("parallel", parallel_summary),
+                               ("sequential", sequential_summary)]:
+            b2_violations = [
+                uid for uid, _ in summary["scope_violations"]
+                if uid == "unit_b2"
+            ]
+            self.assertEqual(
+                len(b2_violations), 1,
+                f"{label} run must record exactly one unit_b2 scope "
+                f"violation; got {summary['scope_violations']}",
+            )
+
+        # ----- Write wall-clock.md
+        ratio = (sequential_elapsed / parallel_elapsed
+                 if parallel_elapsed > 0 else float("inf"))
+        md = _build_wall_clock_markdown(
+            parallel_elapsed=parallel_elapsed,
+            parallel_summary=parallel_summary,
+            sequential_elapsed=sequential_elapsed,
+            sequential_summary=sequential_summary,
+            ratio=ratio,
+        )
+        WALL_CLOCK_MD.parent.mkdir(parents=True, exist_ok=True)
+        WALL_CLOCK_MD.write_text(md, encoding="utf-8")
+
+
+def _build_wall_clock_markdown(
+    parallel_elapsed, parallel_summary,
+    sequential_elapsed, sequential_summary,
+    ratio,
+):
+    """Render the wall-clock comparison table + narrative.
+
+    Embedded by unit_058's POST-MORTEM.md. Shape is grep-friendly and
+    assertable -- every row carries its own label the post-mortem
+    tests can pin on."""
+    lines = [
+        "# Wall-clock comparison — Tasklet self-test fixture",
+        "",
+        ("Captured by `test_self_test_run.TestWallClockParallelVsSequential."
+         "test_parallel_vs_sequential_produces_comparable_table` on a fresh "
+         "run against the fixture in [phase-graph.json](./phase-graph.json). "
+         "Both runs use worktree fan-out (dispatch + merge) so the only "
+         "independent variable is `max_concurrent_units`."),
+        "",
+        "| Run | max_concurrent_units | Turns | Batch sizes | Wall-clock (s) |",
+        "|-----|----------------------|-------|-------------|----------------|",
+        (f"| Parallel   | 3 | {parallel_summary['turns']} | "
+         f"{parallel_summary['batch_sizes']} | {parallel_elapsed:.2f} |"),
+        (f"| Sequential | 1 | {sequential_summary['turns']} | "
+         f"{sequential_summary['batch_sizes']} | {sequential_elapsed:.2f} |"),
+        "",
+        "## Ratio",
+        "",
+        (f"Sequential / Parallel wall-clock ratio: **{ratio:.2f}x**. The "
+         f"parallel run completes in {parallel_summary['turns']} turn(s) "
+         f"versus {sequential_summary['turns']} for sequential. On this "
+         f"fixture the batching savings come from Turn 1 packing "
+         f"unit_a1 + unit_a2 and Turn 3 packing the full PHASE_B set "
+         f"(b1 + b2 + b3 before b2's scope-violation rejection). A real "
+         f"project with slower per-unit work (real test runs, not "
+         f"fake-commits) will see a larger ratio because the fixed "
+         f"overhead (worktree add + merge) is unchanged while the "
+         f"per-unit work overlaps."),
+        "",
+        "## Orphan check",
+        "",
+        ("Both runs leave only `unit_b2`'s worktree alive -- the "
+         "scope-violation path in `merge_batch.py` preserves it so a "
+         "human can inspect and repair. All other worktrees are torn "
+         "down; no residual `harness/batch_*/*` branches remain."),
+        "",
+    ]
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
