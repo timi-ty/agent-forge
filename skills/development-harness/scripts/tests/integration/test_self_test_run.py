@@ -304,180 +304,59 @@ class TestSelfTestEndToEnd(unittest.TestCase):
 
         self.trace_lines = []
 
-    def _log(self, line):
-        self.trace_lines.append(line)
-
-    def _run_one_turn(self, turn_idx):
-        """One invoke turn: compute_parallel_batch -> dispatch_batch
-        -> fake sub-agent commits -> merge_batch. Returns the
-        merge_result dict so the caller can inspect batch composition
-        + per-unit outcomes."""
-        self._log(f"\n--- Turn {turn_idx} ---")
-
-        frontier = compute_frontier(self.phase_graph["phases"])
-        # Same filter as _drive_fixture -- compute_frontier surfaces
-        # 'failed' units alongside 'pending' ones, but failed units
-        # should not be re-dispatched (their worktree+branch are
-        # preserved for human inspection).
-        frontier = [u for u in frontier if u.get("status") != "failed"]
-        if not frontier:
-            self._log("Frontier empty. Roadmap is either complete or blocked.")
-            return None
-
-        batch_result = compute_batch(frontier, self.parallelism, now=None)
-        batch_ids = [u["id"] for u in batch_result["batch"]]
-        self._log(f"  Frontier: {[u['id'] for u in frontier]}")
-        self._log(f"  Batch:    {batch_ids}")
-        if batch_result["excluded"]:
-            for excluded in batch_result["excluded"]:
-                self._log(
-                    f"  Excluded: {excluded['unit_id']} "
-                    f"(reason: {excluded['reason']})"
-                )
-
-        if not batch_ids:
-            self._log("  Nothing packed -- all frontier units excluded.")
-            return None
-
-        state = {}
-        dispatch_batch(batch_result, root=self.temp_dir, state=state)
-
-        batch_id = batch_result["batch_id"]
-        for unit_id in batch_ids:
-            worktree = self.temp_dir / ".harness" / "worktrees" / batch_id / unit_id
-            _fake_sub_agent_commit(worktree, UNIT_FILES[unit_id])
-
-        merge_result = merge_batch(state, root=self.temp_dir)
-        self._log(
-            f"  Merge outcome: {merge_result['outcome']} | "
-            f"merged={merge_result['merged']} "
-            f"conflicted={merge_result['conflicted']}"
-        )
-
-        # Flip fleet-unit statuses back into the phase-graph (what
-        # Step 9a of invoke.md does after merge).
-        for unit in state["execution"]["fleet"]["units"]:
-            if unit["status"] == "merged":
-                _mark_unit_completed(
-                    self.phase_graph,
-                    unit["phase_id"],
-                    unit["unit_id"],
-                    f"self-test turn {turn_idx}: merged cleanly",
-                )
-                self._log(
-                    f"    merged:  {unit['unit_id']} -> phase-graph flipped to completed"
-                )
-            elif unit["status"] == "failed":
-                cat = (unit.get("conflict") or {}).get("category", "unknown")
-                paths = (unit.get("conflict") or {}).get("paths", [])
-                self._log(
-                    f"    failed:  {unit['unit_id']} (category: {cat})"
-                )
-                if cat == "scope_violation":
-                    # Flip phase-graph entry to 'failed' so
-                    # compute_frontier stops surfacing this unit for
-                    # re-dispatch. Without this, a driver that runs
-                    # long enough would hit the same-second-batch_id
-                    # branch-name collision because the scope-violation
-                    # path preserves the worktree + branch.
-                    for phase in self.phase_graph["phases"]:
-                        for pg_unit in phase["units"]:
-                            if pg_unit["id"] == unit["unit_id"]:
-                                pg_unit["status"] = "failed"
-                                pg_unit.setdefault(
-                                    "validation_evidence", []
-                                ).append(
-                                    f"self-test turn {turn_idx}: "
-                                    f"scope_violation on {paths}"
-                                )
-
-        self.assertEqual(
-            state["execution"]["fleet"]["mode"], "idle",
-            f"Turn {turn_idx}: fleet.mode must return to 'idle' at turn-end; "
-            f"got {state['execution']['fleet']['mode']!r}",
-        )
-
-        return {
-            "batch_ids": batch_ids,
-            "excluded": batch_result["excluded"],
-            "merge_result": merge_result,
-            "state": state,
-        }
-
     def test_full_self_test_run_exercises_all_three_seeded_conditions(self):
-        # ----- observation accumulators for seeded-condition checks
-        batch_sizes = []
-        overlap_exclusions = []
-        scope_violations = []
-
-        # Hard safety cap so an unexpected infinite loop doesn't hang.
-        for turn_idx in range(1, 11):
-            result = self._run_one_turn(turn_idx)
-            if result is None:
-                break
-
-            batch_sizes.append(len(result["batch_ids"]))
-            for excluded in result["excluded"]:
-                if excluded["reason"].startswith("path_overlap_with:"):
-                    overlap_exclusions.append(
-                        (excluded["unit_id"], excluded["reason"])
-                    )
-            for unit in result["state"]["execution"]["fleet"]["units"]:
-                conflict = unit.get("conflict") or {}
-                if conflict.get("category") == "scope_violation":
-                    scope_violations.append(
-                        (unit["unit_id"], conflict.get("paths", []))
-                    )
-
-            # Stop once every unit is either completed or failed (the
-            # fixture's terminal state). After the scope-violation
-            # flip above, b2 is 'failed'; everything else is
-            # 'completed'.
-            all_settled = all(
-                unit["status"] in ("completed", "failed")
-                for phase in self.phase_graph["phases"]
-                for unit in phase["units"]
-            )
-            if all_settled:
-                break
+        # Delegate the driver loop to the shared _drive_fixture helper
+        # so there's exactly one copy of the compute -> dispatch ->
+        # merge logic in this module. The returned summary carries
+        # batch_sizes / overlap_exclusions / scope_violations directly.
+        summary = _drive_fixture(
+            self.temp_dir, self.phase_graph,
+            self.parallelism, self.trace_lines,
+        )
 
         # ----- Condition 1: batch >= 2 -----
-        self._log(f"\nBatch sizes observed: {batch_sizes}")
+        self.trace_lines.append(
+            f"\nBatch sizes observed: {summary['batch_sizes']}"
+        )
         self.assertGreaterEqual(
-            max(batch_sizes, default=0), 2,
+            max(summary["batch_sizes"], default=0), 2,
             "Seeded condition 1 (batch >= 2) must fire: expected at least "
             "one turn with batch size >= 2",
         )
 
         # ----- Condition 2: overlap-matrix rejection with unit_a3 -----
-        self._log(f"Overlap exclusions: {overlap_exclusions}")
+        self.trace_lines.append(
+            f"Overlap exclusions: {summary['overlap_exclusions']}"
+        )
         matching = [
-            (uid, reason) for uid, reason in overlap_exclusions
+            (uid, reason) for uid, reason in summary["overlap_exclusions"]
             if uid == "unit_a3" and reason == "path_overlap_with:unit_a2"
         ]
         self.assertTrue(
             matching,
             f"Seeded condition 2 (overlap rejection) must fire: expected "
             f"unit_a3 excluded with reason 'path_overlap_with:unit_a2'; "
-            f"observed {overlap_exclusions}",
+            f"observed {summary['overlap_exclusions']}",
         )
 
         # ----- Condition 3: scope violation on unit_b2 -----
-        self._log(f"Scope violations: {scope_violations}")
+        self.trace_lines.append(
+            f"Scope violations: {summary['scope_violations']}"
+        )
         matching_b2 = [
-            (uid, paths) for uid, paths in scope_violations
+            (uid, paths) for uid, paths in summary["scope_violations"]
             if uid == "unit_b2" and "src/seeds/users.json" in paths
         ]
         self.assertTrue(
             matching_b2,
             f"Seeded condition 3 (scope violation) must fire: expected "
             f"unit_b2 rejected with src/seeds/users.json in conflict.paths; "
-            f"observed {scope_violations}",
+            f"observed {summary['scope_violations']}",
         )
 
         # ----- Expected end state -----
         status_counts = _units_by_status(self.phase_graph)
-        self._log(f"\nFinal status counts: {status_counts}")
+        self.trace_lines.append(f"\nFinal status counts: {status_counts}")
         self.assertEqual(
             status_counts.get("completed", 0), 5,
             "Expected 5 units to reach 'completed' (all of PHASE_A + b1 + b3)",
