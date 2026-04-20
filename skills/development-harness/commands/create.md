@@ -101,6 +101,20 @@ Organize questions by category. **Do NOT ask for anything already detected in Ph
 - Definition of done (list of conditions for a unit to be considered complete)
 - Mandatory checks before marking work done (lint, test, build, e2e-smoke, etc.)
 
+**Execution Mode** (structured questions — use exact wording)
+
+Two questions in this category must be asked verbatim so the generated `config.json` has predictable shapes and users see the same prompts on every install:
+
+1. **`Enable parallel unit execution? (y/n, default n)`** → writes to `config.execution_mode.parallelism.enabled`.
+   - Answer `y` / `yes` → `true`. Answer `n` / `no` / empty → `false` (default).
+   - A `true` answer also requires `config.execution_mode.parallelism.max_concurrent_units` (default 3), `conflict_strategy` (default `abort_batch`), `require_touches_paths` (default `true`), and `allow_cross_phase` (default `false`). Write the full block even when the user accepts defaults — it makes the config self-documenting.
+   - When the user answers `y`, note to them: parallel execution is off by default for a reason (see [references/parallel-execution.md](../references/parallel-execution.md) § "Readiness checklist"). Confirm the project has 3+ genuinely independent units per phase before enabling.
+
+2. **`Break-on-schema-bump vs migrate? (break/migrate, default break)`** → writes to `config.execution_mode.versioning.break_on_schema_bump`.
+   - Answer `break` / empty → `true` (default). Answer `migrate` → `false`.
+   - `true` means: when this skill's `schema_version` bumps, the harness refuses to operate and requires `/create-development-harness` to regenerate harness files. Safe default — no silent schema migration risk.
+   - `false` means: the harness attempts an in-place migration of `state.json` / `phase-graph.json` from the old schema to the new one. Riskier — only enable for projects that have migration tooling reviewed.
+
 Present all questions in a single structured message. Wait for answers before proceeding.
 
 ---
@@ -141,9 +155,14 @@ For each phase in the skeleton:
    - `description`: What the unit accomplishes
    - `acceptance criteria`: Concrete conditions for completion
    - `validation method`: How the validator proves completion (e.g., `pytest tests/unit/test_auth.py`, `npm run lint`, `curl -s https://app.example.com/api/health | grep ok`)
-3. **Determine dependencies** -- Which phases must complete before this one can start?
+   - `depends_on`: List of other unit ids that must be `completed` before this unit is eligible. Empty list is allowed and common; most units only have phase-level dependencies. Required on every unit per `references/phase-contract.md`.
+   - `parallel_safe`: Boolean declaring whether the unit can run concurrently with other parallel-safe units in the same batch. **Default to `false` when the unit's blast radius is unknown or when you haven't deliberately confirmed independence.** See `references/phase-contract.md` § "Decomposing a phase for parallelism" for the 4-criteria check.
+   - `touches_paths`: List of glob patterns the unit may create or modify. Propose this **per unit** by reading the unit's description + acceptance criteria and predicting which files the implementation will touch. Err on the side of narrower globs — the scope check rejects under-declared units at merge time, so getting this right at design time saves merge-time rework. Required when `parallel_safe: true` (under default config).
+3. **Determine dependencies** -- Which phases must complete before this one can start? (This is phase-level; unit-level is `depends_on` above.)
 4. **Attach validation gates** -- Which layers from the validation hierarchy (1-7) apply? Reference `references/validation-hierarchy.md`.
 5. **Identify deployment implications** -- Does this phase affect deployment? If yes, layers 5+ are required.
+
+**Parallelism-by-default**: If Phase 2 produced `config.execution_mode.parallelism.enabled: true`, try to propose `parallel_safe: true` on every unit that genuinely qualifies — but only when `touches_paths` is concrete and disjoint from sibling units. Dry-run check: `$PY .harness/scripts/select_next_unit.py --frontier | $PY .harness/scripts/compute_parallel_batch.py --input - --config .harness/config.json` should pack the phase's parallel-safe units into a single batch with no `path_overlap_with:*` exclusions. When in doubt, leave `parallel_safe: false`; the unit still runs via the in-tree fast path.
 
 ### Step 3: Write phase documents
 

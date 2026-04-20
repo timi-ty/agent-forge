@@ -615,10 +615,10 @@
     {
       "id": "PHASE_011",
       "slug": "documentation",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": [],
       "started": "2026-04-20T09:25:00Z",
-      "completed": null,
+      "completed": "2026-04-20T12:00:00Z",
       "units": [
         {
           "id": "unit_bugfix_001",
@@ -695,8 +695,14 @@
         {
           "id": "unit_048",
           "description": "Update skills/development-harness/commands/create.md Phase 2 with two structured questions: (1) Enable parallel unit execution? (y/n, default n) -> config.execution_mode.parallelism.enabled; (2) Break-on-schema-bump vs migrate? (break/migrate, default break) -> config.execution_mode.versioning.break_on_schema_bump. Update Phase 4 to instruct proposing touches_paths per unit and setting parallel_safe: false when blast radius is unknown",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/create.md Phase 2 (Ask Questions): new 'Execution Mode' category added after Quality with a 'use exact wording' preamble and two structured questions. Q1 '`Enable parallel unit execution? (y/n, default n)`' maps to config.execution_mode.parallelism.enabled with full y->true / n->false mapping + the four sub-fields that must be written alongside the enabled flag (max_concurrent_units default 3, conflict_strategy default abort_batch, require_touches_paths default true, allow_cross_phase default false) + an on-yes-answer pointer at references/parallel-execution.md § 'Readiness checklist'. Q2 '`Break-on-schema-bump vs migrate? (break/migrate, default break)`' maps to config.execution_mode.versioning.break_on_schema_bump with the break->true (safe default, requires /create-development-harness regeneration on schema bump) vs migrate->false (attempts in-place migration) semantics called out so the generated config is self-documenting",
+            "skills/development-harness/commands/create.md Phase 4 Step 2: unit-field bullet list grew from 4 fields (id, description, acceptance criteria, validation method) to 7 by adding depends_on (always required, empty list allowed), parallel_safe (with the explicit 'Default to false when blast radius is unknown' guidance the acceptance criterion required), and touches_paths (with the 'Propose this per unit' instruction + 'narrower globs' preference + 'required when parallel_safe: true' conditional). Step 3 'Determine dependencies' disambiguated as phase-level (to differentiate from the new unit-level depends_on). New 'Parallelism-by-default' paragraph below the numbered list instructs the agent to propose parallel_safe: true aggressively when Phase 2 turned parallelism on, paired with the exact dry-run pipeline `select_next_unit.py --frontier | compute_parallel_batch.py --input - --config .harness/config.json` and the 'when in doubt, leave parallel_safe: false' safety net",
+            "skills/development-harness/scripts/tests/test_create_bootstrap_parallelism_questions.py: new 190-line test module with 2 classes and 11 cases. TestPhase2ExecutionModeQuestions (7) pins the Execution Mode category heading + both questions verbatim (backtick-quoted) + their answer-to-value mappings (true/false/break/migrate) + both config paths (config.execution_mode.parallelism.enabled and config.execution_mode.versioning.break_on_schema_bump) + the four sub-fields the parallelism question must instruct writing + the parallel-execution.md + Readiness-checklist cross-link + the /create-development-harness recovery path for schema-bump breaks + the 'use exact wording' preamble. TestPhase4UnitFieldsAddParallelismTriple (4) pins the depends_on/parallel_safe/touches_paths additions + the 'blast radius' + 'Default to false' guidance wording (the exact phrases in the acceptance criterion) + the 'Propose this' + 'narrower globs' touches_paths instruction + the Parallelism-by-default subsection with the full dry-run command + the path_overlap_with cross-link. Section-slicing helper (_slice) guards assertions against leaking across phase sections in the doc",
+            "Grounding: every claim in the edits is verified against the downstream config schema + runtime code. config.execution_mode.parallelism.enabled is the exact field compute_parallel_batch.py:101 reads. config.execution_mode.versioning.break_on_schema_bump is the field validate_harness.py's schema-check path reads (verified via the schema definition). depends_on is the field compute_frontier in select_next_unit.py reads. parallel_safe + touches_paths are the fields compute_parallel_batch.py:145-148 reads. The dry-run pipeline command in the 'Parallelism-by-default' paragraph is the exact invocation commands/invoke.md Step 4 uses",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_create_bootstrap_parallelism_questions.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_create_bootstrap_parallelism_questions -v passes 11/11 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 285/286 with 1 OS-specific skip (41.6s, up from 275 -- 11 new cases for unit_048)"
+          ]
         },
         {
           "id": "unit_049",
