@@ -202,9 +202,18 @@ Use the templates from this skill's `templates/workspace-commands/` directory. T
 
 ### Hook configuration
 
+**Detect the Python interpreter first.** Every other entry point in this skill (all 7 workspace command templates + SKILL.md) uses a portable detection idiom; the hook configuration must do the same so the stop hook does not die on Windows where only `python` (not `python3`) is on PATH.
+
+```bash
+PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+[ -z "$PY" ] && { echo "Error: Python 3 is required but neither python3 nor python was found"; exit 1; }
+```
+
+**Bake the detected `$PY` into the generated hook `command` field** — do not rely on the hook script's `#!/usr/bin/env python3` shebang at runtime. The shebang stays in the script for direct-invocation ergonomics, but it must not be the primary invocation path (see ISSUE_001).
+
 **If `$TOOL` is `cursor`:**
 
-Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
+Generate `$HOOK_CONFIG` (`.cursor/hooks.json`) with the resolved interpreter substituted in:
 
 ```json
 {
@@ -212,12 +221,14 @@ Generate `$HOOK_CONFIG` (`.cursor/hooks.json`):
   "hooks": {
     "stop": [
       {
-        "command": ".cursor/hooks/continue-loop.py"
+        "command": "$PY .cursor/hooks/continue-loop.py"
       }
     ]
   }
 }
 ```
+
+Where `$PY` is the absolute path returned by the detection above (e.g., `/usr/bin/python3` on Linux, `C:/Users/.../python.exe` on Windows). Write the actual path into the JSON; do not leave the literal `$PY` in the file.
 
 If `.cursor/hooks.json` already exists, read it, parse the JSON, and MERGE the stop hook entry into the existing `hooks.stop` array. Do not overwrite other hooks. Do not duplicate the entry if it already exists.
 
@@ -229,7 +240,7 @@ chmod +x .cursor/hooks/continue-loop.py
 
 **If `$TOOL` is `claude-code`:**
 
-Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
+Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`) with the resolved interpreter substituted in:
 
 ```json
 {
@@ -240,7 +251,7 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/continue-loop.py",
+            "command": "$PY .claude/hooks/continue-loop.py",
             "timeout": 15
           }
         ]
@@ -249,6 +260,8 @@ Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`):
   }
 }
 ```
+
+Where `$PY` is the absolute path returned by the detection above. Write the actual path into the JSON; do not leave the literal `$PY` in the file.
 
 If `.claude/settings.local.json` already exists, read it, parse the JSON, and deep-merge the `hooks.Stop` entry. Do not overwrite other settings or hooks.
 
