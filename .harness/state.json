@@ -40,7 +40,7 @@
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-011-documentation",
+    "current_branch": "feat/phase-012-release-readiness",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
