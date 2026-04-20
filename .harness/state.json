@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T12:00:00Z",
+  "last_updated": "2026-04-20T12:30:00Z",
   "execution": {
     "active_phase": "PHASE_012",
-    "active_unit": "unit_051",
-    "last_completed_unit": "unit_048",
-    "next_unit": "unit_051",
-    "session_count": 48,
+    "active_unit": "unit_052",
+    "last_completed_unit": "unit_051",
+    "next_unit": "unit_052",
+    "session_count": 49,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T12:00:00Z",
+    "last_run": "2026-04-20T12:30:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_create_bootstrap_parallelism_questions -v passes 11/11 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 285/286 with 1 OS-specific skip (41.6s, up from 275 -- 11 new cases for unit_048)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_parallel_execution_readiness_checklist -v passes 13/13 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 303/304 with 1 OS-specific skip (38.3s, up from 291 -- 13 new cases for unit_051)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_048 complete. PHASE_011 CLOSED. skills/development-harness/commands/create.md Phase 2 gained an 'Execution Mode' category with two structured verbatim questions -- Q1 parallelism enable (y/n default n, maps to config.execution_mode.parallelism.enabled with full sub-field defaults), Q2 schema-bump behavior (break/migrate default break, maps to config.execution_mode.versioning.break_on_schema_bump with break->/create-development-harness recovery path called out). A preamble note instructs 'use exact wording' so every install produces the same config shape. Phase 4 Step 2's unit-field list grew from 4 to 7 (added depends_on with 'empty list allowed' note, parallel_safe with the explicit 'Default to false when blast radius is unknown' guidance from the acceptance criterion, touches_paths with 'Propose this per unit' + 'narrower globs' preference). New 'Parallelism-by-default' paragraph below the list instructs aggressive parallel_safe: true proposal when Phase 2 turned parallelism on, with the exact dry-run pipeline + 'when in doubt, leave false' safety net. New test_create_bootstrap_parallelism_questions.py (190 LOC, 11 cases) pins both questions verbatim, both config paths, answer mappings, parallel-execution.md cross-link, and all three new Phase 4 unit fields. PHASE_011 final summary: bugfix_001 (ISSUE_001 Windows Python-detection), bugfix_002 (ISSUE_002 Claude Code Stop-hook retirement), 045 (Parallel Execution Model in architecture.md), 046 (phase-contract parallelism fields + decomposition section), 047 (new parallel-execution.md deep-dive + overlap-reason fix), 048 (create.md Phase 2 + Phase 4 bootstrap flow). pr-review-checklist: all units have validation_evidence; no linter/type errors (stdlib-only); codebase patterns matched; tests pass 285/286 + 1 skip; not deploy-affecting (docs/skill-source repo); phase doc + checkpoint + state current. PHASE_011 marked completed. Suite 228 -> 286. Both tracked issues resolved.",
+    "summary": "unit_051 complete. skills/development-harness/references/parallel-execution.md § 6 'Readiness checklist' extended with the three PHASE_012 acceptance bullets and split into two sub-headings: 'Unit-declaration readiness' (4 items including the strengthened touches_paths check + the new no-shared-aggregator check) and 'Runtime & infrastructure readiness' (5 items including the new multi-commit-CI check). Three new bullets are bolded so readers distinguish them from the pre-unit_047 baseline. Each new bullet is actionable not just descriptive: touches_paths names the 'not_parallel_safe' exclusion + phase-contract.md cross-link; shared-aggregator defines the pattern + names 3 concrete cross-stack examples (router, index.ts, __init__.py) + proposes 2 remediations (absorb into dependents OR serialize via depends_on); CI check names the 'harness: merge <unit_id>' commit-message template + 2 concrete CI anti-patterns (per-commit hooks, rate-limit) + the 'keep parallelism off until the pipeline is fixed' remediation. New test_parallel_execution_readiness_checklist.py (200 LOC, 13 cases across 5 classes) pins each new bullet's exact wording + rationale tokens + the 7 pre-unit_051 items survive the edit (regression guard against careless rewrites). Suite 291 -> 304.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Open PHASE_011 PR (feat/phase-011-documentation -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_012 unit_051: add a parallelism readiness checklist to parallel-execution.md covering touches_paths on every parallelism-eligible unit, no shared-aggregator units, CI handles multi-commit pushes. Note: unit_047 already included a 'Readiness checklist' section in parallel-execution.md with 8 checkboxes, so unit_051 will likely be an extension/refinement rather than a fresh section. Read the existing checklist first before drafting edits.",
-    "timestamp": "2026-04-20T12:00:00Z"
+    "next_action": "Complete unit_052 (PHASE_012): add 'Version upgrades' note to skills/development-harness/SKILL.md. Content: re-run /create-development-harness when schema_version changes; ROADMAP.md and PHASES/*.md are untouched by the recreate flow; no migration script is provided by design. Validation: grep for the paragraph's presence + substantive tokens ('no migration script is provided by design', '/create-development-harness', 'ROADMAP.md and PHASES' preservation note). Structural presence test similar to unit_051.",
+    "timestamp": "2026-04-20T12:30:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

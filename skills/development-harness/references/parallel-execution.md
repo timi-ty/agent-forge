@@ -190,13 +190,20 @@ Symptom: `merge_batch.py` exits with `MergeError` and the lock at `.harness/.loc
 
 Before enabling `parallelism.enabled: true` on a project, walk through these questions. Every "no" is a reason to keep parallelism off or scope it further.
 
+### Unit-declaration readiness
+
 - [ ] Does the project have phases with 3+ units that are genuinely independent (no shared files, no read-after-write ordering)?
-- [ ] Does every `parallel_safe: true` unit declare a non-empty `touches_paths`?
+- [ ] **Does every parallelism-eligible unit declare `touches_paths`?** A unit with `parallel_safe: true` and an empty `touches_paths` list is rejected from batches via `not_parallel_safe` under the default `require_touches_paths: true`. Walk every phase doc's Units-of-Work table and confirm the column is populated for each `parallel_safe: true` row — `touches_paths` is the orchestrator's only trust boundary at merge time (see `phase-contract.md` § "Scope-Violation Enforcement Policy").
 - [ ] Are `touches_paths` globs narrow enough that the overlap matrix won't reject legitimate pairs?
+- [ ] **Are there no shared-aggregator units?** An aggregator is a unit whose job is to modify one file everyone else depends on — a central router, a single `index.ts` re-exporter, a top-level `__init__.py`, a monolithic migrations manifest. Aggregators look parallel-safe on paper (one unit, narrow `touches_paths`) but collide every time two sibling units also need to add to the aggregator's file. If you spot one, either absorb the aggregator work into each dependent unit (so `touches_paths` stays disjoint) or serialize the dependents via `depends_on` so only one updates the aggregator at a time.
+
+### Runtime & infrastructure readiness
+
 - [ ] Is there a post-merge validator (linter, tests) configured via the `run_post_merge_validation` callable? Without one, a broken merge lands undetected.
 - [ ] Does `/harness-state` render the Fleet & Batch + Orphans + Batch Timings sections correctly on a dry run?
 - [ ] Does the project's git config allow `git worktree add` (no conflicting hooks, no filesystem permission issues in `.harness/worktrees/`)?
 - [ ] Is the machine on a filesystem that supports `O_EXCL` on file creation? (All major POSIX filesystems do; Windows via Python's `os.open` also works correctly per unit_040's subprocess tests.)
+- [ ] **Can CI handle multi-commit pushes?** A parallel batch lands multiple `harness: merge <unit_id>` commits back-to-back during the `merge_batch.py` loop, then the orchestrator pushes them together. CI systems with per-commit hooks that assume one-commit-per-push (e.g., running a full test matrix for every commit in rapid succession, rate-limiting status checks, failing when a commit lacks a specific trailer) will backlog or error. Verify your CI: inspect the pipeline's trigger semantics and confirm "push with N commits" produces exactly one pipeline run (or N runs that complete in bounded time), not N serial pipelines that pile up. If CI can't handle it, keep parallelism off until the pipeline is fixed.
 - [ ] Have you dogfooded at least one parallel batch in a throwaway fixture (e.g., by extending [tests/integration/test_invoke_rewrite.py](../scripts/tests/integration/test_invoke_rewrite.py))?
 
 If every box checks, enable parallelism for one phase first. Watch the first few batches. Only then turn it on globally.

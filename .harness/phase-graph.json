@@ -721,16 +721,24 @@
     {
       "id": "PHASE_012",
       "slug": "release-readiness",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": ["PHASE_001"],
-      "started": null,
+      "started": "2026-04-20T12:10:00Z",
       "completed": null,
       "units": [
         {
           "id": "unit_051",
           "description": "Add parallelism readiness checklist to skills/development-harness/references/parallel-execution.md: touches_paths on every parallelism-eligible unit, no shared-aggregator units, CI handles multi-commit pushes",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/references/parallel-execution.md § 6 'Readiness checklist': extended the pre-unit_047 flat list of 8 items with the three PHASE_012 acceptance bullets and split the section into two sub-headings -- 'Unit-declaration readiness' (4 items covering independence, touches_paths, glob disjointness, shared-aggregator avoidance) and 'Runtime & infrastructure readiness' (5 items covering post-merge validator, /harness-state dry-run, git worktree support, O_EXCL filesystem support, CI multi-commit-push capability, dogfooded throwaway fixture). The 3 new unit_051 additions are bolded so readers can distinguish them from the pre-existing baseline",
+            "Unit_051 bullet 1 'touches_paths on every parallelism-eligible unit' strengthens the pre-unit_047 question by adding actionable context: names the 'not_parallel_safe' exclusion reason that hits when require_touches_paths: true (the default) meets an empty declaration; prescribes the 'walk every phase doc's Units-of-Work table' audit; cross-links to phase-contract.md § 'Scope-Violation Enforcement Policy' so readers chase the trust-boundary rationale",
+            "Unit_051 bullet 2 'no shared-aggregator units' is the subtle one -- the checklist defines aggregator as 'a unit whose job is to modify one file everyone else depends on' with three concrete cross-stack examples (central router, single index.ts re-exporter, top-level __init__.py). The collision failure mode is named explicitly ('collide every time two sibling units also need to add to the aggregator's file') and two concrete remediations are offered: absorb the aggregator work into dependents (keeps touches_paths disjoint) OR serialize via depends_on (only one updates the aggregator at a time). This turns the check from 'avoid this smell' into 'here's the fix if you find it'",
+            "Unit_051 bullet 3 'CI handles multi-commit pushes' names the actual commit-message template ('harness: merge <unit_id>'), the post-merge-loop push pattern (all commits land back-to-back then the orchestrator pushes them together), and two concrete CI anti-patterns (per-commit hooks that run a full test matrix per commit in rapid succession, rate-limiting status checks) + a verification step (inspect pipeline trigger semantics, confirm 'push with N commits' produces exactly one pipeline run or N bounded runs) + a concrete remediation ('keep parallelism off until the pipeline is fixed')",
+            "skills/development-harness/scripts/tests/test_parallel_execution_readiness_checklist.py: new 200-line test module with 5 classes and 13 cases. TestReadinessChecklistHasUnitDeclarationSubsection (2): both sub-headings exist. TestReadinessChecklistTouchesPathsCheck (3): bolded + exact wording + names not_parallel_safe + require_touches_paths + cross-links to Scope-Violation Enforcement Policy. TestReadinessChecklistSharedAggregatorCheck (3): bolded + exact wording + aggregator definition + 3 concrete examples (router, index.ts, __init__.py) + proposes 2 remediations (absorb, depends_on). TestReadinessChecklistMultiCommitCICheck (4): bolded + exact wording + names 'harness: merge' commit-message template + two CI anti-patterns (per-commit hooks, rate-limit) + 'keep parallelism off until' remediation. TestReadinessChecklistPreservesPreUnit051Items (1): all 7 pre-unit_051 items survive (guards against a careless rewrite that replaces the list with only the 3 new items)",
+            "Grounding: every claim is verified against runtime code + prior units. 'not_parallel_safe' and 'require_touches_paths' come directly from compute_parallel_batch.py's exclusion-reason strings. 'harness: merge <unit_id>' matches the merge commit template in merge_batch.py:182. 'overlap matrix' ties into unit_047's deep-dive section 2. The cross-link to phase-contract.md § 'Scope-Violation Enforcement Policy' preserves the trust-boundary reading order (policy-first, then checklist)",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_parallel_execution_readiness_checklist.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_parallel_execution_readiness_checklist -v passes 13/13 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 303/304 with 1 OS-specific skip (38.3s, up from 291 -- 13 new cases for unit_051)"
+          ]
         },
         {
           "id": "unit_052",
