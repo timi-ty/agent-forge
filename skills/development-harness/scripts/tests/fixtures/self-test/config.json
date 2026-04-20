@@ -1,0 +1,64 @@
+{
+  "schema_version": "2.0",
+  "skill_version": "1.0",
+  "tool": "claude-code",
+  "project": {
+    "name": "tasklet",
+    "description": "Tiny CRUD task tracker used as a harness self-test fixture. Items + Users, no auth, no pagination, no UI."
+  },
+  "stack": {
+    "languages": ["python"],
+    "frameworks": ["fastapi"],
+    "package_manager": "pip",
+    "runtime": "python3"
+  },
+  "deployment": {
+    "target": "none",
+    "url": null,
+    "environments": [],
+    "ci_cd": "none",
+    "verification_method": "none"
+  },
+  "git": {
+    "default_branch": "main",
+    "branch_convention": "feat/<unit_id>-short-desc",
+    "commit_convention": "conventional-commits",
+    "pr_size": "small",
+    "merge_strategy": "squash",
+    "review_policy": "ai-review"
+  },
+  "testing": {
+    "e2e_framework": "none",
+    "unit_framework": "pytest",
+    "coverage_target": 80
+  },
+  "quality": {
+    "definition_of_done": [
+      "Unit tests pass",
+      "No lint errors",
+      "touches_paths scope respected"
+    ],
+    "mandatory_checks": [
+      "lint",
+      "test"
+    ]
+  },
+  "execution_mode": {
+    "location": "local",
+    "parallelism": {
+      "enabled": true,
+      "max_concurrent_units": 3,
+      "conflict_strategy": "abort_batch",
+      "require_touches_paths": true,
+      "allow_cross_phase": false
+    },
+    "agent_delegation": {
+      "use_explore_for_research": true,
+      "use_code_review_skill_for_phase_review": true,
+      "parallel_validation_layers": false
+    },
+    "versioning": {
+      "break_on_schema_bump": true
+    }
+  }
+}

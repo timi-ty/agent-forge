@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T13:20:00Z",
+  "last_updated": "2026-04-20T15:35:00Z",
   "execution": {
-    "active_phase": "PHASE_013",
-    "active_unit": "unit_054",
-    "last_completed_unit": "unit_053",
-    "next_unit": "unit_054",
-    "session_count": 51,
+    "active_phase": null,
+    "active_unit": null,
+    "last_completed_unit": "unit_058",
+    "next_unit": null,
+    "session_count": 56,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T13:20:00Z",
+    "last_run": "2026-04-20T15:35:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_update_command -v passes 9/9 (0.2s); python -m unittest discover skills/development-harness/scripts/tests passes 320/321 with 1 OS-specific skip (38.3s, up from 312 -- 9 new cases for unit_053)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v passes 33/33 (0.009s, up from 24 -- 9 new cases for unit_058); python -m unittest discover skills/development-harness/scripts/tests passes 355/356 with 1 OS-specific skip (45.1s, up from 347). select_next_unit reports all_complete: true"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_053 complete. PHASE_012 CLOSED. skills/development-harness/commands/update.md gained a Step 0 'Schema Version Precheck' that runs validate_harness.py first and rejects mismatched schemas with a verbatim advisory pointing at /create-development-harness + preserving ROADMAP + PHASES + cross-linking SKILL.md § Version upgrades + the 'no migration script is provided by design' policy line + explicit 'Do NOT attempt in-place migration' forbidding. The pre-existing 'Schema migration' row in the Categorize-the-Change table was removed + replaced with a blockquote noting schema_version bumps are not a category. Step 10 'Schema Migration' rewritten to 'Schema Migration (not supported)' with the refusal + redirect. Workspace template mirrors all changes as 'Step 0.5' (sits between the pre-existing 'Step 0: Resolve tool paths' and the main procedure). New test_update_command.py (230 LOC, 9 cases) covers both halves of the acceptance: TestV1FixtureTripsSchemaMismatch (2) seeds a v1-shaped workspace and invokes validate_harness.py exactly as the doc instructs, asserting returncode 1 + '/create-development-harness' + all 4 JSON filenames in the joined errors; TestUpdateDocsCarryPrecheckContract (7) pins the doc-shape contract across BOTH docs (precheck section, validate_harness naming, 'older schema' pointer, verbatim 'no migration script is provided by design', SKILL.md Version upgrades cross-link, 'Do NOT attempt' forbidding) + a long-doc-specific assertion that the pre-unit_053 Schema migration table row is gone. PHASE_012 final summary: unit_051 (readiness checklist + 13 tests), unit_052 (Version upgrades section + 8 tests), unit_053 (update-command precheck + 9 tests). Suite 291 -> 321. pr-review-checklist: all 3 units have validation_evidence; no linter/type errors (stdlib-only); tests pass 320/321 + 1 OS skip; not deploy-affecting; phase doc + checkpoint + state current. PHASE_012 marked completed.",
+    "summary": "unit_058 complete. PHASE_013 CLOSED. ROADMAP COMPLETE. Post-mortem landed with all 4 required sections (Setup / Results / Papercuts / Follow-ups + Takeaways). Setup documents fixture + 3 seeded conditions + all 7 artifacts produced by units 054-058. Results confirms all 3 seeded conditions fired (batch >= 2 via Turn 1 + Turn 3, overlap rejection with exact string 'path_overlap_with:unit_a2', scope violation on src/seeds/users.json) + embeds the wall-clock table (parallel 3 turns @ 1.97s vs sequential 6 turns @ 2.00s, ratio 1.02x, turn count 3 vs 6 as meaningful signal). Papercuts documents both runtime bugs caught in unit_057 (compute_frontier missing-filter for 'failed' status at select_next_unit.py:123; _make_batch_id 1-second granularity at compute_parallel_batch.py:112) with where/consequence/workaround/fix-approach for each. Follow-ups has 2 filable-issue drafts (Follow-up 1 medium priority for compute_frontier filter, Follow-up 2 low priority for batch_id uniqueness) each with Fix approach + Regression coverage + Scope fields. parallel-execution.md § 8 'Self-test post-mortem' links the post-mortem with 'known-good dogfood run' framing. test_self_test_fixture.py extended from 24 to 33 cases covering POST-MORTEM structure + both runtime-bug documentation + wall-clock embedding + parallel-execution.md cross-link. Phase completion review per pr-review-checklist.md passed. select_next_unit reports all_complete: true -- all 13 phases done, all 58 units complete, both tracked ISSUEs resolved, 2 new bugs documented for follow-up but not blockers. Suite 347 -> 356. The development-harness skill's v2 upgrade is complete.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Open PHASE_012 PR (feat/phase-012-release-readiness -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_013 unit_054: create skills/development-harness/scripts/tests/fixtures/self-test/ throwaway workspace with a 2-phase / 6-unit mini-CRUD roadmap designed to exercise a batch >= 2 plus one merge conflict and one scope violation. This is the start of the harness-self-test phase -- the harness uses its own parallel machinery against a throwaway project to verify end-to-end correctness.",
-    "timestamp": "2026-04-20T13:20:00Z"
+    "next_action": "Open the FINAL PR (PHASE_013: feat/phase-013-harness-self-test -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. After that merge lands: the roadmap is complete, the harness's v2 upgrade is shippable, the fleet branch tree is clean. Optional cleanup tasks: file the 2 follow-up issues (compute_frontier failed-filter, batch_id uniqueness) via /inject-harness-issues; delete the feat/phase-013 branch after the squash-merge; archive the self-test fixture state for future reference.",
+    "timestamp": "2026-04-20T15:35:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-012-release-readiness",
+    "current_branch": "feat/phase-013-harness-self-test",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"

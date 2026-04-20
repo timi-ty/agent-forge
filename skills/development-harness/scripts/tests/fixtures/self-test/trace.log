@@ -1,0 +1,28 @@
+
+--- Turn 1 ---
+  Frontier: ['unit_a1', 'unit_a2', 'unit_a3', 'unit_b1', 'unit_b2', 'unit_b3']
+  Batch:    ['unit_a1', 'unit_a2']
+  Excluded: unit_a3 (reason: path_overlap_with:unit_a2)
+  Merge outcome: ok | merged=['unit_a1', 'unit_a2'] conflicted=[]
+    merged:  unit_a1 -> phase-graph flipped to completed
+    merged:  unit_a2 -> phase-graph flipped to completed
+
+--- Turn 2 ---
+  Frontier: ['unit_a3', 'unit_b1', 'unit_b2', 'unit_b3']
+  Batch:    ['unit_a3']
+  Merge outcome: ok | merged=['unit_a3'] conflicted=[]
+    merged:  unit_a3 -> phase-graph flipped to completed
+
+--- Turn 3 ---
+  Frontier: ['unit_b1', 'unit_b2', 'unit_b3']
+  Batch:    ['unit_b1', 'unit_b2', 'unit_b3']
+  Merge outcome: partial | merged=['unit_b1', 'unit_b3'] conflicted=['unit_b2']
+    merged:  unit_b1 -> phase-graph flipped to completed
+    failed:  unit_b2 (category: scope_violation)
+    merged:  unit_b3 -> phase-graph flipped to completed
+
+Batch sizes observed: [2, 1, 3]
+Overlap exclusions: [('unit_a3', 'path_overlap_with:unit_a2')]
+Scope violations: [('unit_b2', ['src/seeds/users.json'])]
+
+Final status counts: {'completed': 5, 'failed': 1}

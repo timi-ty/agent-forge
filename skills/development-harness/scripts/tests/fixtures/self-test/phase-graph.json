@@ -1,0 +1,80 @@
+{
+  "schema_version": "2.0",
+  "skill_version": "1.0",
+  "phases": [
+    {
+      "id": "PHASE_A",
+      "slug": "items",
+      "status": "pending",
+      "depends_on": [],
+      "started": null,
+      "completed": null,
+      "units": [
+        {
+          "id": "unit_a1",
+          "description": "Create the Item data model at src/items/model.py with fields id, user_id, status (enum), created_at.",
+          "depends_on": [],
+          "touches_paths": ["src/items/model.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_a2",
+          "description": "Create Item CRUD routes at src/items/routes.py and register them on the app router at src/router.py.",
+          "depends_on": [],
+          "touches_paths": ["src/items/routes.py", "src/router.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_a3",
+          "description": "Add a bulk-action endpoint to src/items/routes.py that groups items by status. SEEDED OVERLAP: touches_paths deliberately overlaps with unit_a2 to exercise compute_parallel_batch's overlap-matrix rejection (expected exclusion reason: 'path_overlap_with:unit_a2').",
+          "depends_on": [],
+          "touches_paths": ["src/items/routes.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        }
+      ]
+    },
+    {
+      "id": "PHASE_B",
+      "slug": "users",
+      "status": "pending",
+      "depends_on": [],
+      "started": null,
+      "completed": null,
+      "units": [
+        {
+          "id": "unit_b1",
+          "description": "Create the User data model at src/users/model.py with fields id, email, display_name, created_at.",
+          "depends_on": [],
+          "touches_paths": ["src/users/model.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_b2",
+          "description": "Create User CRUD routes at src/users/routes.py and register them on the app router at src/router.py. ALSO write seed data for the initial admin account to src/seeds/users.json. SEEDED SCOPE VIOLATION: touches_paths intentionally omits src/seeds/** so a faithful sub-agent's commit will produce a diff file outside declared scope, triggering merge_batch._scope_violations (expected conflict.category: 'scope_violation').",
+          "depends_on": [],
+          "touches_paths": ["src/users/routes.py", "src/router.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        },
+        {
+          "id": "unit_b3",
+          "description": "Create the User seed loader at src/users/seeds.py that reads seed data at app boot.",
+          "depends_on": [],
+          "touches_paths": ["src/users/seeds.py"],
+          "parallel_safe": true,
+          "status": "pending",
+          "validation_evidence": []
+        }
+      ]
+    }
+  ]
+}
