@@ -2,7 +2,19 @@
 
 Execute the next **batch** of work from the harness. **One turn = one batch.** A batch is always a list of units; whether the list has size 1 or size N, every step applies uniformly. Only Steps 5 and 6 branch between an in-tree fast path (size 1, parallelism off) and a worktree fan-out (everything else). Every other step is single-flow.
 
-**Mode:** Execution mode. Do NOT switch to Plan Mode. The stop hook (`continue-loop.py`) handles loop continuation via hook-driven bounded continuation.
+**Mode:** Execution mode. Do NOT switch to Plan Mode.
+
+### Claude Code: run under `/loop`
+
+On Claude Code, `/invoke-development-harness` runs **exactly one batch per turn by protocol** — Claude Code's Stop hook has a one-shot `stop_hook_active` guard that a force-continue driver cannot beat. For autonomous multi-turn runs, invoke this command under the native `/loop` skill:
+
+```
+/loop /invoke-development-harness
+```
+
+`/loop` fires the command now and re-fires on its schedule; each firing is a fresh session, so `stop_hook_active` never accumulates. The harness's own `loop_budget` (in `state.json`) remains the cap. The Stop hook runs in **precondition-checker mode** on Claude Code — it prints an advisory describing whether to proceed or stop, then always exits 0. See [references/claude-code-continuation.md](../references/claude-code-continuation.md) for the full protocol explanation (ISSUE_002).
+
+Cursor is unchanged: its Stop hook still drives continuation via `followup_message`. Direct `/invoke-development-harness` on Cursor auto-continues the harness's own `loop_budget` worth of turns.
 
 ---
 

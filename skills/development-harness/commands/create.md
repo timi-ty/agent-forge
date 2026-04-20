@@ -240,6 +240,8 @@ chmod +x .cursor/hooks/continue-loop.py
 
 **If `$TOOL` is `claude-code`:**
 
+On Claude Code the Stop hook is a **precondition checker**, not a continuation driver. It runs the authority chain (invoke-active flag, fleet.mode guard, loop_budget, blockers, open_questions, selector-vs-checkpoint agreement), prints a one-line advisory to stdout, and always exits 0. It does NOT emit `{"decision": "block"}` or `exit(2)`. Autonomous multi-turn runs on Claude Code use the native `/loop` skill (`/loop /invoke-development-harness`) instead. See [references/claude-code-continuation.md](../references/claude-code-continuation.md) for the full protocol explanation (ISSUE_002).
+
 Generate or merge into `$HOOK_CONFIG` (`.claude/settings.local.json`) with the resolved interpreter substituted in:
 
 ```json

@@ -1,12 +1,21 @@
-"""Tests for the Claude Code continue-loop.py stop hook -- unit 034.
+"""Tests for the Claude Code continue-loop.py stop hook.
 
-Tests the fleet-mode guard specifically: a previous turn that crashed
-mid-batch (fleet.mode in {'dispatched','merging'}) must cause the hook
-to exit 0 and delete .invoke-active so the next turn starts cleanly
-and the user is pushed toward /sync-development-harness for recovery.
+Originally unit_034 tested the fleet-mode guard in the block-continue
+driver. PHASE_011 unit_bugfix_002 (ISSUE_002) retired that role: the
+Claude Code hook is now a precondition-only checker that ALWAYS exits
+0 and prints a one-line advisory ('proceed: unit_x in PHASE_X' or
+'stop: <reason>'). Autonomous multi-turn runs use /loop. See
+references/claude-code-continuation.md for the full reasoning.
+
+These tests track the new contract:
+  * exit code is always 0 (never 2)
+  * stdout carries the advisory
+  * .invoke-active is cleaned up on every path (including the
+    proceed path) because /loop will recreate it on the next firing
 
 The hook is run as a subprocess with a JSON payload piped to stdin.
-Exit codes + .invoke-active presence are the observable contract.
+Exit codes + stdout advisories + .invoke-active presence are the
+observable contract.
 """
 import json
 import subprocess
@@ -87,9 +96,11 @@ class ContinueLoopBase(unittest.TestCase):
 
 
 class TestFleetModeGuard(ContinueLoopBase):
-    """unit_034: fleet.mode != 'idle' must stop the hook and remove the flag."""
+    """fleet.mode != 'idle' must surface as a 'stop: fleet.mode is ...'
+    advisory. The hook always exits 0; the advisory distinguishes the
+    reason."""
 
-    def test_fleet_mode_dispatched_stops_and_removes_flag(self):
+    def test_fleet_mode_dispatched_emits_stop_advisory(self):
         flag = _touch_invoke_flag(self.temp_dir)
         _write_state(
             self.temp_dir,
@@ -99,14 +110,18 @@ class TestFleetModeGuard(ContinueLoopBase):
         result = _run_hook(self.temp_dir)
         self.assertEqual(
             result.returncode, 0,
-            f"hook must exit 0 (stop) when fleet.mode=='dispatched'; stderr={result.stderr!r}",
+            f"hook must always exit 0; stderr={result.stderr!r}",
+        )
+        self.assertIn(
+            "stop: fleet.mode is 'dispatched'", result.stdout,
+            f"advisory must name the non-idle fleet.mode; stdout={result.stdout!r}",
         )
         self.assertFalse(
             flag.exists(),
-            ".invoke-active must be removed on fleet-mode stop",
+            ".invoke-active must be removed after every precondition path",
         )
 
-    def test_fleet_mode_merging_stops_and_removes_flag(self):
+    def test_fleet_mode_merging_emits_stop_advisory(self):
         flag = _touch_invoke_flag(self.temp_dir)
         _write_state(
             self.temp_dir,
@@ -115,16 +130,14 @@ class TestFleetModeGuard(ContinueLoopBase):
 
         result = _run_hook(self.temp_dir)
         self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: fleet.mode is 'merging'", result.stdout)
         self.assertFalse(flag.exists())
 
     def test_fleet_mode_idle_passes_the_guard(self):
-        """With idle fleet, the guard MUST NOT short-circuit -- the hook
-        falls through to the downstream authority chain. Since we don't
-        seed phase-graph.json here, the authority chain hits the
-        'selector/phase-graph missing' stop at exit 0 with the flag
-        removed. The substantive assertion is that the hook DID run the
-        downstream logic (evidenced by flag removal via the non-fleet
-        stop path), not that it short-circuited on fleet.mode."""
+        """With idle fleet and no downstream dependencies seeded, the
+        authority chain hits 'selector/phase-graph missing' and emits
+        that advisory -- NOT the fleet-mode advisory. Proves the guard
+        didn't falsely short-circuit on idle state."""
         flag = _touch_invoke_flag(self.temp_dir)
         _write_state(
             self.temp_dir,
@@ -133,41 +146,35 @@ class TestFleetModeGuard(ContinueLoopBase):
 
         result = _run_hook(self.temp_dir)
         self.assertEqual(result.returncode, 0)
-        # Either way (fleet-mode stop or downstream stop) the flag comes
-        # off. The meaningful claim is that the guard didn't FALSELY
-        # trigger -- we verify that indirectly in a companion test below
-        # by seeding every downstream dependency and asserting the hook
-        # reaches the block-continue path (exit 2).
+        self.assertNotIn("fleet.mode", result.stdout,
+                         f"idle fleet must not produce a fleet advisory; stdout={result.stdout!r}")
+        self.assertIn("stop: select_next_unit.py or phase-graph.json missing",
+                      result.stdout)
         self.assertFalse(flag.exists())
 
     def test_missing_fleet_block_treated_as_idle(self):
-        """v1-style state (no execution.fleet) must not trip the guard."""
+        """v1-style state (no execution.fleet) must behave as idle."""
         flag = _touch_invoke_flag(self.temp_dir)
         _write_state(self.temp_dir, fleet=None)
 
         result = _run_hook(self.temp_dir)
-        # Same observation as the idle case: exit 0, flag removed via
-        # the downstream authority chain (no selector seeded).
         self.assertEqual(result.returncode, 0)
+        self.assertNotIn("fleet.mode", result.stdout)
         self.assertFalse(flag.exists())
 
 
-class TestFleetGuardDoesNotMaskContinuePath(ContinueLoopBase):
+class TestPreconditionCheckerReachesProceed(ContinueLoopBase):
     """Positive control: with fleet.mode='idle' AND all downstream
-    dependencies wired, the hook reaches the block-continue path
-    (exit 2). This proves the fleet-mode guard does not falsely trigger
-    on idle state -- the one risk of an overly eager guard."""
+    dependencies wired, the hook reaches the 'proceed: <unit> in <phase>'
+    advisory. Still exits 0. Still cleans up .invoke-active. Multi-turn
+    autonomy happens via /loop, which recreates the flag on each firing."""
 
     def _seed_full_harness(self, next_unit_id="unit_x"):
-        """Create enough harness state that the downstream authority
-        chain succeeds: phase-graph.json with a pending unit, a
-        select_next_unit.py that returns that unit, checkpoint.next_action
-        that contains the unit id."""
+        """Create enough harness state that the authority chain succeeds."""
         harness_dir = self.temp_dir / ".harness"
         scripts_dir = harness_dir / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
 
-        # Minimal valid v2 phase-graph.
         phase_graph = {
             "schema_version": "2.0",
             "phases": [
@@ -193,9 +200,7 @@ class TestFleetGuardDoesNotMaskContinuePath(ContinueLoopBase):
         )
 
         # Tiny stand-in for select_next_unit.py: prints the JSON contract
-        # the hook expects. We don't use the real selector here because
-        # it imports harness_utils; a one-off script isolates the hook
-        # test from selector evolution.
+        # the hook expects.
         selector = scripts_dir / "select_next_unit.py"
         selector.write_text(
             "#!/usr/bin/env python3\n"
@@ -208,35 +213,94 @@ class TestFleetGuardDoesNotMaskContinuePath(ContinueLoopBase):
             encoding="utf-8",
         )
 
-        # state.json with idle fleet + next_action containing the unit id.
         _write_state(
             self.temp_dir,
             fleet={"mode": "idle", "batch_id": None, "units": []},
-            extras=None,
         )
         state_path = harness_dir / "state.json"
         state = json.loads(state_path.read_text(encoding="utf-8"))
         state["checkpoint"]["next_action"] = f"Complete {next_unit_id}"
         state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
-    def test_idle_fleet_with_full_chain_reaches_continue(self):
+    def test_idle_fleet_with_full_chain_emits_proceed_advisory(self):
         self._seed_full_harness(next_unit_id="unit_x")
         flag = _touch_invoke_flag(self.temp_dir)
 
         result = _run_hook(self.temp_dir, stop_hook_active=False)
         self.assertEqual(
-            result.returncode, 2,
-            f"hook must exit 2 (continue) when fleet.mode=='idle' and "
-            f"the full authority chain passes; stdout={result.stdout!r} "
-            f"stderr={result.stderr!r}",
+            result.returncode, 0,
+            f"hook must always exit 0 (no more exit-2 block-continue); "
+            f"stdout={result.stdout!r} stderr={result.stderr!r}",
         )
-        self.assertTrue(
+        self.assertIn(
+            "proceed: unit_x in PHASE_X", result.stdout,
+            "advisory must name the next unit + phase when preconditions pass",
+        )
+        self.assertFalse(
             flag.exists(),
-            ".invoke-active must be PRESERVED when the hook continues",
+            ".invoke-active must be cleaned up on every path; /loop will "
+            "recreate it on the next firing",
         )
-        payload = json.loads(result.stdout)
-        self.assertEqual(payload.get("decision"), "block")
-        self.assertIn("unit_x", payload.get("reason", ""))
+
+    def test_stop_hook_active_is_ignored_in_precondition_mode(self):
+        """Pre-fix, stop_hook_active=True was the one-shot guard that
+        short-circuited the hook. In the new precondition-only mode it
+        is irrelevant -- we never force-continue, so the guard has
+        nothing to guard against."""
+        self._seed_full_harness(next_unit_id="unit_x")
+        _touch_invoke_flag(self.temp_dir)
+
+        result = _run_hook(self.temp_dir, stop_hook_active=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("proceed: unit_x in PHASE_X", result.stdout)
+
+
+class TestFlagAbsentIsNoop(ContinueLoopBase):
+    """When .invoke-active is not present, the hook must exit 0 with
+    no advisory output. It is a no-op outside harness invoke sessions."""
+
+    def test_no_invoke_flag_silent_noop(self):
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(
+            result.stdout, "",
+            "flag-absent path must not emit advisories",
+        )
+
+
+class TestNonIdleBudgetAndBlockers(ContinueLoopBase):
+    """Coverage for the remaining authority-chain stop paths."""
+
+    def test_loop_budget_exhausted_emits_stop_advisory(self):
+        _touch_invoke_flag(self.temp_dir)
+        _write_state(
+            self.temp_dir,
+            fleet={"mode": "idle", "batch_id": None, "units": []},
+        )
+        state_path = self.temp_dir / ".harness" / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["execution"]["session_count"] = 12
+        state["execution"]["loop_budget"] = 10
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: loop_budget exhausted (12/10)", result.stdout)
+
+    def test_blockers_non_empty_emits_stop_advisory(self):
+        _touch_invoke_flag(self.temp_dir)
+        _write_state(
+            self.temp_dir,
+            fleet={"mode": "idle", "batch_id": None, "units": []},
+        )
+        state_path = self.temp_dir / ".harness" / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["checkpoint"]["blockers"] = ["something went wrong"]
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: checkpoint.blockers is non-empty", result.stdout)
 
 
 if __name__ == "__main__":

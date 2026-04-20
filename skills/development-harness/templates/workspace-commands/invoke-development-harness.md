@@ -8,6 +8,16 @@ Read `.harness/ARCHITECTURE.md` for project context.
 
 **One turn = one batch.** Steps 5 and 6 are the only branch points (in-tree fast path vs worktree fan-out); every other step is single-flow and applies to both batch sizes.
 
+### Claude Code: run under `/loop`
+
+On Claude Code, `/invoke-development-harness` runs **exactly one batch per turn by protocol** — Claude Code's Stop hook has a one-shot `stop_hook_active` guard that a force-continue driver cannot beat. For autonomous multi-turn runs on Claude Code, invoke this command under the native `/loop` skill:
+
+```
+/loop /invoke-development-harness
+```
+
+Each `/loop` firing is a fresh session, so `stop_hook_active` never accumulates. The harness's own `loop_budget` (in `state.json`) remains the cap. The Claude Code Stop hook runs in **precondition-checker mode** — it prints an advisory describing whether to proceed or stop, then always exits 0. Cursor installs are unchanged: the Stop hook still drives continuation via `followup_message`.
+
 ## 0. Resolve tool paths
 
 Read `.harness/config.json` and check the `tool` field. Set variables:
