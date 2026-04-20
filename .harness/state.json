@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T11:05:00Z",
+  "last_updated": "2026-04-20T11:35:00Z",
   "execution": {
     "active_phase": "PHASE_011",
-    "active_unit": "unit_047",
-    "last_completed_unit": "unit_046",
-    "next_unit": "unit_047",
-    "session_count": 46,
+    "active_unit": "unit_048",
+    "last_completed_unit": "unit_047",
+    "next_unit": "unit_048",
+    "session_count": 47,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T11:05:00Z",
+    "last_run": "2026-04-20T11:35:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_phase_contract_parallelism_fields -v passes 11/11 (0.003s); python -m unittest discover skills/development-harness/scripts/tests passes 264/265 with 1 OS-specific skip (37.6s, up from 254 -- 11 new cases for unit_046)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_parallel_execution_reference -v passes 10/10 (0.003s); python -m unittest discover skills/development-harness/scripts/tests passes 274/275 with 1 OS-specific skip (37.6s, up from 265 -- 10 new cases for unit_047)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_046 complete. phase-contract.md Units of Work table gained 3 new rows (depends_on, parallel_safe, touches_paths) + a 'Required' column that makes the when-required conditional explicit. The touches_paths conditional ('required when parallel_safe: true') is the most error-prone -- the new row both pins it and cross-links to the Scope-Violation Enforcement Policy section so readers chase the trust-boundary rationale. Also added a new top-level 'Decomposing a phase for parallelism' section after Scope-Violation Enforcement Policy. Five numbered steps walk phase authors through the recipe: dependency graph authoring (distinguish real depends_on from logical-ordering vibes), blast radius identification (one-directory-per-unit heuristic + shared-utilities warning), overlap check (fnmatch-based overlap matrix + 'narrow globs, don't disable the check'), parallel_safe as 'declaration of independence, not performance hint' with 4 criteria, dry-run via frontier-piped-into-compute. Closes with Anti-patterns subsection naming 3 real traps. New test_phase_contract_parallelism_fields.py (170 LOC, 11 cases across 3 classes) pins the table additions + all 5 Step sub-headings + anti-patterns subsection + position-order between the Scope-Violation policy and the decomposition section. Suite 254 -> 265.",
+    "summary": "unit_047 complete. New skills/development-harness/references/parallel-execution.md (~240 lines) consolidates the operator-facing deep-dive that architecture.md (unit_045) and phase-contract.md (unit_046) point forward to. Seven top-level numbered sections: Dispatch lifecycle (ASCII flow + idle->dispatched->merging->idle invariants), Overlap-matrix algorithm (greedy-packer pseudocode + 4 gates + verbatim-exclusion-reason table), Merge-order rationale (determinism-beats-throughput + --no-ff + first-parent log attribution), Failure-mode catalog (5 categories x source + conflict_strategy effect + kill-switch counting in one table), Recovery procedures (mid-dispatch crash, mid-merge crash, kill-switch tripped, scope-violation dispute -- numbered steps each + 'never force-delete the lock' warning), Readiness checklist (8 markdown checkboxes gating 'should you enable parallelism'), Observability quick reference (all 4 .harness/logs/<batch_id>/ artifacts + exact Batch Timings format string). Bundled doc/code consistency fix: earlier unit_045 + unit_046 used 'touches_overlap' as the overlap exclusion reason but compute_parallel_batch.py L170 actually emits 'path_overlap_with:<id>'. Grep while writing parallel-execution.md caught it. Fixed architecture.md L133 + phase-contract.md L138+L161 + the two corresponding regression tests. parallel-execution.md uses path_overlap_with throughout and includes an explicit negative assertion that 'touches_overlap' does NOT appear anywhere. New test_parallel_execution_reference.py (180 LOC, 10 cases across 3 classes) pins every numbered section's substantive anchors AND the cross-link to architecture.md survives AND the exclusion-reason-string consistency regression guard. Suite 265 -> 275.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_047 (PHASE_011): create new skills/development-harness/references/parallel-execution.md covering the dispatch lifecycle, overlap-matrix algorithm details, merge-order rationale, failure-mode catalog, recovery procedures, and a readiness checklist. This is the deep-dive companion to architecture.md's new Parallel Execution Model summary section -- architecture.md links forward to this doc. Much of the content already exists in the code's module docstrings + phase-graph.json validation_evidence fields; this unit consolidates it into a single readable reference. Validation: grep for major section headings + structural presence test similar to unit_045/unit_046.",
-    "timestamp": "2026-04-20T11:05:00Z"
+    "next_action": "Complete unit_048 (PHASE_011): update skills/development-harness/commands/create.md Phase 2 with two structured bootstrap questions -- (1) 'Enable parallel unit execution? (y/n, default n)' writing to config.execution_mode.parallelism.enabled; (2) 'Break-on-schema-bump vs migrate? (break/migrate, default break)' writing to config.execution_mode.versioning.break_on_schema_bump. Also update Phase 4 (phase-graph compilation) to instruct proposing touches_paths per unit and setting parallel_safe: false when blast radius is unknown. This is the last documentation unit before PHASE_011 closes. Validation: grep Phase 2 + Phase 4 sections for the new question text / instruction text; structural presence test.",
+    "timestamp": "2026-04-20T11:35:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

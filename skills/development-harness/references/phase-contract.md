@@ -135,7 +135,7 @@ Two heuristics:
 
 ### Step 3: Check for overlap
 
-With `touches_paths` declared on every candidate, verify no two units in the same frontier share a declared path. [scripts/compute_parallel_batch.py](../scripts/compute_parallel_batch.py) runs an `fnmatch`-based overlap matrix and will reject overlapping pairs with `reason: "touches_overlap: <other_unit_id>"`. The overlap matrix is conservative — if `src/auth/**` and `src/auth/helpers/*.ts` both appear on sibling units, they overlap even if the actual files are disjoint.
+With `touches_paths` declared on every candidate, verify no two units in the same frontier share a declared path. [scripts/compute_parallel_batch.py](../scripts/compute_parallel_batch.py) runs an `fnmatch`-based overlap matrix and will reject overlapping pairs with `reason: "path_overlap_with:<other_unit_id>"`. The overlap matrix is conservative — if `src/auth/**` and `src/auth/helpers/*.ts` both appear on sibling units, they overlap even if the actual files are disjoint.
 
 If you see overlap reports in `batch.excluded` that feel wrong, the fix is always to narrow the globs, not to disable the check.
 
@@ -158,7 +158,7 @@ Before running the phase, run:
 $PY .harness/scripts/select_next_unit.py --frontier | $PY .harness/scripts/compute_parallel_batch.py --input - --config .harness/config.json
 ```
 
-Inspect the resulting `batch` and `excluded` lists. Every candidate should either land in `batch` or appear in `excluded` with a reason that matches your intent (`not_parallel_safe`, `capacity_cap`, `touches_overlap`, `cross_phase`). Surprises here are cheaper to fix than surprises at merge time.
+Inspect the resulting `batch` and `excluded` lists. Every candidate should either land in `batch` or appear in `excluded` with a reason that matches your intent — the possible reasons are `not_parallel_safe`, `capacity_cap`, and `path_overlap_with:<other_unit_id>` (cross-phase units are deferred silently without an exclusion record, not surfaced as an exclusion reason). Surprises here are cheaper to fix than surprises at merge time.
 
 ### Anti-patterns
 

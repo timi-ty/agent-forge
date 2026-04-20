@@ -130,8 +130,9 @@ class TestDecompositionSubsection(unittest.TestCase):
         self.assertIn("one directory per unit", section.lower(),
                       "decomposition must name the one-directory-per-unit heuristic")
         self.assertIn("overlap matrix", section.lower())
-        self.assertIn("touches_overlap", section,
-                      "must name the excluded-reason string agents will see")
+        self.assertIn("path_overlap_with", section,
+                      "must name the excluded-reason string agents will see "
+                      "(matches compute_parallel_batch.py output)")
 
     def test_section_covers_parallel_safe_four_criteria(self):
         """Step 4: parallel_safe is a declaration of independence, not

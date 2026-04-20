@@ -130,7 +130,7 @@ The sub-agent's self-report is **never** trusted for blast radius. The orchestra
 2. `require_touches_paths: true` enforcement (reject units with empty `touches_paths` if the flag is on).
 3. `max_concurrent_units` cap.
 4. `allow_cross_phase: false` (default) — batch is restricted to a single phase once the first unit is accepted.
-5. **Overlap matrix** — unit A and unit B may share a batch only if their `touches_paths` globs are `fnmatch`-disjoint. Overlapping units are rejected with reason `touches_overlap: <other_unit_id>`.
+5. **Overlap matrix** — unit A and unit B may share a batch only if their `touches_paths` globs are `fnmatch`-disjoint. Overlapping units are rejected with reason `path_overlap_with:<other_unit_id>`.
 
 The result is a `{batch_id, batch, excluded}` record; the orchestrator consumes `batch`, `excluded` is reported for observability.
 

@@ -90,7 +90,9 @@ class TestArchitectureParallelExecutionSection(unittest.TestCase):
         # Overlap matrix must be called out explicitly.
         self.assertIn("Overlap matrix", section)
         self.assertIn("fnmatch", section)
-        self.assertIn("touches_overlap", section)
+        self.assertIn("path_overlap_with", section,
+                      "overlap exclusion-reason must match the actual "
+                      "compute_parallel_batch.py output string")
 
     def test_section_covers_dispatch_wait_merge_lifecycle(self):
         """Acceptance bullet: 'dispatch-wait-merge lifecycle'."""
