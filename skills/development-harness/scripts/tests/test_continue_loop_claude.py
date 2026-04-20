@@ -287,6 +287,37 @@ class TestNonIdleBudgetAndBlockers(ContinueLoopBase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("stop: loop_budget exhausted (12/10)", result.stdout)
 
+    def test_open_questions_non_empty_emits_stop_advisory(self):
+        """The open_questions branch sits between blockers and the
+        selector subprocess in _evaluate; if the branch silently
+        regressed (e.g., typo'd 'open_question' with no s) the loop
+        would plow through open questions unnoticed."""
+        _touch_invoke_flag(self.temp_dir)
+        _write_state(
+            self.temp_dir,
+            fleet={"mode": "idle", "batch_id": None, "units": []},
+        )
+        state_path = self.temp_dir / ".harness" / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["checkpoint"]["open_questions"] = ["why does X?"]
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: checkpoint.open_questions is non-empty", result.stdout)
+
+    def test_state_json_missing_emits_stop_advisory(self):
+        """The earliest _evaluate branch -- state.json must be
+        present. If the branch regressed, callers with a freshly
+        bootstrapped harness would see fleet-mode or budget stop
+        advisories instead of the real problem."""
+        _touch_invoke_flag(self.temp_dir)
+        # Do NOT call _write_state -- leave state.json absent.
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: state.json missing", result.stdout)
+
     def test_blockers_non_empty_emits_stop_advisory(self):
         _touch_invoke_flag(self.temp_dir)
         _write_state(
@@ -301,6 +332,128 @@ class TestNonIdleBudgetAndBlockers(ContinueLoopBase):
         result = _run_hook(self.temp_dir)
         self.assertEqual(result.returncode, 0)
         self.assertIn("stop: checkpoint.blockers is non-empty", result.stdout)
+
+
+class TestSelectorChainAdvisories(ContinueLoopBase):
+    """Coverage for the three selector-chain branches in _evaluate
+    that sit after the blockers/open_questions checks: the selector
+    returns `found: false`, and the selector+checkpoint disagreement
+    (ambiguity) path. Seeds a minimal but fully-wired harness so the
+    authority chain reaches the selector step; swaps the selector
+    stub per-test to control what it returns."""
+
+    def _seed(self, next_unit_id="unit_x", checkpoint_next=None):
+        harness_dir = self.temp_dir / ".harness"
+        scripts_dir = harness_dir / "scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+
+        phase_graph = {
+            "schema_version": "2.0",
+            "phases": [{
+                "id": "PHASE_X", "slug": "x", "status": "pending",
+                "depends_on": [],
+                "units": [{
+                    "id": next_unit_id, "description": "do x",
+                    "status": "pending", "depends_on": [],
+                    "parallel_safe": False,
+                }],
+            }],
+        }
+        (harness_dir / "phase-graph.json").write_text(
+            json.dumps(phase_graph, indent=2), encoding="utf-8"
+        )
+
+        _write_state(
+            self.temp_dir,
+            fleet={"mode": "idle", "batch_id": None, "units": []},
+        )
+        state_path = harness_dir / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["checkpoint"]["next_action"] = (
+            checkpoint_next
+            if checkpoint_next is not None
+            else f"Complete {next_unit_id}"
+        )
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        return scripts_dir / "select_next_unit.py"
+
+    def _write_selector_stub(self, selector_path, payload):
+        """Write a tiny select_next_unit.py that prints the given
+        payload. Used to simulate selector outcomes."""
+        selector_path.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            f"print(json.dumps({payload!r}))\n",
+            encoding="utf-8",
+        )
+
+    def test_selector_not_found_emits_stop_advisory(self):
+        """When the selector returns `found: false`, the hook must
+        surface that as 'stop: no next unit (all_complete or blocked)'
+        rather than advising proceed on a missing unit_id."""
+        selector = self._seed()
+        # Build the exact JSON string the selector should print.
+        payload = '{"found": false, "all_complete": true, "phase_complete": false}'
+        selector.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            f'sys.stdout.write({payload!r} + "\\n")\n',
+            encoding="utf-8",
+        )
+        _touch_invoke_flag(self.temp_dir)
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: no next unit (all_complete or blocked)", result.stdout)
+
+    def test_selector_vs_checkpoint_disagreement_emits_ambiguity_advisory(self):
+        """Selector says unit_X but checkpoint.next_action mentions
+        unit_Y (different string). The hook must stop-advise rather
+        than silently proceed with the selector's pick."""
+        selector = self._seed(
+            next_unit_id="unit_x",
+            checkpoint_next="Complete unit_y",  # disagrees with selector
+        )
+        payload = (
+            '{"found": true, "phase_id": "PHASE_X", "phase_slug": "x", '
+            '"unit_id": "unit_x", "unit_description": "do x", '
+            '"phase_complete": false, "all_complete": false}'
+        )
+        selector.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            f'sys.stdout.write({payload!r} + "\\n")\n',
+            encoding="utf-8",
+        )
+        _touch_invoke_flag(self.temp_dir)
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: selector says", result.stdout)
+        self.assertIn("ambiguity", result.stdout)
+
+    def test_selector_subprocess_failure_emits_stop_advisory(self):
+        """A selector that exits non-zero (or prints non-JSON to
+        stdout) must surface as 'stop: select_next_unit.py failed (...)'
+        -- NOT advise proceed and NOT raise. Guards the
+        JSONDecodeError/OSError except clause."""
+        selector = self._seed()
+        # Write a selector stub that prints non-JSON garbage. The hook's
+        # json.loads(result.stdout) call will raise JSONDecodeError,
+        # which _evaluate catches and converts to a stop advisory.
+        selector.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stdout.write('not json at all\\n')\n"
+            "sys.exit(0)\n",
+            encoding="utf-8",
+        )
+        _touch_invoke_flag(self.temp_dir)
+
+        result = _run_hook(self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("stop: select_next_unit.py failed", result.stdout)
+        self.assertIn("JSONDecodeError", result.stdout)
 
 
 if __name__ == "__main__":
