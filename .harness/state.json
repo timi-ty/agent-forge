@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T12:30:00Z",
+  "last_updated": "2026-04-20T12:50:00Z",
   "execution": {
     "active_phase": "PHASE_012",
-    "active_unit": "unit_052",
-    "last_completed_unit": "unit_051",
-    "next_unit": "unit_052",
-    "session_count": 49,
+    "active_unit": "unit_053",
+    "last_completed_unit": "unit_052",
+    "next_unit": "unit_053",
+    "session_count": 50,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T12:30:00Z",
+    "last_run": "2026-04-20T12:50:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_parallel_execution_readiness_checklist -v passes 13/13 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 303/304 with 1 OS-specific skip (38.3s, up from 291 -- 13 new cases for unit_051)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_skill_md_version_upgrades -v passes 8/8 (0.002s); python -m unittest discover skills/development-harness/scripts/tests passes 311/312 with 1 OS-specific skip (38.2s, up from 304 -- 8 new cases for unit_052)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_051 complete. skills/development-harness/references/parallel-execution.md § 6 'Readiness checklist' extended with the three PHASE_012 acceptance bullets and split into two sub-headings: 'Unit-declaration readiness' (4 items including the strengthened touches_paths check + the new no-shared-aggregator check) and 'Runtime & infrastructure readiness' (5 items including the new multi-commit-CI check). Three new bullets are bolded so readers distinguish them from the pre-unit_047 baseline. Each new bullet is actionable not just descriptive: touches_paths names the 'not_parallel_safe' exclusion + phase-contract.md cross-link; shared-aggregator defines the pattern + names 3 concrete cross-stack examples (router, index.ts, __init__.py) + proposes 2 remediations (absorb into dependents OR serialize via depends_on); CI check names the 'harness: merge <unit_id>' commit-message template + 2 concrete CI anti-patterns (per-commit hooks, rate-limit) + the 'keep parallelism off until the pipeline is fixed' remediation. New test_parallel_execution_readiness_checklist.py (200 LOC, 13 cases across 5 classes) pins each new bullet's exact wording + rationale tokens + the 7 pre-unit_051 items survive the edit (regression guard against careless rewrites). Suite 291 -> 304.",
+    "summary": "unit_052 complete. skills/development-harness/SKILL.md gained a new 'Version upgrades' section placed between 'Python Detection' and 'Key Principle'. Three numbered steps: (1) Re-run /create-development-harness when schema_version bumps; (2) ROADMAP.md + PHASES/*.md are preserved (the recreate flow reads them and rebuilds around them -- real product/planning work is never regenerated from scratch); (3) Lists the 4 core regenerated files (state.json, phase-graph.json, checkpoint.md, manifest.json) + scripts + workspace commands + hook/rule files so users with hand-edits know those edits will be lost. Followed by the load-bearing paragraph 'No migration script is provided by design' verbatim (per acceptance criterion). Cost argument named explicitly + cross-link to config.execution_mode.versioning.break_on_schema_bump (the break->true default from unit_048) as the config knob that enforces the policy. Users who want in-place migration attempts can flip to break_on_schema_bump: false but know upfront that the harness ships no migration tooling. New test_skill_md_version_upgrades.py (150 LOC, 8 cases across 3 classes) pins heading + position-order (before Key Principle so readers find it on schema-mismatch errors) + 5 acceptance-criterion tokens (Re-run + /create-development-harness, ROADMAP.md + PHASES/*.md + preserved, verbatim 'no migration script is provided by design' lowercase match, cost argument, break_on_schema_bump config mention) + regenerated-files listing so hand-edit users aren't surprised. Suite 304 -> 312.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_052 (PHASE_012): add 'Version upgrades' note to skills/development-harness/SKILL.md. Content: re-run /create-development-harness when schema_version changes; ROADMAP.md and PHASES/*.md are untouched by the recreate flow; no migration script is provided by design. Validation: grep for the paragraph's presence + substantive tokens ('no migration script is provided by design', '/create-development-harness', 'ROADMAP.md and PHASES' preservation note). Structural presence test similar to unit_051.",
-    "timestamp": "2026-04-20T12:30:00Z"
+    "next_action": "Complete unit_053 (PHASE_012): update skills/development-harness/commands/update.md and skills/development-harness/templates/workspace-commands/update-development-harness.md to detect schema_version mismatch between the installed .harness/ and the installed skill; emit a pointer to /create-development-harness with a one-line explanation; do not attempt auto-migration. Validation: both docs instruct the mismatch detection + pointer behavior; v1 fixture test asserts the message is emitted via python -m unittest skills.development-harness.scripts.tests.test_update_command. This is the LAST unit of PHASE_012 -- after it lands, open the phase PR, run code-review, squash-merge per autonomous-merge authorization.",
+    "timestamp": "2026-04-20T12:50:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
