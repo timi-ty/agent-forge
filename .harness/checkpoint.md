@@ -1,60 +1,66 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_045 (PHASE_011):** [architecture.md](skills/development-harness/references/architecture.md) gained a new top-level "Parallel Execution Model" section.
+**unit_046 (PHASE_011):** [phase-contract.md](skills/development-harness/references/phase-contract.md) Units of Work contract extended with parallelism fields + new "Decomposing a phase for parallelism" section.
 
-### What landed
-Nine sub-sections placed between "Batch Semantics" and "Git Integration":
+### Table extension
+Units of Work table grew from 4 columns (id, description, acceptance criteria, validation method) to 5 — added a new **Required** column — and gained 3 new rows:
 
-1. **When to enable parallelism** — config knobs + 3-way unit-candidacy gate (`parallel_safe` + `depends_on` satisfied + non-empty `touches_paths` when `require_touches_paths`).
-2. **Worktree-per-unit layout** — `.harness/worktrees/<batch_id>/<unit_id>/` + `harness/<batch_id>/<unit_id>` branches + `WORKTREE_UNIT.json` sentinel.
-3. **Orchestrator / sub-agent boundary** — `Agent(subagent_type: "harness-unit")` + tight allowlist + "sub-agent's self-report never trusted for blast radius" invariant.
-4. **Frontier + overlap check** — `select_next_unit.py --frontier` + `compute_parallel_batch.py` + 5 packing constraints (including overlap matrix via `fnmatch`).
-5. **Dispatch → wait → merge lifecycle** — `idle` / `dispatched` / `merging` fleet.mode transitions + scope check BEFORE merge attempt + stop-hook-never-sees-partial-fleet invariant.
-6. **Conflict strategies** — `abort_batch` (default) vs `serialize_conflicted` + cross-link to `phase-contract.md` scope-violation always-on rule.
-7. **Merge serialization via `.harness/.lock`** — `O_EXCL` mutex + stale-lock takeover.
-8. **Safety rails — session kill switch** — `safety_rails.py` + `.parallel-disabled` + 2-failure threshold + session-scoped clearing.
-9. **Observability** — four `.harness/logs/<batch_id>/` artifacts (batch.json, `<unit_id>.md`, merge.log, validation.log) + best-effort semantics + `/harness-state` integration.
+| Row | When required | Enforcer |
+|-----|---------------|----------|
+| `depends_on` | always (empty list allowed) | `compute_frontier` in [select_next_unit.py](skills/development-harness/scripts/select_next_unit.py) |
+| `parallel_safe` | always (default `false`) | [compute_parallel_batch.py](skills/development-harness/scripts/compute_parallel_batch.py) |
+| `touches_paths` | required when `parallel_safe: true` (under default config) | merge-time scope check in [merge_batch.py](skills/development-harness/scripts/merge_batch.py); cross-links to the existing **Scope-Violation Enforcement Policy** section |
 
-Concludes with forward link to `parallel-execution.md` (unit_047) for the full dispatch lifecycle + conflict-strategy catalogue.
+The `touches_paths` conditional is the most error-prone — the row pins it explicitly AND cross-links to the trust-boundary rationale so readers don't need to guess why it matters.
 
-### Grounding
-Every claim in the new section is verified against a specific file in the repo — `dispatch_batch.py` (WORKTREE_UNIT.json seeding, atomic teardown), `merge_batch.py` (pre-merge scope check, lock acquisition), `compute_parallel_batch.py` (greedy pack + overlap matrix), `safety_rails.py` (kill-switch write), `_MergeLock` (stale-lock takeover). This is a true summary of what the code does, not aspirational documentation.
+### New section: "Decomposing a phase for parallelism"
+Five-step recipe placed **after** the Scope-Violation Enforcement Policy:
+
+1. **Draw the dependency graph** — distinguish real `depends_on` from spurious logical-ordering preferences, with concrete examples on both sides.
+2. **Identify each unit's blast radius** — `touches_paths` authoring with the "one directory per unit" heuristic and the "shared test utilities are the usual hazard" warning.
+3. **Check for overlap** — `fnmatch`-based overlap matrix in `compute_parallel_batch.py` with the "narrow globs, don't disable the check" guardrail.
+4. **Set `parallel_safe` deliberately** — framed as a "declaration of independence, not a performance hint" with four explicit criteria and a "when in doubt, leave it false" default.
+5. **Dry-run the batch** — `select_next_unit.py --frontier | compute_parallel_batch.py --input -` pipeline to surface capacity/overlap/cross-phase rejections before merge time.
+
+Closes with an **Anti-patterns** subsection naming three real traps observed in dogfooding:
+- The "set up everything" unit pattern (usually a sign the parallel units aren't actually independent).
+- `parallel_safe: true` as a speed signal instead of an independence declaration.
+- Globs that cover shared files (e.g., two units both declaring `**/*.md`).
 
 ### New regression test
-[test_architecture_parallel_section.py](skills/development-harness/scripts/tests/test_architecture_parallel_section.py) — 10 cases in `TestArchitectureParallelExecutionSection`:
-1. Section heading present.
-2. "When to enable" sub-heading + `config.execution_mode.parallelism` + `parallel_safe` + `depends_on` + `touches_paths` references.
-3. "Worktree-per-unit layout" sub-heading + path/branch templates + `WORKTREE_UNIT.json`.
-4. "Orchestrator / sub-agent boundary" sub-heading + `subagent_type: "harness-unit"` + allowlist callouts + "self-report never trusted" invariant.
-5. "Frontier + overlap check" sub-heading + selector/compute script names + overlap matrix naming + `fnmatch`.
-6. "Dispatch → wait → merge lifecycle" sub-heading + all three fleet.mode states (accepts `x`/"x" framing) + "BEFORE the merge attempt" timing.
-7. "Conflict strategies" sub-heading + both strategy names + default marker + cross-link to `phase-contract.md`.
-8. `.harness/.lock` + `O_EXCL` referenced.
-9. `.parallel-disabled` + `safety_rails.py` + all four log artifacts referenced.
-10. **Position-order assertion** — new section index falls between "Batch Semantics" and "Git Integration" (catches duplicates or misplacements).
+[test_phase_contract_parallelism_fields.py](skills/development-harness/scripts/tests/test_phase_contract_parallelism_fields.py) — 11 cases across 3 classes:
 
-Initial run caught an overly-strict `"dispatched"` assertion expecting double-quote framing; relaxed to accept either `` `x` `` or `"x"` for stylistic flexibility.
+- **TestUnitsOfWorkTableCarriesParallelismFields (4)** — Required column + all 3 new rows + touches_paths conditional + Scope-Violation policy cross-link.
+- **TestDecompositionSubsection (6)** — section present + all 5 Step sub-headings + substantive content (dependency graph terminology, blast radius + one-directory heuristic, overlap matrix + touches_overlap exclusion reason, declaration-vs-hint contrast, dry-run command string, Anti-patterns sub-heading).
+- **TestDecompositionSectionPlacedAfterScopePolicy (1)** — position-order assertion so a future edit can't accidentally invert the reading flow (trust-boundary rationale must come before how-to guidance).
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_046 (PHASE_011):** update [references/phase-contract.md](skills/development-harness/references/phase-contract.md) to document the required unit fields `depends_on`, `touches_paths` (when `parallel_safe: true`), and `parallel_safe`. Add a "Decomposing a phase for parallelism" subsection that walks through how to partition a phase into parallel-safe units.
+**Complete unit_047 (PHASE_011):** create new [references/parallel-execution.md](skills/development-harness/references/parallel-execution.md) covering:
 
-The existing phase-contract.md already has the "Scope-Violation Enforcement Policy" section from unit_039 — unit_046 extends the Units of Work contract with the parallelism-specific fields and adds the decomposition guidance.
+1. Dispatch lifecycle (deeper than architecture.md's summary).
+2. Overlap-matrix algorithm details.
+3. Merge-order rationale.
+4. Failure-mode catalog.
+5. Recovery procedures.
+6. Readiness checklist.
 
-Validation: grep for new subsections + structural presence test similar to unit_045.
+This is the deep-dive companion to architecture.md's new Parallel Execution Model summary section — architecture.md links forward to this doc. Much of the content already exists in module docstrings + phase-graph.json validation_evidence; this unit consolidates it.
+
+Validation: grep for major section headings + structural presence test similar to unit_045/unit_046.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/references/architecture.md](skills/development-harness/references/architecture.md): new "Parallel Execution Model" section (~120 new lines, 9 sub-sections).
-- [skills/development-harness/scripts/tests/test_architecture_parallel_section.py](skills/development-harness/scripts/tests/test_architecture_parallel_section.py): new 160-line test module, 10 cases.
-- `python -m py_compile` → 0 (~0.1s) on new test file.
-- `python -m unittest skills.development-harness.scripts.tests.test_architecture_parallel_section -v` → **10/10** (0.003s).
-- `python -m unittest discover skills/development-harness/scripts/tests` → **253/254** + 1 OS skip in 37.8s (up from 244).
+- [skills/development-harness/references/phase-contract.md](skills/development-harness/references/phase-contract.md): Units of Work table expanded + new Decomposing section.
+- [skills/development-harness/scripts/tests/test_phase_contract_parallelism_fields.py](skills/development-harness/scripts/tests/test_phase_contract_parallelism_fields.py): new 170-line test module, 11 cases.
+- `python -m py_compile` → 0 (~0.1s).
+- `python -m unittest skills.development-harness.scripts.tests.test_phase_contract_parallelism_fields -v` → **11/11** (0.003s).
+- `python -m unittest discover skills/development-harness/scripts/tests` → **264/265** + 1 OS skip in 37.6s (up from 254).
 
 ## Open Questions
 None.
@@ -72,9 +78,9 @@ All tracked issues resolved.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 45 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_011 progress: **3/? units done** (bugfix_001 + bugfix_002 + 045). Remaining: 046 (phase-contract updates), 047 (new parallel-execution.md), 048 (unit_bugfix_001 reference — may already be done).
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → **254** across phases so far.
+- `session_count` is 46 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_011 progress: **4/? units done** (bugfix_001 + bugfix_002 + 045 + 046). Remaining: 047 (new parallel-execution.md), 048 (unit_bugfix_001 reference — already done?).
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → **265** across phases so far.
 
 ## Batch (current or last)
 
@@ -90,4 +96,4 @@ Reflects `state.execution.fleet`.
 No conflicts.
 
 ---
-*Updated: 2026-04-20T10:40:00Z*
+*Updated: 2026-04-20T11:05:00Z*
