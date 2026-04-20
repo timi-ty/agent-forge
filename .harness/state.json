@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T08:45:00Z",
+  "last_updated": "2026-04-20T09:10:00Z",
   "execution": {
-    "active_phase": "PHASE_010",
-    "active_unit": "unit_044",
-    "last_completed_unit": "unit_043",
-    "next_unit": "unit_044",
-    "session_count": 41,
+    "active_phase": "PHASE_011",
+    "active_unit": "unit_bugfix_001",
+    "last_completed_unit": "unit_044",
+    "next_unit": "unit_bugfix_001",
+    "session_count": 42,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T08:45:00Z",
+    "last_run": "2026-04-20T09:10:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 on dispatch_batch.py + merge_batch.py + tests/test_batch_logs.py (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_batch_logs -v passes 6/7 with 1 OS-specific skip (2.9s); pre-existing test_dispatch_batch + test_merge_batch still pass 31/31; python -m unittest discover skills/development-harness/scripts/tests passes 221/222 with 1 skip (40.2s, up from 215 -- 7 new cases for unit_043)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite.TestBatchLogArtifactsEndToEnd -v passes 1/1 (0.9s); python -m unittest discover skills/development-harness/scripts/tests passes 222/223 with 1 OS-specific skip (37.6s, up from 222)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_043 complete. Log-directory creation logic landed in dispatch_batch.py and merge_batch.py with best-effort semantics at both the helper AND the call site. dispatch_batch writes .harness/logs/<batch_id>/batch.json (batch plan + dispatched fleet + ISO timestamp) after the fleet is built. merge_batch writes merge.log (grep-friendly: batch_id/outcome/merged/conflicted/skipped with one '- <unit_id>' bullet per entry) and validation.log (validator_ok: True|False + the validator's evidence string) -- both wrapped in try/except Exception, and validation.log writes BEFORE the validation-failure rollback branch so a failed batch still leaves evidence on disk. Empty-fleet short-circuit writes NO logs (nothing ran to log -- the absence is itself the reported fact). New test_batch_logs.py (290 LOC, 7 cases, 1 OS-specific skip): happy-path batch.json, happy-path merge.log + validation.log, validation-failure still writes both logs, empty-fleet writes no log, helpers swallow OSError on read-only dirs (Linux/Mac) or via empty batch_id guard (cross-platform), and -- crucially -- dispatch_batch survives when the helper is monkeypatched to always raise OSError (proves the call-site try/except is load-bearing, not just the helper's internal swallow). sub-agent <unit_id>.md summaries remain sub-agent-owned per the harness-unit contract; no orchestrator code needed. .harness/.gitignore already carries logs/ from harness creation. Suite 215 -> 222 (221 + 1 Windows skip). First Windows-aware skip in the suite -- the skip message points at the equivalent cross-platform coverage for substance traceability.",
+    "summary": "unit_044 complete. PHASE_010 CLOSED. End-to-end integration test TestBatchLogArtifactsEndToEnd in tests/integration/test_invoke_rewrite.py runs compute_parallel_batch -> dispatch_batch -> fake sub-agent commits + sub-agent summary (fabricated inline the way the sub-agent would per the harness-unit contract -- the orchestrator has no code that writes <unit_id>.md) -> merge_batch with a non-trivial validator. Asserts all four log artifacts exist with non-empty bodies: batch.json (JSON-decodable with {batch_id, dispatched_at, batch_plan, fleet}), merge.log ('batch_id: <id>', 'outcome: ok', '- unit_log_a', '- unit_log_b'), validation.log ('validator_ok: True' + validator's verbatim message), and both <unit_id>.md summaries. Also asserts worktrees/<batch_id>/ is pruned after a clean merge while logs/<batch_id>/ survives -- logs are the post-hoc inspection surface. Added missing 'import json' at the top of test_invoke_rewrite.py (caught by the first test run). PHASE_010 summary: unit_041 (checkpoint-template Batch section + 4 tests), unit_042 (/harness-state renders Fleet+Orphans+Timings + 5 tests), unit_043 (log-directory creation in dispatch/merge with two-layer best-effort guarantees + 7 tests, 1 Windows skip), unit_044 (end-to-end integration + 1 test). pr-review-checklist: all four units have validation_evidence; no linter/type errors (stdlib-only); codebase patterns matched; tests pass 222/223 + 1 skip; not deploy-affecting (skill distribution repo); phase doc + checkpoint + state current. PHASE_010 marked completed. Suite 206 -> 222. PHASE_011 begins at unit_bugfix_001 (ISSUE_001 fix: Python-detection in create.md Phase 5 for hook configuration).",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_044 (PHASE_010): integration test that runs a sample batch end-to-end (compute_parallel_batch -> dispatch_batch -> fake sub-agent commits -> merge_batch) and asserts ALL four log artifacts exist with non-empty content: batch.json (JSON-decodable), merge.log (contains expected outcome + unit_ids), validation.log (contains validator message), AND <unit_id>.md (sub-agent summary). The sub-agent summary is nominally agent-written; for this test, fabricate one inline as the sub-agent would. Best place to put it: extend tests/integration/test_invoke_rewrite.py with a new class TestBatchLogArtifactsEndToEnd, since that module already has the two-fixture infrastructure. Validation: the integration test exits 0; full suite still green.",
-    "timestamp": "2026-04-20T08:45:00Z"
+    "next_action": "Open PHASE_010 PR (feat/phase-010-observability -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_011 unit_bugfix_001: in skills/development-harness/commands/create.md Phase 5 (Hook configuration), apply the existing Python-detection pattern PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null) and bake the detected interpreter into the generated .claude/settings.local.json Stop-hook command (\"$PY .claude/hooks/continue-loop.py\"). Mirror the change for .cursor/hooks.json. Keep the hook script's shebang intact but no longer rely on it. This unblocks Windows installs where neither python3 nor a bare shebang works.",
+    "timestamp": "2026-04-20T09:10:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

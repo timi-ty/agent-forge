@@ -23,6 +23,7 @@ same Python calls the prose describes so any regression that slips
 past the docs-level grep still trips the integration assertion.
 """
 import copy
+import json
 import subprocess
 import sys
 import tempfile
@@ -414,6 +415,174 @@ class TestBatchOfOneDispatchModeEquivalence(unittest.TestCase):
         # invariant ("fleet is unchanged") is verified inside _run_in_tree
         # via a before/after deepcopy compare.
         self.assertEqual(worktree_state["execution"]["fleet"]["mode"], "idle")
+
+
+class TestBatchLogArtifactsEndToEnd(InvokeRewriteBase):
+    """PHASE_010 unit_044: a sample batch end-to-end must leave all
+    four log artifacts under ``.harness/logs/<batch_id>/`` with
+    non-empty, inspectable content:
+
+      * ``batch.json``     -- written by dispatch_batch
+      * ``merge.log``      -- written by merge_batch
+      * ``validation.log`` -- written by merge_batch when the
+        validator runs
+      * ``<unit_id>.md``   -- written by the sub-agent per the
+        harness-unit contract. For the integration test we fabricate
+        it inline the same way the sub-agent would (the orchestrator
+        has no code that writes it).
+
+    The test proves the four writers cover the observability surface
+    needed for /harness-state's Fleet & Batch / Orphans / Batch
+    Timings sections (unit_042) and the Batch section of the
+    checkpoint template (unit_041).
+    """
+
+    def _phase_graph_two_unit(self):
+        """Two disjoint-file units -- cheaper than the 3-unit base
+        fixture, big enough to prove per-unit summaries work."""
+        return {
+            "schema_version": "2.0",
+            "phases": [
+                {
+                    "id": "PHASE_INT",
+                    "slug": "log-artifacts-fixture",
+                    "status": "pending",
+                    "depends_on": [],
+                    "units": [
+                        {
+                            "id": "unit_log_a",
+                            "description": "touch src/log_a",
+                            "status": "pending",
+                            "depends_on": [],
+                            "parallel_safe": True,
+                            "touches_paths": ["src/log_a/**"],
+                        },
+                        {
+                            "id": "unit_log_b",
+                            "description": "touch src/log_b",
+                            "status": "pending",
+                            "depends_on": [],
+                            "parallel_safe": True,
+                            "touches_paths": ["src/log_b/**"],
+                        },
+                    ],
+                }
+            ],
+        }
+
+    def _fabricate_sub_agent_summary(self, logs_dir, unit_id):
+        """Simulate the sub-agent writing its harness-unit summary.
+
+        The orchestrator does not write these -- they are produced by
+        the sub-agent per templates/claude-code/agents/harness-unit.md.
+        For this integration test we write one as the sub-agent would.
+        """
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        (logs_dir / f"{unit_id}.md").write_text(
+            f"# {unit_id} summary\n\n"
+            f"Status: succeeded\n\n"
+            f"Files changed: src/{unit_id.split('_', 2)[-1]}/main.ts, "
+            f"src/{unit_id.split('_', 2)[-1]}/util.ts\n",
+            encoding="utf-8",
+        )
+
+    def test_all_four_log_artifacts_present_after_batch(self):
+        phase_graph = self._phase_graph_two_unit()
+
+        # --- Compute + dispatch ---
+        frontier = compute_frontier(phase_graph["phases"])
+        batch_result = compute_batch(
+            frontier, _parallel_config(enabled=True), now=None,
+        )
+        self.assertEqual(
+            [u["id"] for u in batch_result["batch"]],
+            ["unit_log_a", "unit_log_b"],
+        )
+        state = {}
+        dispatch_batch(batch_result, root=self.temp_dir, state=state)
+
+        batch_id = batch_result["batch_id"]
+        logs_dir = self.temp_dir / ".harness" / "logs" / batch_id
+
+        # --- Fake sub-agent commits + sub-agent summaries ---
+        for unit_id, slice_ in [("unit_log_a", "log_a"), ("unit_log_b", "log_b")]:
+            wt = self.temp_dir / ".harness" / "worktrees" / batch_id / unit_id
+            _fake_agent_commit(
+                wt,
+                {
+                    f"src/{slice_}/main.ts": f"export const id = '{unit_id}';\n",
+                    f"src/{slice_}/util.ts": f"// {unit_id} utility\n",
+                },
+            )
+            # Sub-agent writes its own summary. We fabricate it in the
+            # MAIN repo's logs dir (the orchestrator's eventual
+            # destination) because the sub-agent's eventual contract
+            # will copy/produce it there. This mirrors the post-merge
+            # shape /harness-state expects.
+            self._fabricate_sub_agent_summary(logs_dir, unit_id)
+
+        # --- Merge with a validator so validation.log has real content ---
+        def validator(root, merged_unit_ids):
+            return True, f"integration validator ran on {len(merged_unit_ids)} unit(s)"
+
+        merge_result = merge_batch(
+            state, root=self.temp_dir,
+            run_post_merge_validation=validator,
+        )
+        self.assertEqual(merge_result["outcome"], "ok")
+
+        # --- All four artifacts must exist with non-empty bodies ---
+        expected = {
+            "batch.json": "json",
+            "merge.log": "text",
+            "validation.log": "text",
+            "unit_log_a.md": "text",
+            "unit_log_b.md": "text",
+        }
+        for name, kind in expected.items():
+            target = logs_dir / name
+            self.assertTrue(
+                target.exists(),
+                f"log artifact {name!r} must exist at {target}",
+            )
+            body = target.read_text(encoding="utf-8")
+            self.assertTrue(
+                body.strip(),
+                f"log artifact {name!r} must be non-empty",
+            )
+            if kind == "json":
+                # JSON-decodable AND carries the expected top-level keys.
+                data = json.loads(body)
+                for key in ("batch_id", "dispatched_at", "batch_plan", "fleet"):
+                    self.assertIn(
+                        key, data,
+                        f"batch.json missing top-level key {key!r}",
+                    )
+                self.assertEqual(data["batch_id"], batch_id)
+
+        # --- merge.log carries the grep-friendly contract ---
+        merge_body = (logs_dir / "merge.log").read_text(encoding="utf-8")
+        self.assertIn(f"batch_id: {batch_id}", merge_body)
+        self.assertIn("outcome: ok", merge_body)
+        self.assertIn("- unit_log_a", merge_body)
+        self.assertIn("- unit_log_b", merge_body)
+
+        # --- validation.log carries the validator's message verbatim ---
+        val_body = (logs_dir / "validation.log").read_text(encoding="utf-8")
+        self.assertIn("validator_ok: True", val_body)
+        self.assertIn("integration validator ran on 2 unit(s)", val_body)
+
+        # --- The batch directory is cleaned up on disk, but logs stay ---
+        worktree_root = self.temp_dir / ".harness" / "worktrees" / batch_id
+        self.assertFalse(
+            worktree_root.exists(),
+            "worktrees root should be pruned after clean merge",
+        )
+        self.assertTrue(
+            logs_dir.exists(),
+            "logs root must survive merge cleanup -- it is the "
+            "post-hoc inspection artifact for this batch",
+        )
 
 
 if __name__ == "__main__":

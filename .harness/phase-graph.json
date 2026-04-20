@@ -558,10 +558,10 @@
     {
       "id": "PHASE_010",
       "slug": "observability",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_005", "PHASE_007"],
       "started": "2026-04-20T07:45:00Z",
-      "completed": null,
+      "completed": "2026-04-20T09:10:00Z",
       "units": [
         {
           "id": "unit_041",
@@ -602,8 +602,13 @@
         {
           "id": "unit_044",
           "description": "Integration test running a sample batch asserts all log artifacts are produced and /harness-state renders fleet + log pointers",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py: added new TestBatchLogArtifactsEndToEnd class with one integration case (test_all_four_log_artifacts_present_after_batch). Also added missing 'import json' at the top of the module (caught by the first test run -- json was referenced via the new test but not previously imported). The test runs compute_parallel_batch -> dispatch_batch -> fake sub-agent commits in each worktree + sub-agent summary (.harness/logs/<batch_id>/<unit_id>.md, fabricated inline the same way the sub-agent would per templates/claude-code/agents/harness-unit.md) -> merge_batch with a non-trivial validator. Asserts all four log artifacts exist with non-empty bodies: batch.json (JSON-decodable + carries {batch_id, dispatched_at, batch_plan, fleet}), merge.log (grep-friendly: 'batch_id: <id>', 'outcome: ok', '- unit_log_a', '- unit_log_b'), validation.log ('validator_ok: True' + validator's exact message), and both <unit_id>.md summaries. Also asserts the worktrees/<batch_id>/ directory is pruned after a clean merge while logs/<batch_id>/ survives -- logs ARE the post-hoc inspection surface",
+            "Grounding: the four artifacts exactly match the acceptance criteria from PHASE_010's phase doc scope. The <unit_id>.md produced by sub-agents per the harness-unit contract is covered by test-time fabrication because the sub-agent is not executable in a unit-test context; the fabrication writes what the sub-agent would write (unit_id heading + status + files-changed list) so the artifact shape is still pinned from the orchestrator's perspective",
+            "Half of the unit's acceptance -- '/harness-state renders fleet + log pointers' -- was pre-satisfied by unit_042 (the /harness-state doc rewrite pins the Fleet & Batch, Orphans, and Batch Timings sections in both command variants, and unit_042's test_harness_state_docs.py already asserts the .harness/logs/ directory reference is present). The integration test's role here is to prove that a real end-to-end run produces the artifacts /harness-state will read; the doc-level contract was already locked in",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite.TestBatchLogArtifactsEndToEnd -v passes 1/1 (0.9s); pre-existing integration cases (TestThreeUnitParallelBatch + TestBatchOfOneDispatchModeEquivalence) still pass; python -m unittest discover skills/development-harness/scripts/tests passes 222/223 with 1 OS-specific skip (37.6s, up from 222 -- 1 new case for unit_044)"
+          ]
         }
       ]
     },
