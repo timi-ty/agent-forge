@@ -34,7 +34,7 @@ class DispatchError(RuntimeError):
     """Raised when dispatch fails after rollback of partial state."""
 
 
-def _write_batch_log(root, batch_id, filename, payload):
+def _write_batch_log(root, batch_id, filename, content):
     """Best-effort write of one log artifact under ``.harness/logs/<batch_id>/``.
 
     Log writes must never block the orchestrator -- a missing or
@@ -42,18 +42,21 @@ def _write_batch_log(root, batch_id, filename, payload):
     failure. Wraps every step in ``try/except OSError``; on failure it
     returns ``False`` without raising. The caller may log but must not
     propagate.
+
+    ``content`` accepts a dict/list (serialized as JSON) or a string
+    (written verbatim). Parameter name matches ``merge_batch._write_batch_log``.
     """
     try:
         log_dir = Path(root) / HARNESS_DIR / LOGS_DIR / batch_id
         log_dir.mkdir(parents=True, exist_ok=True)
         target = log_dir / filename
-        if isinstance(payload, (dict, list)):
+        if isinstance(content, (dict, list)):
             target.write_text(
-                json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+                json.dumps(content, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
         else:
-            target.write_text(str(payload), encoding="utf-8")
+            target.write_text(str(content), encoding="utf-8")
         return True
     except OSError:
         return False

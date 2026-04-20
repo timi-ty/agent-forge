@@ -240,10 +240,10 @@ class TestLogWritesAreBestEffort(BatchLogsBase):
     failure. Regression guard so log writes don't accidentally become
     load-bearing."""
 
-    def test_dispatch_write_batch_log_returns_false_on_missing_batch_id(self):
-        """dispatch's helper accepts any batch_id, but we exercise the
-        merge helper's empty-batch_id early-return here (shared semantic
-        via the merge helper signature)."""
+    def test_merge_write_batch_log_returns_false_on_missing_batch_id(self):
+        """The merge helper's empty-batch_id early-return. The dispatch
+        helper has no such guard by design (dispatch always computes
+        batch_id from batch_result and errors earlier if it is missing)."""
         self.assertFalse(_merge_write_log(self.temp_dir, "", "merge.log", "x"))
         self.assertFalse(_merge_write_log(self.temp_dir, None, "merge.log", "x"))
 
@@ -273,7 +273,7 @@ class TestLogWritesAreBestEffort(BatchLogsBase):
         orchestrator's critical path."""
         import dispatch_batch as dispatch_mod
 
-        def always_fail(root, batch_id, filename, payload):
+        def always_fail(root, batch_id, filename, content):
             raise OSError("simulated log-write failure")
 
         original = dispatch_mod._write_batch_log
