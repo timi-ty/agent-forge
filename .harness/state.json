@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T07:30:00Z",
+  "last_updated": "2026-04-20T09:10:00Z",
   "execution": {
-    "active_phase": "PHASE_010",
-    "active_unit": "unit_041",
-    "last_completed_unit": "unit_040",
-    "next_unit": "unit_041",
-    "session_count": 38,
+    "active_phase": "PHASE_011",
+    "active_unit": "unit_bugfix_001",
+    "last_completed_unit": "unit_044",
+    "next_unit": "unit_bugfix_001",
+    "session_count": 42,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T07:30:00Z",
+    "last_run": "2026-04-20T09:10:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_merge_batch.TestLockContention -v passes 6/6 (2.2s, up from 4 -- 2 new cases for unit_040); python -W error::ResourceWarning confirms clean handle management in the subprocess test; python -m unittest discover skills/development-harness/scripts/tests passes 206/206 (34.7s, up from 204)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite.TestBatchLogArtifactsEndToEnd -v passes 1/1 (0.9s); python -m unittest discover skills/development-harness/scripts/tests passes 222/223 with 1 OS-specific skip (37.6s, up from 222)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,16 +31,16 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_040 complete. PHASE_009 CLOSED. Concurrent merge serialization proven end-to-end. PHASE_005 unit_023 already gave us 4 TestLockContention cases (two-thread contention, exception cleanup, stale-lock takeover, fresh-lock timeout) -- all still pass. unit_040 adds 2 new cases to close the 'two merge_batch.py invocations' wording in the acceptance: test_two_subprocess_acquirers_serialize_on_disk_lock spawns a Python subprocess that acquires _MergeLock, signals 'HELD' on stdout, sleeps 0.5s, releases; the main process then acquires the same lock in-process and asserts elapsed >= 0.4s, proving OS-level O_EXCL semantics hold across processes (production scenario: two CLI invocations racing from two shells/schedulers). test_lock_path_is_exactly_harness_dot_lock pins the on-disk lock location so a future LOCK_FILENAME rename cannot silently break cross-process serialization. PIPE handles explicitly closed; python -W error::ResourceWarning confirms no 3.12+ warnings leak. PHASE_009 summary: unit_037 (session kill switch, safety_rails.py + 15 tests + hook _stop() sweeps), unit_038 (batch-of-1 no-special-case doc contract + 3 grep-as-test cases), unit_039 (scope-violation always-on policy in phase-contract.md + 3 policy tests), unit_040 (cross-process merge lock + 2 subprocess tests). Suite 183 -> 204 -> 206 across the phase. pr-review-checklist: all units have validation_evidence; no linter/type errors (stdlib-only Python); codebase patterns followed; all tests pass; phase is not deploy-affecting (config.deployment.target = 'none', skill distribution repo); docs updated; checkpoint current. PHASE_009 marked completed in phase-graph.json.",
+    "summary": "unit_044 complete. PHASE_010 CLOSED. End-to-end integration test TestBatchLogArtifactsEndToEnd in tests/integration/test_invoke_rewrite.py runs compute_parallel_batch -> dispatch_batch -> fake sub-agent commits + sub-agent summary (fabricated inline the way the sub-agent would per the harness-unit contract -- the orchestrator has no code that writes <unit_id>.md) -> merge_batch with a non-trivial validator. Asserts all four log artifacts exist with non-empty bodies: batch.json (JSON-decodable with {batch_id, dispatched_at, batch_plan, fleet}), merge.log ('batch_id: <id>', 'outcome: ok', '- unit_log_a', '- unit_log_b'), validation.log ('validator_ok: True' + validator's verbatim message), and both <unit_id>.md summaries. Also asserts worktrees/<batch_id>/ is pruned after a clean merge while logs/<batch_id>/ survives -- logs are the post-hoc inspection surface. Added missing 'import json' at the top of test_invoke_rewrite.py (caught by the first test run). PHASE_010 summary: unit_041 (checkpoint-template Batch section + 4 tests), unit_042 (/harness-state renders Fleet+Orphans+Timings + 5 tests), unit_043 (log-directory creation in dispatch/merge with two-layer best-effort guarantees + 7 tests, 1 Windows skip), unit_044 (end-to-end integration + 1 test). pr-review-checklist: all four units have validation_evidence; no linter/type errors (stdlib-only); codebase patterns matched; tests pass 222/223 + 1 skip; not deploy-affecting (skill distribution repo); phase doc + checkpoint + state current. PHASE_010 marked completed. Suite 206 -> 222. PHASE_011 begins at unit_bugfix_001 (ISSUE_001 fix: Python-detection in create.md Phase 5 for hook configuration).",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Open PHASE_009 PR (feat/phase-009-safety-rails -> main), run the code-review skill, squash-merge per harness-git.md autonomous-merge authorization. THEN continue with PHASE_010 unit_041: extend skills/development-harness/templates/checkpoint-template.md with a Batch section (batch ID, mode, per-unit status and branch, conflicts summary) so live invoke turns render batch state visibly in the checkpoint. PHASE_010 is observability -- three units total (041 checkpoint batch section, 042 logs/ layout for per-batch artifacts, 043 status summarizer).",
-    "timestamp": "2026-04-20T07:30:00Z"
+    "next_action": "Open PHASE_010 PR (feat/phase-010-observability -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_011 unit_bugfix_001: in skills/development-harness/commands/create.md Phase 5 (Hook configuration), apply the existing Python-detection pattern PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null) and bake the detected interpreter into the generated .claude/settings.local.json Stop-hook command (\"$PY .claude/hooks/continue-loop.py\"). Mirror the change for .cursor/hooks.json. Keep the hook script's shebang intact but no longer rely on it. This unblocks Windows installs where neither python3 nor a bare shebang works.",
+    "timestamp": "2026-04-20T09:10:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-009-safety-rails",
+    "current_branch": "feat/phase-010-observability",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
