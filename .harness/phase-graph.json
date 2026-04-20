@@ -769,10 +769,10 @@
     {
       "id": "PHASE_013",
       "slug": "harness-self-test",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_007", "PHASE_008", "PHASE_009", "PHASE_010", "PHASE_011", "PHASE_012"],
       "started": "2026-04-20T13:30:00Z",
-      "completed": null,
+      "completed": "2026-04-20T15:35:00Z",
       "units": [
         {
           "id": "unit_054",
@@ -828,8 +828,14 @@
         {
           "id": "unit_058",
           "description": "Write post-mortem under skills/development-harness/scripts/tests/fixtures/self-test/POST-MORTEM.md and link it from skills/development-harness/references/parallel-execution.md",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/scripts/tests/fixtures/self-test/POST-MORTEM.md: new ~130-line post-mortem with all 4 required sections from the phase doc (Setup / Results / Papercuts / Follow-ups) plus a Takeaways closing. Setup names the Tasklet fixture + 3 seeded conditions + the artifacts produced by units 054-058 + the operator recipe. Results confirms all 3 seeded conditions fired with a observations table, embeds the wall-clock comparison (parallel 3 turns @ 1.97s vs sequential 6 turns @ 2.00s), and pins the orphan invariants. Papercuts documents the 2 runtime bugs caught during unit_057 (compute_frontier missing-filter for 'failed' status at select_next_unit.py:123; _make_batch_id 1-second granularity at compute_parallel_batch.py:112) with where/consequence/workaround/fix for each, plus a 'Driver-level observations that didn't need patching' sub-section confirming the rest of the machinery holds (merge_batch outcome reporting, fleet-mode transitions, observability artifacts). Follow-ups has 2 filable-issue drafts (Follow-up 1 priority medium for the compute_frontier filter; Follow-up 2 priority low for batch_id uniqueness) with Fix approach + Regression coverage + Scope fields per draft. Takeaways summarizes the signal: self-test validates the upgrade, catches real bugs, and demonstrates the orphan invariants hold -- skill is ready to ship",
+            "skills/development-harness/references/parallel-execution.md: added new '## 8. Self-test post-mortem' section at the end linking to the new POST-MORTEM.md with framing that explains why readers should consult it ('known-good dogfood run' before shipping a parallel-execution change). Cross-link from architecture.md's forward-reference to parallel-execution.md is unchanged",
+            "skills/development-harness/scripts/tests/test_self_test_fixture.py: extended from 24 to 33 cases. Added TestPostMortemExistsWithExpectedStructure (6 cases): all 4 required section headings (Setup, Results, Papercuts, Follow-ups) present + references all prior artifacts (ROADMAP, README, config, phase-graph, trace.log, wall-clock.md) + documents both runtime bugs with source-file locations + follow-ups carry fillable-issue structure (Fix approach, Regression coverage, /inject-harness-issues) + 3 seeded-conditions observations table present with the expected strings (Batch >= 2, path_overlap_with:unit_a2, src/seeds/users.json) + wall-clock summary embedded (not just linked). Added TestParallelExecutionMdLinksPostMortem (3 cases): § 8 heading present + link to POST-MORTEM.md path + 'known-good dogfood run' framing + PHASE_013 context so readers know which phase the run belongs to",
+            "PHASE_013 phase completion review per pr-review-checklist.md: all 5 units have validation_evidence; no linter/type errors (stdlib-only Python + markdown docs); codebase patterns followed (section-sliced doc-contract assertions, position-order checks, fnmatch-based pattern checks matching runtime semantics); tests pass 355/356 + 1 OS skip; not deploy-affecting (self-test fixture is ad-hoc operator material, not CI); all phase docs + checkpoint + state current; both tracked ISSUE_001 + ISSUE_002 remain resolved; 2 new bugs documented for follow-up but not blockers. PHASE_013 marked completed",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_self_test_fixture.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v passes 33/33 (0.009s, up from 24 -- 9 new cases for unit_058); python -m unittest discover skills/development-harness/scripts/tests passes 355/356 with 1 OS-specific skip (45.1s, up from 347)"
+          ]
         }
       ]
     }

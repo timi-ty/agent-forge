@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T15:05:00Z",
+  "last_updated": "2026-04-20T15:35:00Z",
   "execution": {
-    "active_phase": "PHASE_013",
-    "active_unit": "unit_058",
-    "last_completed_unit": "unit_057",
-    "next_unit": "unit_058",
-    "session_count": 55,
+    "active_phase": null,
+    "active_unit": null,
+    "last_completed_unit": "unit_058",
+    "next_unit": null,
+    "session_count": 56,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T15:05:00Z",
+    "last_run": "2026-04-20T15:35:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_self_test_run -v passes 2/2 (6.4s, up from 1); python -m unittest discover skills/development-harness/scripts/tests passes 346/347 with 1 OS-specific skip (45.2s, up from 346 -- 1 new case + wall-clock.md artifact)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v passes 33/33 (0.009s, up from 24 -- 9 new cases for unit_058); python -m unittest discover skills/development-harness/scripts/tests passes 355/356 with 1 OS-specific skip (45.1s, up from 347). select_next_unit reports all_complete: true"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_057 complete. Wall-clock parallel vs sequential baseline comparison landed: TestWallClockParallelVsSequential runs the Tasklet fixture driver twice (max_concurrent_units=3 parallel, =1 sequential), times both via time.monotonic(), writes fixtures/self-test/wall-clock.md with the data table + ratio narrative. Both runs use worktree fan-out so only batch size differs. Refactored the 126-line in-class _run_one_turn into a standalone _drive_fixture free function shared by both tests. This unit caught 2 runtime bugs during implementation: (1) compute_frontier in select_next_unit.py filters 'completed' but NOT 'failed' -- scope-violated units stay in the frontier forever (worked around at driver level; runtime fix is a separate follow-up). (2) Same-second turns share batch_id from compute_parallel_batch._make_batch_id (1-sec granularity), which combined with bug (1) caused 'git worktree add' to fail with exit 255 on re-dispatch of scope-violated units (branch already exists from preserved worktree). Driver-level frontier filter resolves the symptom. Also flipped scope-violation units to status 'failed' in the phase-graph (both in _run_one_turn and _drive_fixture) -- more correct terminal state than leaving them 'pending'. Updated unit_056's end-state assertion accordingly. Results on this machine: parallel 3 turns @ 1.97s, sequential 6 turns @ 2.00s, ratio 1.02x. The small ratio reflects fake-commit speed; turn count (3 vs 6) is the meaningful signal. Suite 346 -> 347.",
+    "summary": "unit_058 complete. PHASE_013 CLOSED. ROADMAP COMPLETE. Post-mortem landed with all 4 required sections (Setup / Results / Papercuts / Follow-ups + Takeaways). Setup documents fixture + 3 seeded conditions + all 7 artifacts produced by units 054-058. Results confirms all 3 seeded conditions fired (batch >= 2 via Turn 1 + Turn 3, overlap rejection with exact string 'path_overlap_with:unit_a2', scope violation on src/seeds/users.json) + embeds the wall-clock table (parallel 3 turns @ 1.97s vs sequential 6 turns @ 2.00s, ratio 1.02x, turn count 3 vs 6 as meaningful signal). Papercuts documents both runtime bugs caught in unit_057 (compute_frontier missing-filter for 'failed' status at select_next_unit.py:123; _make_batch_id 1-second granularity at compute_parallel_batch.py:112) with where/consequence/workaround/fix-approach for each. Follow-ups has 2 filable-issue drafts (Follow-up 1 medium priority for compute_frontier filter, Follow-up 2 low priority for batch_id uniqueness) each with Fix approach + Regression coverage + Scope fields. parallel-execution.md § 8 'Self-test post-mortem' links the post-mortem with 'known-good dogfood run' framing. test_self_test_fixture.py extended from 24 to 33 cases covering POST-MORTEM structure + both runtime-bug documentation + wall-clock embedding + parallel-execution.md cross-link. Phase completion review per pr-review-checklist.md passed. select_next_unit reports all_complete: true -- all 13 phases done, all 58 units complete, both tracked ISSUEs resolved, 2 new bugs documented for follow-up but not blockers. Suite 347 -> 356. The development-harness skill's v2 upgrade is complete.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_058 (PHASE_013): write skills/development-harness/scripts/tests/fixtures/self-test/POST-MORTEM.md with sections Setup / Results / Papercuts / Follow-ups, embedding the wall-clock.md table + trace.log highlights + the 2 runtime bugs caught in unit_057 (compute_frontier missing-filter for 'failed' status + batch_id 1-sec granularity). Add a link from skills/development-harness/references/parallel-execution.md to the new post-mortem. This is the LAST unit of PHASE_013 -- after it lands: open the phase PR, run code-review, squash-merge per autonomous-merge authorization. PHASE_013 is the final phase of the roadmap; once it closes the development-harness skill upgrade is complete.",
-    "timestamp": "2026-04-20T15:05:00Z"
+    "next_action": "Open the FINAL PR (PHASE_013: feat/phase-013-harness-self-test -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. After that merge lands: the roadmap is complete, the harness's v2 upgrade is shippable, the fleet branch tree is clean. Optional cleanup tasks: file the 2 follow-up issues (compute_frontier failed-filter, batch_id uniqueness) via /inject-harness-issues; delete the feat/phase-013 branch after the squash-merge; archive the self-test fixture state for future reference.",
+    "timestamp": "2026-04-20T15:35:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

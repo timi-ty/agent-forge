@@ -224,3 +224,7 @@ Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns
 ```
 
 These logs are harness-owned and gitignored (see `.harness/.gitignore`). They persist across sessions until `/clear` removes them.
+
+## 8. Self-test post-mortem
+
+PHASE_013 of the skill upgrade exercised this entire machinery end-to-end against a throwaway 2-phase / 6-unit fixture designed to fire batch ≥ 2, overlap-matrix rejection, and scope violation in a single run. The results + two runtime bugs that surfaced during the build are documented in [../scripts/tests/fixtures/self-test/POST-MORTEM.md](../scripts/tests/fixtures/self-test/POST-MORTEM.md). Read that before shipping a parallel-execution change on a real project — it's the closest thing the skill has to a "known-good dogfood run".

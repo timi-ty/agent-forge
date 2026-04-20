@@ -25,4 +25,4 @@ Batch sizes observed: [2, 1, 3]
 Overlap exclusions: [('unit_a3', 'path_overlap_with:unit_a2')]
 Scope violations: [('unit_b2', ['src/seeds/users.json'])]
 
-Final status counts: {'completed': 5, 'pending': 1}
+Final status counts: {'completed': 5, 'failed': 1}

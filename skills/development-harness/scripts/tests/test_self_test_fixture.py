@@ -28,6 +28,10 @@ ROADMAP = FIXTURE_DIR / "ROADMAP.md"
 README = FIXTURE_DIR / "README.md"
 CONFIG = FIXTURE_DIR / "config.json"
 PHASE_GRAPH = FIXTURE_DIR / "phase-graph.json"
+POST_MORTEM = FIXTURE_DIR / "POST-MORTEM.md"
+PARALLEL_EXECUTION_MD = (
+    Path(__file__).resolve().parents[2] / "references" / "parallel-execution.md"
+)
 
 
 class TestFixtureFilesExist(unittest.TestCase):
@@ -323,6 +327,123 @@ class TestFixturePhaseGraphJson(unittest.TestCase):
         self.assertIn("scope_violation", units["unit_b2"]["description"],
                       "unit_b2 description must name the conflict.category "
                       "operators will see")
+
+
+# ---------------------------------------------------------------------
+# unit_058 -- POST-MORTEM.md + parallel-execution.md cross-link
+# ---------------------------------------------------------------------
+
+
+class TestPostMortemExistsWithExpectedStructure(unittest.TestCase):
+    """The post-mortem is the final artifact of PHASE_013. It must
+    carry the 4 sections required by the phase doc (Setup, Results,
+    Papercuts, Follow-ups) and reference the prior artifacts (trace.log,
+    wall-clock.md) so readers can chase the evidence."""
+
+    def _load(self):
+        self.assertTrue(POST_MORTEM.is_file(),
+                        f"POST-MORTEM.md must exist at {POST_MORTEM}")
+        return POST_MORTEM.read_text(encoding="utf-8")
+
+    def test_carries_all_four_required_sections(self):
+        body = self._load()
+        # Acceptance wording from PHASE_013 phase doc § Units of Work
+        # unit_058: 'setup, results, papercuts, follow-ups'.
+        for heading in ("## 1. Setup", "## 2. Results",
+                        "## 3. Papercuts", "## 4. Follow-ups"):
+            self.assertIn(
+                heading, body,
+                f"POST-MORTEM.md must have a '{heading}' section",
+            )
+
+    def test_references_prior_artifacts(self):
+        """The post-mortem embeds evidence from units 054-057. Must
+        reference each so the evidence chain is self-contained."""
+        body = self._load()
+        for artifact in (
+            "ROADMAP.md", "README.md", "config.json", "phase-graph.json",
+            "trace.log", "wall-clock.md",
+        ):
+            self.assertIn(
+                artifact, body,
+                f"POST-MORTEM.md must reference {artifact} from the "
+                f"evidence chain",
+            )
+
+    def test_documents_both_runtime_bugs_caught(self):
+        """The Papercuts section must name both runtime bugs caught
+        in unit_057 with their source-file locations + fix approaches."""
+        body = self._load()
+        # Bug 1: compute_frontier missing filter.
+        self.assertIn("compute_frontier", body)
+        self.assertIn("select_next_unit.py", body)
+        # Bug 2: batch_id granularity.
+        self.assertIn("_make_batch_id", body)
+        self.assertIn("1-second granularity", body)
+
+    def test_follow_ups_draft_issue_structure(self):
+        """Follow-ups section must be actionable -- each papercut
+        becomes a filable issue via /inject-harness-issues. Pin the
+        structure so the drafts stay useful."""
+        body = self._load()
+        self.assertIn("/inject-harness-issues", body)
+        # Both follow-ups must have a priority + fix-approach label.
+        self.assertIn("Follow-up 1", body)
+        self.assertIn("Follow-up 2", body)
+        self.assertIn("Fix approach", body)
+        self.assertIn("Regression coverage", body)
+
+    def test_three_seeded_conditions_observations_table_present(self):
+        """The Results section must carry a table showing each of the
+        three seeded conditions + what was observed. This is the key
+        claim the post-mortem makes: the self-test actually exercised
+        what it was designed to exercise."""
+        body = self._load()
+        self.assertIn("Batch ≥ 2", body)
+        self.assertIn("path_overlap_with:unit_a2", body)
+        self.assertIn("src/seeds/users.json", body)
+
+    def test_wall_clock_summary_embedded(self):
+        """The Results section embeds the wall-clock.md table
+        directly (not just links to it)."""
+        body = self._load()
+        self.assertIn("Parallel", body)
+        self.assertIn("Sequential", body)
+        self.assertIn("turn count", body.lower())
+
+
+class TestParallelExecutionMdLinksPostMortem(unittest.TestCase):
+    """references/parallel-execution.md gained a § 8 'Self-test
+    post-mortem' section at the end of unit_058 pointing readers at
+    the new POST-MORTEM.md. Pin that the link exists + the framing
+    explains why the post-mortem is worth reading."""
+
+    def _load(self):
+        self.assertTrue(PARALLEL_EXECUTION_MD.is_file())
+        return PARALLEL_EXECUTION_MD.read_text(encoding="utf-8")
+
+    def test_parallel_execution_md_has_post_mortem_section(self):
+        body = self._load()
+        self.assertIn(
+            "## 8. Self-test post-mortem", body,
+            "parallel-execution.md must gain a § 8 'Self-test post-mortem' section",
+        )
+
+    def test_parallel_execution_md_links_post_mortem_file(self):
+        body = self._load()
+        self.assertIn(
+            "scripts/tests/fixtures/self-test/POST-MORTEM.md", body,
+            "parallel-execution.md must link to the POST-MORTEM.md file",
+        )
+
+    def test_link_framing_explains_the_why(self):
+        """A bare link is worse than a link with framing. The section
+        must explain why the post-mortem is worth reading (it's the
+        known-good dogfood run evidence)."""
+        body = self._load()
+        self.assertIn("known-good dogfood run", body)
+        self.assertIn("PHASE_013", body,
+                      "framing must name the phase that produced the run")
 
 
 if __name__ == "__main__":
