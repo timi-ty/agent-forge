@@ -154,12 +154,14 @@ class TestUpdateDocsCarryPrecheckContract(unittest.TestCase):
     def test_both_docs_have_schema_precheck_step(self):
         """Long-form update.md uses 'Step 0' and the workspace mirror
         uses 'Step 0.5' because Cursor's template already carries a
-        'Step 0: Resolve tool paths'. Either heading shape satisfies
-        the contract -- it just has to exist before the procedure."""
+        'Step 0: Resolve tool paths'. The heading text is identical
+        across both docs ('Schema Version Precheck' with Title-Case P),
+        so the assertion is a single exact-substring match rather than
+        an or-clause over case variants."""
         for doc in self.DOCS:
             body = self._read(doc)
-            self.assertTrue(
-                "Schema Version Precheck" in body or "Schema Version precheck" in body,
+            self.assertIn(
+                "Schema Version Precheck", body,
                 f"{doc.name} must have a 'Schema Version Precheck' section",
             )
 
