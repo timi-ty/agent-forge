@@ -721,10 +721,10 @@
     {
       "id": "PHASE_012",
       "slug": "release-readiness",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["PHASE_001"],
       "started": "2026-04-20T12:10:00Z",
-      "completed": null,
+      "completed": "2026-04-20T13:20:00Z",
       "units": [
         {
           "id": "unit_051",
@@ -755,8 +755,14 @@
         {
           "id": "unit_053",
           "description": "Update skills/development-harness/commands/update.md (and the workspace template) to detect schema_version mismatch between installed harness and skill; emit a pointer to the recreate flow; test coverage via a v1 fixture",
-          "status": "pending",
-          "validation_evidence": []
+          "status": "completed",
+          "validation_evidence": [
+            "skills/development-harness/commands/update.md: added a new Step 0 'Schema Version Precheck' at the top of the steps list (before 'Read All Harness Files') that invokes validate_harness.py and branches on its output. Exit 0 proceeds to normal update flow. Exit 1 with '/create-development-harness' in the error output surfaces a verbatim advisory to the user pointing at the recreate flow + preserving ROADMAP.md + PHASES/*.md + cross-linking SKILL.md § Version upgrades + the policy statement 'no migration script is provided by design'. Also explicitly forbids in-place migration ('Do NOT attempt in-place migration. Do NOT enter Plan Mode.'). Exit 1 without the pointer is a different structural problem and reports errors generically. The pre-existing 'Schema migration' row in the Categorize-the-Change table was removed + replaced with a blockquote noting that schema_version bumps are NOT a category (they trigger the Step 0 rejection). The pre-existing Step 10 Schema Migration section was rewritten to 'Schema Migration (not supported)' with the refusal language + redirect instruction",
+            "skills/development-harness/templates/workspace-commands/update-development-harness.md: mirrored the edits for the Cursor/workspace variant. Uses 'Step 0.5: Schema Version Precheck' (the template already had a 'Step 0: Resolve tool paths' from earlier work, so the precheck is numbered 0.5 to sit between tool-path resolution and the main procedure). Body is substantively identical -- same validate_harness invocation, same advisory text, same 'Do NOT attempt' forbidding, same 'no migration script is provided by design' policy statement, same SKILL.md cross-link, same Schema Migration (not supported) section. Ensures Cursor and Claude Code installs produce identical user-facing behavior on a schema mismatch",
+            "skills/development-harness/scripts/tests/test_update_command.py: new 230-line test module with 2 classes and 9 cases. TestV1FixtureTripsSchemaMismatch (2) seeds a v1-shaped harness workspace (all 4 JSON files at schema_version '1.0') and invokes validate_harness.py via subprocess exactly as Step 0/0.5 instructs. test_v1_fixture_produces_recreate_pointer asserts returncode == 1 + valid flag false + '/create-development-harness' in joined error output (the end-to-end user-flow assertion). test_v1_all_four_json_files_referenced_in_errors asserts all 4 filenames appear in the errors so the update doc can tell the user exactly which files will be regenerated. TestUpdateDocsCarryPrecheckContract (7) pins the doc-shape contract across BOTH update.md and workspace-commands/update-development-harness.md: Schema Version Precheck section exists, validate_harness.py is named as the precheck tool, /create-development-harness + 'older schema' pointer language present, verbatim 'no migration script is provided by design' (lowercase match), SKILL.md § Version upgrades cross-link, 'Do NOT attempt' forbidding present, AND a long-doc-specific assertion that the pre-unit_053 'Schema migration' table row is gone (catches regression)",
+            "Grounding: every test claim matches verified runtime behavior. validate_harness.py's v1 rejection is pinned by test_validate_harness.py (PHASE_001 unit_006). The joined-errors substring contract ('/create-development-harness' + all 4 JSON filenames) is the exact behavior that file's tests confirm. This unit's tests wrap that validator behavior in a /update-flow labeled context so the doc-shape + user-flow contract is verified end to end",
+            "Validation evidence with per-layer timing: python -m py_compile skills/development-harness/scripts/tests/test_update_command.py exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_update_command -v passes 9/9 (0.2s); python -m unittest discover skills/development-harness/scripts/tests passes 320/321 with 1 OS-specific skip (38.3s, up from 312 -- 9 new cases for unit_053). PHASE_012 closes: all three units (051 + 052 + 053) have validation_evidence; phase marked completed"
+          ]
         }
       ]
     },

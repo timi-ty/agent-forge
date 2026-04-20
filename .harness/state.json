@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T12:50:00Z",
+  "last_updated": "2026-04-20T13:20:00Z",
   "execution": {
-    "active_phase": "PHASE_012",
-    "active_unit": "unit_053",
-    "last_completed_unit": "unit_052",
-    "next_unit": "unit_053",
-    "session_count": 50,
+    "active_phase": "PHASE_013",
+    "active_unit": "unit_054",
+    "last_completed_unit": "unit_053",
+    "next_unit": "unit_054",
+    "session_count": 51,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T12:50:00Z",
+    "last_run": "2026-04-20T13:20:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_skill_md_version_upgrades -v passes 8/8 (0.002s); python -m unittest discover skills/development-harness/scripts/tests passes 311/312 with 1 OS-specific skip (38.2s, up from 304 -- 8 new cases for unit_052)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_update_command -v passes 9/9 (0.2s); python -m unittest discover skills/development-harness/scripts/tests passes 320/321 with 1 OS-specific skip (38.3s, up from 312 -- 9 new cases for unit_053)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_052 complete. skills/development-harness/SKILL.md gained a new 'Version upgrades' section placed between 'Python Detection' and 'Key Principle'. Three numbered steps: (1) Re-run /create-development-harness when schema_version bumps; (2) ROADMAP.md + PHASES/*.md are preserved (the recreate flow reads them and rebuilds around them -- real product/planning work is never regenerated from scratch); (3) Lists the 4 core regenerated files (state.json, phase-graph.json, checkpoint.md, manifest.json) + scripts + workspace commands + hook/rule files so users with hand-edits know those edits will be lost. Followed by the load-bearing paragraph 'No migration script is provided by design' verbatim (per acceptance criterion). Cost argument named explicitly + cross-link to config.execution_mode.versioning.break_on_schema_bump (the break->true default from unit_048) as the config knob that enforces the policy. Users who want in-place migration attempts can flip to break_on_schema_bump: false but know upfront that the harness ships no migration tooling. New test_skill_md_version_upgrades.py (150 LOC, 8 cases across 3 classes) pins heading + position-order (before Key Principle so readers find it on schema-mismatch errors) + 5 acceptance-criterion tokens (Re-run + /create-development-harness, ROADMAP.md + PHASES/*.md + preserved, verbatim 'no migration script is provided by design' lowercase match, cost argument, break_on_schema_bump config mention) + regenerated-files listing so hand-edit users aren't surprised. Suite 304 -> 312.",
+    "summary": "unit_053 complete. PHASE_012 CLOSED. skills/development-harness/commands/update.md gained a Step 0 'Schema Version Precheck' that runs validate_harness.py first and rejects mismatched schemas with a verbatim advisory pointing at /create-development-harness + preserving ROADMAP + PHASES + cross-linking SKILL.md § Version upgrades + the 'no migration script is provided by design' policy line + explicit 'Do NOT attempt in-place migration' forbidding. The pre-existing 'Schema migration' row in the Categorize-the-Change table was removed + replaced with a blockquote noting schema_version bumps are not a category. Step 10 'Schema Migration' rewritten to 'Schema Migration (not supported)' with the refusal + redirect. Workspace template mirrors all changes as 'Step 0.5' (sits between the pre-existing 'Step 0: Resolve tool paths' and the main procedure). New test_update_command.py (230 LOC, 9 cases) covers both halves of the acceptance: TestV1FixtureTripsSchemaMismatch (2) seeds a v1-shaped workspace and invokes validate_harness.py exactly as the doc instructs, asserting returncode 1 + '/create-development-harness' + all 4 JSON filenames in the joined errors; TestUpdateDocsCarryPrecheckContract (7) pins the doc-shape contract across BOTH docs (precheck section, validate_harness naming, 'older schema' pointer, verbatim 'no migration script is provided by design', SKILL.md Version upgrades cross-link, 'Do NOT attempt' forbidding) + a long-doc-specific assertion that the pre-unit_053 Schema migration table row is gone. PHASE_012 final summary: unit_051 (readiness checklist + 13 tests), unit_052 (Version upgrades section + 8 tests), unit_053 (update-command precheck + 9 tests). Suite 291 -> 321. pr-review-checklist: all 3 units have validation_evidence; no linter/type errors (stdlib-only); tests pass 320/321 + 1 OS skip; not deploy-affecting; phase doc + checkpoint + state current. PHASE_012 marked completed.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_053 (PHASE_012): update skills/development-harness/commands/update.md and skills/development-harness/templates/workspace-commands/update-development-harness.md to detect schema_version mismatch between the installed .harness/ and the installed skill; emit a pointer to /create-development-harness with a one-line explanation; do not attempt auto-migration. Validation: both docs instruct the mismatch detection + pointer behavior; v1 fixture test asserts the message is emitted via python -m unittest skills.development-harness.scripts.tests.test_update_command. This is the LAST unit of PHASE_012 -- after it lands, open the phase PR, run code-review, squash-merge per autonomous-merge authorization.",
-    "timestamp": "2026-04-20T12:50:00Z"
+    "next_action": "Open PHASE_012 PR (feat/phase-012-release-readiness -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_013 unit_054: create skills/development-harness/scripts/tests/fixtures/self-test/ throwaway workspace with a 2-phase / 6-unit mini-CRUD roadmap designed to exercise a batch >= 2 plus one merge conflict and one scope violation. This is the start of the harness-self-test phase -- the harness uses its own parallel machinery against a throwaway project to verify end-to-end correctness.",
+    "timestamp": "2026-04-20T13:20:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
