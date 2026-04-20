@@ -53,6 +53,16 @@ PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
 
 All command files use `$PY` to invoke Python scripts. Run this detection once per shell session before calling any harness command.
 
+## Version upgrades
+
+When the skill's `schema_version` bumps (e.g., v1 → v2), existing harnesses become incompatible and `validate_harness.py` rejects them with a pointer to re-create. The upgrade path is:
+
+1. **Re-run `/create-development-harness`** to regenerate `.harness/` artifacts at the new schema version.
+2. **`ROADMAP.md` and `PHASES/*.md` are preserved** — the recreate flow reads them and rebuilds the harness around them. Product intent (ROADMAP) and phase contracts (PHASES) never get regenerated from scratch.
+3. Harness-owned files that do get regenerated: `state.json`, `phase-graph.json`, `checkpoint.md`, `manifest.json`, the scripts under `.harness/scripts/`, the workspace commands, and the hook/rule files.
+
+**No migration script is provided by design.** The cost of a reliable general-purpose migration (covering every schema-version delta across every downstream file) exceeds the cost of regenerating with `ROADMAP.md` + `PHASES/*.md` as the preserved inputs. `config.execution_mode.versioning.break_on_schema_bump: true` (the default, set during Phase 2 of `/create-development-harness`) enforces this — if a user prefers in-place migration attempts they can opt into `break_on_schema_bump: false`, but the harness ships no migration tooling to back that choice up.
+
 ## Key Principle
 
 The harness builds a task-closing machine, not a project-finishing fantasy. Every unit of work must have a validator. Every completed unit must have evidence. Every phase completion must pass an internal review checklist. Deployment truth gates block deploy-affecting phases until verification passes.

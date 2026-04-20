@@ -8,6 +8,21 @@ Plan Mode. Research first, ask the user what they want, draft a plan, save it, e
 
 ## Steps
 
+### 0. Schema Version Precheck
+
+Before anything else, run `validate_harness.py` to confirm the installed `.harness/` matches the installed skill's schema version:
+
+```
+$PY .harness/scripts/validate_harness.py
+```
+
+- **Exit 0 (valid)** — continue to Step 1.
+- **Exit 1 (invalid) with `/create-development-harness` in the error output** — the harness is on an older schema than the skill. **Stop here.** Surface the validator's error messages verbatim and tell the user:
+  > "The harness on disk is on an older schema than the installed skill. Re-run `/create-development-harness` to regenerate `.harness/` artifacts at the current schema version. `ROADMAP.md` and `PHASES/*.md` are preserved by the recreate flow. See `SKILL.md` § 'Version upgrades' for the full policy — **no migration script is provided by design**."
+
+  Do NOT attempt in-place migration. Do NOT enter Plan Mode. The `/update-development-harness` command does not own schema migration; `/create-development-harness` is the only supported upgrade path.
+- **Exit 1 (invalid) without the `/create-development-harness` pointer** — a different structural problem (malformed JSON, missing required keys). Report the errors and stop.
+
 ### 1. Read All Harness Files
 
 Read these to understand current state:
@@ -34,8 +49,9 @@ Classify the requested change into one or more categories:
 | **Configuration change** | Git policy, deployment config, testing config, stack info |
 | **Validation policy change** | Adjust which validation layers are required |
 | **Loop behavior change** | Budget, stop conditions, hook parameters |
-| **Schema migration** | `schema_version` bump (v1 only handles trivial same-version case) |
 | **Hook changes** | Add, modify, or remove hooks in the tool's hooks directory |
+
+> `schema_version` bumps are NOT a category — they are detected by Step 0 and redirected to `/create-development-harness`. See "Schema Migration (not supported)" below.
 
 ### 4. Check Ownership
 
@@ -96,16 +112,11 @@ If validation fails, fix the issues before continuing.
 - If phase graph changed, update `execution` pointers
 - Update `checkpoint.md` to reflect the changes made
 
-### 10. Schema Migration
+### 10. Schema Migration (not supported)
 
-If `schema_version` changes are involved:
+`/update-development-harness` does NOT perform schema-version migrations. Schema mismatches are detected and rejected by Step 0 above. The only supported upgrade path is re-running `/create-development-harness` — it preserves `ROADMAP.md` and `PHASES/*.md` while regenerating the rest of `.harness/`. **No migration script is provided by design** (see `SKILL.md` § 'Version upgrades' for the cost rationale).
 
-1. Read old schema
-2. Transform data to new schema format
-3. Write with new `schema_version`
-4. v1 only implements the trivial case (same `schema_version`, no transformation needed)
-
-If a non-trivial migration is requested, explain that v1 does not support it and suggest manual steps.
+If the user's requested change happens to need a schema bump, tell them so and redirect to `/create-development-harness`. Do not attempt to edit `schema_version` values in place.
 
 ## Guardrails
 
