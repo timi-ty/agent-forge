@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T08:15:00Z",
+  "last_updated": "2026-04-20T08:45:00Z",
   "execution": {
     "active_phase": "PHASE_010",
-    "active_unit": "unit_043",
-    "last_completed_unit": "unit_042",
-    "next_unit": "unit_043",
-    "session_count": 40,
+    "active_unit": "unit_044",
+    "last_completed_unit": "unit_043",
+    "next_unit": "unit_044",
+    "session_count": 41,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T08:15:00Z",
+    "last_run": "2026-04-20T08:45:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_harness_state_docs -v passes 5/5 (0.002s); python -m unittest discover skills/development-harness/scripts/tests passes 215/215 (33.5s, up from 210 -- 5 new cases for unit_042)"
+    "evidence": "python -m py_compile exits 0 on dispatch_batch.py + merge_batch.py + tests/test_batch_logs.py (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_batch_logs -v passes 6/7 with 1 OS-specific skip (2.9s); pre-existing test_dispatch_batch + test_merge_batch still pass 31/31; python -m unittest discover skills/development-harness/scripts/tests passes 221/222 with 1 skip (40.2s, up from 215 -- 7 new cases for unit_043)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_042 complete. Both /harness-state docs (skills/development-harness/commands/state.md + templates/workspace-commands/harness-state.md) updated to render three new sections in the output report: Fleet & Batch (from state.execution.fleet, mirroring checkpoint-template.md's Batch columns so consumers cross-reference), Orphans (from sync_harness.py -- the three divergence categories orphan_worktree, stale_fleet_entry, orphan_branch, with explicit 'No orphans detected.' empty render), and Batch Timings (from .harness/logs/<batch_id>/ with the exact one-line format 'Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns', with explicit 'Batch timings: unavailable' fallback and explicit ban on git-timestamp inference). New Honesty Rules pin the never-omit behavior for Orphans + Batch Timings -- absence is a reported fact. New test_harness_state_docs.py module with 5 cases locks the contract: Fleet & Batch heading + fleet.* references; Orphans heading + sync_harness.py mention + all three divergence categories + empty-case render; Batch Timings heading + exact format string + fallback render; .harness/logs/ directory reference; git-timestamp inference ban. Suite 210 -> 215.",
+    "summary": "unit_043 complete. Log-directory creation logic landed in dispatch_batch.py and merge_batch.py with best-effort semantics at both the helper AND the call site. dispatch_batch writes .harness/logs/<batch_id>/batch.json (batch plan + dispatched fleet + ISO timestamp) after the fleet is built. merge_batch writes merge.log (grep-friendly: batch_id/outcome/merged/conflicted/skipped with one '- <unit_id>' bullet per entry) and validation.log (validator_ok: True|False + the validator's evidence string) -- both wrapped in try/except Exception, and validation.log writes BEFORE the validation-failure rollback branch so a failed batch still leaves evidence on disk. Empty-fleet short-circuit writes NO logs (nothing ran to log -- the absence is itself the reported fact). New test_batch_logs.py (290 LOC, 7 cases, 1 OS-specific skip): happy-path batch.json, happy-path merge.log + validation.log, validation-failure still writes both logs, empty-fleet writes no log, helpers swallow OSError on read-only dirs (Linux/Mac) or via empty batch_id guard (cross-platform), and -- crucially -- dispatch_batch survives when the helper is monkeypatched to always raise OSError (proves the call-site try/except is load-bearing, not just the helper's internal swallow). sub-agent <unit_id>.md summaries remain sub-agent-owned per the harness-unit contract; no orchestrator code needed. .harness/.gitignore already carries logs/ from harness creation. Suite 215 -> 222 (221 + 1 Windows skip). First Windows-aware skip in the suite -- the skip message points at the equivalent cross-platform coverage for substance traceability.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_043 (PHASE_010): implement log-directory creation logic in dispatch_batch.py (creates .harness/logs/<batch_id>/batch.json at dispatch time with the full batch plan + overlap analysis) and merge_batch.py (writes merge.log with the merge output, validation.log with post-merge validation output). Sub-agent <unit_id>.md summaries are written by sub-agents per the harness-unit contract -- no orchestrator code needed there, but confirm the path. Logs must be harness-owned and gitignored -- add .harness/logs/ to .gitignore if not present. Wrap all log writes in try/except so merge is not blocked by log-dir issues. Validation: new test_batch_logs.py module asserting dispatch+merge produce the expected artifacts in a temp-dir fixture.",
-    "timestamp": "2026-04-20T08:15:00Z"
+    "next_action": "Complete unit_044 (PHASE_010): integration test that runs a sample batch end-to-end (compute_parallel_batch -> dispatch_batch -> fake sub-agent commits -> merge_batch) and asserts ALL four log artifacts exist with non-empty content: batch.json (JSON-decodable), merge.log (contains expected outcome + unit_ids), validation.log (contains validator message), AND <unit_id>.md (sub-agent summary). The sub-agent summary is nominally agent-written; for this test, fabricate one inline as the sub-agent would. Best place to put it: extend tests/integration/test_invoke_rewrite.py with a new class TestBatchLogArtifactsEndToEnd, since that module already has the two-fixture infrastructure. Validation: the integration test exits 0; full suite still green.",
+    "timestamp": "2026-04-20T08:45:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

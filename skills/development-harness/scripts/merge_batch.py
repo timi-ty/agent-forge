@@ -63,6 +63,7 @@ from harness_utils import find_harness_root, now_iso, read_json, write_json
 
 HARNESS_DIR = ".harness"
 LOCK_FILENAME = ".lock"
+LOGS_DIR = "logs"
 
 VALID_STRATEGIES = ("abort_batch", "serialize_conflicted")
 
@@ -215,6 +216,57 @@ def _prune_empty_dir(path):
             path.rmdir()
     except OSError:
         pass
+
+
+def _write_batch_log(root, batch_id, filename, content):
+    """Best-effort append-or-write of one log artifact under
+    ``.harness/logs/<batch_id>/``. Log writes never block the merge --
+    a missing or unwritable log dir is a reportability miss, not a
+    correctness failure. Returns ``True`` on success, ``False`` on any
+    ``OSError``.
+
+    ``content`` accepts a dict/list (serialized as JSON) or a string
+    (written verbatim).
+    """
+    if not batch_id:
+        return False
+    try:
+        log_dir = Path(root) / HARNESS_DIR / LOGS_DIR / batch_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+        target = log_dir / filename
+        if isinstance(content, (dict, list)):
+            target.write_text(
+                json.dumps(content, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        else:
+            target.write_text(str(content), encoding="utf-8")
+        return True
+    except OSError:
+        return False
+
+
+def _render_merge_log(batch_id, result):
+    """Render a human-readable merge summary for .harness/logs/<batch>/merge.log.
+
+    Keep the shape grep-friendly: one header line, then one bullet per
+    unit category (merged/conflicted/skipped). Consumers (the /harness-state
+    renderer, humans debugging a failed batch) parse this as text.
+    """
+    lines = [
+        f"batch_id: {batch_id}",
+        f"outcome: {result['outcome']}",
+        f"merged ({len(result['merged'])}):",
+    ]
+    for uid in result["merged"]:
+        lines.append(f"  - {uid}")
+    lines.append(f"conflicted ({len(result['conflicted'])}):")
+    for uid in result["conflicted"]:
+        lines.append(f"  - {uid}")
+    lines.append(f"skipped ({len(result['skipped'])}):")
+    for uid in result["skipped"]:
+        lines.append(f"  - {uid}")
+    return "\n".join(lines) + "\n"
 
 
 def _is_within_scope(file_path, touches_paths):
@@ -436,6 +488,17 @@ def _merge_batch_locked(
     if merged:
         ok, evidence = validator(root, list(merged))
         validation_evidence = evidence
+        # Observability: persist the validator's message regardless of
+        # outcome. Runs before the rollback branch below so a failed
+        # validation still leaves a .harness/logs/<batch>/validation.log
+        # to inspect. Best-effort; never blocks merge on a log error.
+        try:
+            _write_batch_log(
+                root, batch_id, "validation.log",
+                f"validator_ok: {ok}\n{evidence}\n",
+            )
+        except Exception:
+            pass
         if not ok:
             _reset_hard(root, pre_merge_ref)
             for unit in units:
@@ -448,7 +511,7 @@ def _merge_batch_locked(
                     }
             fleet["mode"] = "idle"
             fleet["units"] = units
-            return {
+            result = {
                 "batch_id": batch_id,
                 "outcome": "validation_failed",
                 "merged": [],
@@ -456,6 +519,14 @@ def _merge_batch_locked(
                 "skipped": skipped,
                 "validation_evidence": evidence,
             }
+            try:
+                _write_batch_log(
+                    root, batch_id, "merge.log",
+                    _render_merge_log(batch_id, result),
+                )
+            except Exception:
+                pass
+            return result
 
     for unit in units:
         if unit.get("status") == "merged":
@@ -474,7 +545,7 @@ def _merge_batch_locked(
 
     fleet["mode"] = "idle"
     fleet["units"] = units
-    return {
+    result = {
         "batch_id": batch_id,
         "outcome": _compute_outcome(merged, conflicted, skipped, aborted),
         "merged": merged,
@@ -482,6 +553,16 @@ def _merge_batch_locked(
         "skipped": skipped,
         "validation_evidence": validation_evidence,
     }
+    # Observability: write a grep-friendly merge summary for
+    # /harness-state and post-hoc inspection. Best-effort; never
+    # blocks the merge on a log error.
+    try:
+        _write_batch_log(
+            root, batch_id, "merge.log", _render_merge_log(batch_id, result),
+        )
+    except Exception:
+        pass
+    return result
 
 
 def main():

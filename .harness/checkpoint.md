@@ -1,54 +1,49 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_042 (PHASE_010):** `/harness-state` docs now render fleet + orphans + per-batch timings.
+**unit_043 (PHASE_010):** Log-directory creation landed in [dispatch_batch.py](skills/development-harness/scripts/dispatch_batch.py) + [merge_batch.py](skills/development-harness/scripts/merge_batch.py) with best-effort semantics at both the helper AND the call site.
 
-Both [commands/state.md](skills/development-harness/commands/state.md) and the workspace-commands mirror [templates/workspace-commands/harness-state.md](skills/development-harness/templates/workspace-commands/harness-state.md) gained three new output sections plus the procedural steps that populate them:
+### What writes where
+| Artifact | Writer | When |
+|----------|--------|------|
+| `.harness/logs/<batch_id>/batch.json` | `dispatch_batch` | After fleet is built. Content: `{batch_id, dispatched_at, batch_plan, fleet}`. |
+| `.harness/logs/<batch_id>/merge.log` | `merge_batch` | At the end of every non-empty flow (happy path AND validation-failure rollback path). Grep-friendly: `batch_id`, `outcome`, and `merged`/`conflicted`/`skipped` sections each with `- <unit_id>` bullets. |
+| `.harness/logs/<batch_id>/validation.log` | `merge_batch` | Whenever the validator runs, **before** the rollback branch so a failed validation still leaves evidence. Content: `validator_ok: True\|False\n<evidence>\n`. |
+| `.harness/logs/<batch_id>/<unit_id>.md` | sub-agent | Written by the sub-agent per the harness-unit contract. No orchestrator code here. |
 
-- **Fleet & Batch** — reads `state.execution.fleet.mode`, `.batch_id`, `.units[]`; reuses the per-unit table columns from unit_041's checkpoint-template Batch section so consumers can cross-reference.
-- **Orphans** — runs [sync_harness.py](skills/development-harness/scripts/sync_harness.py) (read-only reporter); renders the three divergence categories `orphan_worktree`, `stale_fleet_entry`, `orphan_branch`. When `divergences[]` is empty, the doc explicitly requires rendering `"No orphans detected."` — absence is a reported fact, not an omission.
-- **Batch Timings** — sources from `.harness/logs/<batch_id>/` (to be created by unit_043); specifies the exact one-line format:
-  ```
-  Batch <batch_id>: dispatched HH:MM:SS, merged HH:MM:SS, total Ns
-  ```
-  Fallback when no logs: `"Batch timings: unavailable"`. Git-timestamp inference is **explicitly forbidden** — the logs are authoritative.
+### Non-blocking guarantee
+Every log write is wrapped in try/except **both** inside the helper (catches `OSError`) **and** at the call site (catches `Exception`). A future helper change that raises a different error type cannot break dispatch or merge. `TestLogWritesAreBestEffort.test_dispatch_succeeds_even_if_log_write_fails` monkeypatches the helper to always raise `OSError` and asserts `dispatch_batch` still produces a dispatched fleet — this caught a real gap during unit_043 implementation (the initial version had only the helper-level except; the test forced the call-site wrap).
 
-Two new **Honesty Rules** pin the never-omit behavior for Orphans and Batch Timings so an agent can't skip the section when empty/unavailable.
+### Empty fleet writes no log
+The empty-fleet short-circuit in `merge_batch` returns before any log write — nothing ran, so nothing to log. Absence is itself a reported fact (pinned by `test_empty_fleet_writes_no_log`).
 
-### New regression test
-[test_harness_state_docs.py](skills/development-harness/scripts/tests/test_harness_state_docs.py) — 5 cases in `TestHarnessStateDocCoverage`:
-1. Fleet & Batch heading present in both docs + `fleet.mode`/`fleet.batch_id`/`fleet.units` references.
-2. Orphans heading + `sync_harness.py` mention + all three divergence categories + the empty-case "No orphans detected." render.
-3. Batch Timings heading + exact timing-line format string + "Batch timings: unavailable" fallback.
-4. `.harness/logs/` directory layout reference present (so the agent knows where to look once unit_043 lands).
-5. Explicit git-timestamp-inference ban present in both docs.
+### Test suite
+[test_batch_logs.py](skills/development-harness/scripts/tests/test_batch_logs.py) — 7 cases, 1 OS-specific skip:
+- `TestDispatchWritesBatchJson` (1): happy-path batch.json presence + key shape.
+- `TestMergeWritesMergeAndValidationLogs` (3): happy path, validation-failure still writes both logs, empty-fleet writes no logs.
+- `TestLogWritesAreBestEffort` (3): empty-batch_id guard; read-only dir swallowed (skipped on Windows with pointer to equivalent coverage); call-site survives helper raising.
 
-### Grounding
-`sync_harness.py` is read-only (always a reporter, never a mutator). The phase doc's "sync_harness.py --dry-run" phrasing is simplified to plain `sync_harness.py` in both command docs to match actual script behavior. The three divergence categories are the exact set emitted at [sync_harness.py:211–255](skills/development-harness/scripts/sync_harness.py#L211-L255).
+`.harness/.gitignore` already carries `logs/` from harness creation — no change needed there.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_043 (PHASE_010):** implement log-directory creation logic.
+**Complete unit_044 (PHASE_010):** integration test running a sample batch end-to-end and asserting ALL four log artifacts exist with non-empty content: `batch.json` (JSON-decodable), `merge.log` (expected outcome + unit_ids), `validation.log` (validator message), AND `<unit_id>.md` (sub-agent summary — nominally agent-written; for this test fabricate one inline as the sub-agent would).
 
-- `dispatch_batch.py` — create `.harness/logs/<batch_id>/batch.json` at dispatch time with the full batch plan + overlap analysis.
-- `merge_batch.py` — write `merge.log` (merge output) and `validation.log` (post-merge validation output) under `.harness/logs/<batch_id>/`.
-- Sub-agent `<unit_id>.md` summaries are written by sub-agents per the harness-unit contract — confirm the path, no orchestrator code needed.
-- Logs must be harness-owned and gitignored — add `.harness/logs/` to `.gitignore` if not already present.
-- Wrap all log writes in `try/except` so merge is not blocked by log-dir issues (per phase doc rollback guidance).
-- New `test_batch_logs.py` asserts dispatch + merge produce the expected artifacts in a temp-dir fixture.
+Best location: extend [tests/integration/test_invoke_rewrite.py](skills/development-harness/scripts/tests/integration/test_invoke_rewrite.py) with a new `TestBatchLogArtifactsEndToEnd` class, reusing the two-fixture infrastructure that module already has.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/commands/state.md](skills/development-harness/commands/state.md): three new procedural steps (2b, 2c) + three new Output Report sections (Fleet & Batch, Orphans, Batch Timings) + two new Honesty Rules.
-- [skills/development-harness/templates/workspace-commands/harness-state.md](skills/development-harness/templates/workspace-commands/harness-state.md): mirror edits.
-- [skills/development-harness/scripts/tests/test_harness_state_docs.py](skills/development-harness/scripts/tests/test_harness_state_docs.py): new 120-line test module, 5 cases.
-- `python -m py_compile` → 0 (~0.1s) on new test file.
-- `python -m unittest skills.development-harness.scripts.tests.test_harness_state_docs -v` → **5/5** in 0.002s.
-- `python -m unittest discover skills/development-harness/scripts/tests` → **215/215** (up from 210) in 33.5s.
+- [skills/development-harness/scripts/dispatch_batch.py](skills/development-harness/scripts/dispatch_batch.py): new `_write_batch_log` helper + batch.json write after fleet construction.
+- [skills/development-harness/scripts/merge_batch.py](skills/development-harness/scripts/merge_batch.py): helper + `_render_merge_log` renderer + 3 call sites (validation.log, merge.log on validation-failure early-return, merge.log on happy-path return).
+- [skills/development-harness/scripts/tests/test_batch_logs.py](skills/development-harness/scripts/tests/test_batch_logs.py): new 290-line test module, 7 cases, 1 OS-specific skip.
+- `python -m py_compile` → 0 (~0.1s) on all three changed files.
+- `python -m unittest skills.development-harness.scripts.tests.test_batch_logs -v` → **6/7** + 1 skip (2.9s).
+- Pre-existing `test_dispatch_batch` + `test_merge_batch` → **31/31** still pass (13.7s).
+- `python -m unittest discover skills/development-harness/scripts/tests` → **221/222** + 1 skip (40.2s, up from 215).
 
 ## Open Questions
 None.
@@ -64,9 +59,9 @@ None.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 40 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_010 progress: **2/4 units done** (041 checkpoint Batch section, 042 `/harness-state` renderer). Remaining: 043 log-directory creation in dispatch/merge, 044 integration assertions.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → **215** across phases so far.
+- `session_count` is 41 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_010 progress: **3/4 units done** (041 checkpoint Batch section, 042 `/harness-state` renderer, 043 log-directory creation). Remaining: 044 integration assertions.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → **222** across phases so far.
 
 ## Batch (current or last)
 
@@ -82,4 +77,4 @@ Reflects `state.execution.fleet`. When `mode == "idle"` and no batch has run yet
 No conflicts.
 
 ---
-*Updated: 2026-04-20T08:15:00Z*
+*Updated: 2026-04-20T08:45:00Z*

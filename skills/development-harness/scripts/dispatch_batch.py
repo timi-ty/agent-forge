@@ -27,10 +27,36 @@ from harness_utils import find_harness_root, now_iso, read_json, write_json
 
 HARNESS_DIR = ".harness"
 WORKTREES_DIR = "worktrees"
+LOGS_DIR = "logs"
 
 
 class DispatchError(RuntimeError):
     """Raised when dispatch fails after rollback of partial state."""
+
+
+def _write_batch_log(root, batch_id, filename, payload):
+    """Best-effort write of one log artifact under ``.harness/logs/<batch_id>/``.
+
+    Log writes must never block the orchestrator -- a missing or
+    unwritable log dir is a reportability miss, not a correctness
+    failure. Wraps every step in ``try/except OSError``; on failure it
+    returns ``False`` without raising. The caller may log but must not
+    propagate.
+    """
+    try:
+        log_dir = Path(root) / HARNESS_DIR / LOGS_DIR / batch_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+        target = log_dir / filename
+        if isinstance(payload, (dict, list)):
+            target.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        else:
+            target.write_text(str(payload), encoding="utf-8")
+        return True
+    except OSError:
+        return False
 
 
 def _worktree_relpath(batch_id, unit_id):
@@ -158,6 +184,28 @@ def dispatch_batch(batch_result, root, state=None, now=None):
     fleet = {"mode": "dispatched", "batch_id": batch_id, "units": fleet_units}
     if state is not None:
         state.setdefault("execution", {})["fleet"] = fleet
+
+    # Observability: snapshot the batch plan + dispatched fleet under
+    # .harness/logs/<batch_id>/batch.json for /harness-state and
+    # post-hoc inspection. Best-effort; a log write failure never
+    # aborts a successful dispatch -- the outer try/except catches
+    # anything the helper misses (it shouldn't, but the call site
+    # owns the non-blocking guarantee).
+    try:
+        _write_batch_log(
+            root,
+            batch_id,
+            "batch.json",
+            {
+                "batch_id": batch_id,
+                "dispatched_at": ts,
+                "batch_plan": batch_result,
+                "fleet": fleet,
+            },
+        )
+    except Exception:
+        pass
+
     return {"batch_id": batch_id, "fleet": fleet}
 
 
