@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T10:15:00Z",
+  "last_updated": "2026-04-20T10:40:00Z",
   "execution": {
     "active_phase": "PHASE_011",
-    "active_unit": "unit_045",
-    "last_completed_unit": "unit_bugfix_002",
-    "next_unit": "unit_045",
-    "session_count": 44,
+    "active_unit": "unit_046",
+    "last_completed_unit": "unit_045",
+    "next_unit": "unit_046",
+    "session_count": 45,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T10:15:00Z",
+    "last_run": "2026-04-20T10:40:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile on 3 changed/new Python files exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_continue_loop_claude -v passes 9/9 (0.7s); python -m unittest skills.development-harness.scripts.tests.test_claude_code_continuation_docs -v passes 12/12 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 243/244 with 1 OS-specific skip (38.7s, up from 228 -- 16 new cases + 9 rewritten cases for unit_bugfix_002)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_architecture_parallel_section -v passes 10/10 (0.003s); python -m unittest discover skills/development-harness/scripts/tests passes 253/254 with 1 OS-specific skip (37.8s, up from 244 -- 10 new cases for unit_045)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_bugfix_002 complete. ISSUE_002 RESOLVED. All four sub-edits landed in one commit. (a) New references/claude-code-continuation.md documents the protocol mismatch (Cursor's followup_message has no guard; Claude Code's stop_hook_active is a one-shot that persists for the session + built-in loop-guard floor) and the two-track fix (Claude Code precondition-only + /loop, Cursor unchanged). (b) templates/claude-code/hooks/continue-loop.py rewritten to precondition-only shape: same authority chain (fleet.mode, loop_budget, blockers, open_questions, selector+checkpoint agreement) but outputs a single-line advisory ('proceed: <unit> in <phase>' or 'stop: <reason>'), ALWAYS exits 0, cleans up .invoke-active + .parallel-disabled + .parallel-failures.jsonl on every path. No more sys.exit(2), no more {'decision': 'block'} JSON. The stop_hook_active input is read but unused -- in precondition mode there is nothing to guard against. (c) commands/invoke.md + templates/workspace-commands/invoke-development-harness.md both gained 'Claude Code: run under /loop' sections pointing users at '/loop /invoke-development-harness' with explicit 'one batch per turn' framing on direct invocation and 'Cursor is unchanged' reassurance. (d) commands/create.md Phase 5 Claude Code branch now preambles the JSON with the hook's precondition-checker role description + 'does NOT emit {'decision': 'block'} or exit(2)' negating callout + link to the new reference. Cursor side is diff-zero. 16 new test cases + 9 rewritten: test_continue_loop_claude.py flipped from block-continue contract to precondition-only (4 fleet cases + 2 full-chain proceed cases + 1 flag-absent no-op + 2 budget/blockers cases); new test_claude_code_continuation_docs.py pins the doc-shape contract at 12 cases across 3 classes. Pre-existing test_safety_rails.py TestHookStopClearsSafetyRails still passes -- the cleanup behavior is preserved. ISSUE_002.json flipped to resolved. state.json issues counter: total 2, open 0, resolved 2. Suite 228 -> 244.",
+    "summary": "unit_045 complete. skills/development-harness/references/architecture.md gained a new top-level 'Parallel Execution Model' section with nine sub-sections that summarize the parallel pipeline end-to-end: When to enable parallelism (config knobs + 3-way candidate gate), Worktree-per-unit layout (.harness/worktrees/<batch_id>/<unit_id>/ + harness/<batch_id>/<unit_id> branches + WORKTREE_UNIT.json sentinel), Orchestrator / sub-agent boundary (Agent(subagent_type: 'harness-unit') + tight allowlist + 'self-report never trusted for blast radius'), Frontier + overlap check (select_next_unit.py --frontier + compute_parallel_batch.py + 5 packing constraints), Dispatch -> wait -> merge lifecycle (idle/dispatched/merging fleet.mode transitions + scope check BEFORE merge + stop-hook-never-sees-partial-fleet invariant), Conflict strategies (abort_batch vs serialize_conflicted + scope-violation cross-link), Merge serialization via .harness/.lock (O_EXCL + stale-lock takeover), Safety rails session kill switch (safety_rails.py + 2-failure threshold + session-scoped clearing), Observability (four .harness/logs/<batch_id>/ artifacts + best-effort semantics + /harness-state integration). Concludes with forward link to parallel-execution.md (unit_047). New test_architecture_parallel_section.py (160 LOC, 10 cases) pins every sub-heading + substantive tokens + position-order between Batch Semantics and Git Integration. Initial run caught an overly strict '\"dispatched\"' assertion that expected double-quote framing; relaxed to accept either `x`/'x' markdown-code or JSON-style quoting. Every claim in the new section is verified against a specific file in the repo -- the section is a true summary of what the code does, not aspirational docs. Suite 244 -> 254.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_045 (PHASE_011): add 'Parallel Execution Model' section to skills/development-harness/references/architecture.md covering worktree-per-unit, orchestrator/sub-agent boundary, frontier+overlap check, dispatch-wait-merge lifecycle, conflict strategies, and when to enable/not. Validation: grep for section heading + structural presence test.",
-    "timestamp": "2026-04-20T10:15:00Z"
+    "next_action": "Complete unit_046 (PHASE_011): update skills/development-harness/references/phase-contract.md to document required depends_on, touches_paths (when parallel_safe: true), and parallel_safe unit fields; add a 'Decomposing a phase for parallelism' subsection that walks through how to partition a phase into parallel-safe units. The existing phase-contract.md already has the 'Scope-Violation Enforcement Policy' section from unit_039 -- this unit extends the Units of Work contract with the parallelism-specific fields and adds the decomposition guidance. Validation: grep for new subsections + structural presence test similar to unit_045.",
+    "timestamp": "2026-04-20T10:40:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

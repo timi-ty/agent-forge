@@ -86,6 +86,92 @@ Since PHASE_007's invoke-command rewrite, a single invoke turn processes a whole
 
 See `commands/invoke.md` Steps 4–9 for the pipeline and PHASE_007's rewrite rationale; see `parallel-execution.md` for the dispatch lifecycle and conflict-strategy catalogue.
 
+## Parallel Execution Model
+
+A single invoke turn can fan out across multiple units when `config.execution_mode.parallelism.enabled` is true. This section summarises the moving parts; the full lifecycle lives in `parallel-execution.md` (unit_047).
+
+### When to enable parallelism
+
+Parallelism is opt-in per project via `config.json`:
+
+```json
+"execution_mode": {
+  "parallelism": {
+    "enabled": true,
+    "max_concurrent_units": 3,
+    "conflict_strategy": "abort_batch",
+    "require_touches_paths": true,
+    "allow_cross_phase": false
+  }
+}
+```
+
+A unit is a candidate for parallel batching only when it declares `parallel_safe: true` AND its `depends_on` predecessors are all `completed` AND (when `require_touches_paths: true`) it carries a non-empty `touches_paths` glob list. Leave parallelism off on small projects, greenfield scaffolding phases, or any phase whose units share the same files. Turn it on once phases routinely contain 3+ independent units.
+
+### Worktree-per-unit layout
+
+Each unit in a parallel batch gets its own git worktree at `.harness/worktrees/<batch_id>/<unit_id>/` on a dedicated branch `harness/<batch_id>/<unit_id>` (created off `HEAD` at dispatch time). `dispatch_batch.py` seeds `<worktree>/.harness/WORKTREE_UNIT.json` with the unit's identity (`batch_id`, `unit_id`, `phase_id`, `touches_paths`) — this sentinel is the sub-agent's binding to its scope and is the source-of-truth for merge-time scope enforcement. Worktrees are harness-owned and gitignored.
+
+### Orchestrator / sub-agent boundary
+
+The main agent is the **orchestrator**. It never edits files inside a worktree directly. For each unit in the batch it dispatches exactly one `Agent(subagent_type: "harness-unit")` call, handing over the unit's identity. The sub-agent runs under a tight allowlist (see `templates/claude-code/agents/harness-unit.md`):
+
+- Writes allowed **only** inside its own worktree; no writes to `.harness/` or to other units' worktrees.
+- No `git push`, `git merge`, `git rebase`, or branch manipulation beyond commits on the unit's own branch.
+- Must emit a structured JSON report at end-of-turn describing status + commits + validation evidence.
+
+The sub-agent's self-report is **never** trusted for blast radius. The orchestrator's merge step runs the scope check against the git diff.
+
+### Frontier + overlap check
+
+`select_next_unit.py --frontier` emits every unit whose dependencies are satisfied. `compute_parallel_batch.py` greedy-packs the frontier into the largest batch that respects:
+
+1. `parallel_safe: true` on every accepted unit.
+2. `require_touches_paths: true` enforcement (reject units with empty `touches_paths` if the flag is on).
+3. `max_concurrent_units` cap.
+4. `allow_cross_phase: false` (default) — batch is restricted to a single phase once the first unit is accepted.
+5. **Overlap matrix** — unit A and unit B may share a batch only if their `touches_paths` globs are `fnmatch`-disjoint. Overlapping units are rejected with reason `touches_overlap: <other_unit_id>`.
+
+The result is a `{batch_id, batch, excluded}` record; the orchestrator consumes `batch`, `excluded` is reported for observability.
+
+### Dispatch → wait → merge lifecycle
+
+A parallel turn moves `state.execution.fleet.mode` through three states and returns to `"idle"` within the same turn:
+
+1. **`idle` → `dispatched`.** `dispatch_batch.py` creates all worktrees + branches, writes `WORKTREE_UNIT.json` into each, appends `status: "running"` entries to `fleet.units`. Atomic on failure — any per-unit error tears down every worktree created in the same call.
+2. **`dispatched` (stays here while sub-agents run).** The orchestrator dispatches all `Agent(subagent_type: "harness-unit")` calls in a single assistant message and waits for every report. Hygiene checks on each report (unit_id matches, `status ∈ {succeeded, failed}`, `commits` non-empty on success) reject malformed reports as `category: "infrastructure"`.
+3. **`dispatched` → `merging` → `idle`.** `merge_batch.py` serially merges each unit's branch back onto `HEAD` with `--no-ff`. Every unit's changed files are scope-checked against its declared `touches_paths` BEFORE the merge attempt; scope violators are hard-rejected with `category: "scope_violation"`. Clean merges flip the unit to `status: "merged"` and remove the worktree + branch. Conflict handling follows the configured `conflict_strategy`.
+
+The stop hook never sees a partial fleet — `fleet.mode != "idle"` at turn-end means the previous turn crashed mid-batch and recovery goes through `/sync-development-harness`.
+
+### Conflict strategies
+
+Two strategies live in `config.execution_mode.parallelism.conflict_strategy`:
+
+- **`abort_batch` (default).** First merge conflict aborts the batch: the conflicting unit is marked `status: "failed"` with `conflict.category: "merge_conflict"`, every remaining unit is marked `status: "failed"` with `conflict: null` (skipped, not conflicted), and the turn stops. Safe default — guarantees a clean `HEAD` and forces manual resolution.
+- **`serialize_conflicted`.** The conflicting unit stays `status: "running"` (worktree + branch preserved) and the orchestrator continues merging the remaining units. Deferred units retry on a later batch. Documented but not default; enables "make progress on what you can, retry the rest" for long batches where individual conflicts are expected.
+
+Scope violations are always hard rejects regardless of strategy — `touches_paths` is a trust-boundary declaration (see `phase-contract.md` "Scope-Violation Enforcement Policy").
+
+### Merge serialization via `.harness/.lock`
+
+`merge_batch.py` wraps its entire flow in an `O_EXCL` file mutex at `.harness/.lock` so two concurrent invocations cannot interleave merges. Second acquirers block until the first releases; stale locks (mtime past `lock_stale_after`, default 600s) are forcibly taken over to prevent deadlock after a crashed holder.
+
+### Safety rails — session kill switch
+
+Two `scope_violation` or `ambiguity` failures in a single invoke session write `.harness/.parallel-disabled` via `safety_rails.py`. The invoke flow reads this flag at the start of each turn and forces the in-tree fast path for the remainder of the session regardless of `config.execution_mode.parallelism.enabled`. The flag is cleared by the stop hook when `.invoke-active` is cleared, so the next session starts fresh. See `commands/invoke.md` Step 4 for the read path.
+
+### Observability
+
+Each parallel turn writes artifacts under `.harness/logs/<batch_id>/`:
+
+- **`batch.json`** — full batch plan + overlap analysis + dispatched fleet. Written by `dispatch_batch.py`.
+- **`<unit_id>.md`** — sub-agent summary. Written by the sub-agent per the harness-unit contract.
+- **`merge.log`** — grep-friendly summary of per-unit merge outcomes. Written by `merge_batch.py`.
+- **`validation.log`** — post-merge validator output. Written by `merge_batch.py`.
+
+All writes are best-effort (helpers + call sites wrap in try/except); a log failure never blocks dispatch or merge. `/harness-state` renders these alongside `fleet` and `sync_harness.py` orphan detection (see `commands/state.md`).
+
 ## Git Integration
 
 Each completed unit results in a commit following `config.json` git policy. Check for commit-agent-changes skill; if installed, delegate. If not, commit directly.
