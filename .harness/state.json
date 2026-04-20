@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T09:10:00Z",
+  "last_updated": "2026-04-20T12:00:00Z",
   "execution": {
-    "active_phase": "PHASE_011",
-    "active_unit": "unit_bugfix_001",
-    "last_completed_unit": "unit_044",
-    "next_unit": "unit_bugfix_001",
-    "session_count": 42,
+    "active_phase": "PHASE_012",
+    "active_unit": "unit_051",
+    "last_completed_unit": "unit_048",
+    "next_unit": "unit_051",
+    "session_count": 48,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T09:10:00Z",
+    "last_run": "2026-04-20T12:00:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.integration.test_invoke_rewrite.TestBatchLogArtifactsEndToEnd -v passes 1/1 (0.9s); python -m unittest discover skills/development-harness/scripts/tests passes 222/223 with 1 OS-specific skip (37.6s, up from 222)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_create_bootstrap_parallelism_questions -v passes 11/11 (0.004s); python -m unittest discover skills/development-harness/scripts/tests passes 285/286 with 1 OS-specific skip (41.6s, up from 275 -- 11 new cases for unit_048)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -23,24 +23,24 @@
   },
   "issues": {
     "total": 2,
-    "open": 2,
-    "resolved": 0
+    "open": 0,
+    "resolved": 2
   },
   "drift": {
     "last_sync": null,
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_044 complete. PHASE_010 CLOSED. End-to-end integration test TestBatchLogArtifactsEndToEnd in tests/integration/test_invoke_rewrite.py runs compute_parallel_batch -> dispatch_batch -> fake sub-agent commits + sub-agent summary (fabricated inline the way the sub-agent would per the harness-unit contract -- the orchestrator has no code that writes <unit_id>.md) -> merge_batch with a non-trivial validator. Asserts all four log artifacts exist with non-empty bodies: batch.json (JSON-decodable with {batch_id, dispatched_at, batch_plan, fleet}), merge.log ('batch_id: <id>', 'outcome: ok', '- unit_log_a', '- unit_log_b'), validation.log ('validator_ok: True' + validator's verbatim message), and both <unit_id>.md summaries. Also asserts worktrees/<batch_id>/ is pruned after a clean merge while logs/<batch_id>/ survives -- logs are the post-hoc inspection surface. Added missing 'import json' at the top of test_invoke_rewrite.py (caught by the first test run). PHASE_010 summary: unit_041 (checkpoint-template Batch section + 4 tests), unit_042 (/harness-state renders Fleet+Orphans+Timings + 5 tests), unit_043 (log-directory creation in dispatch/merge with two-layer best-effort guarantees + 7 tests, 1 Windows skip), unit_044 (end-to-end integration + 1 test). pr-review-checklist: all four units have validation_evidence; no linter/type errors (stdlib-only); codebase patterns matched; tests pass 222/223 + 1 skip; not deploy-affecting (skill distribution repo); phase doc + checkpoint + state current. PHASE_010 marked completed. Suite 206 -> 222. PHASE_011 begins at unit_bugfix_001 (ISSUE_001 fix: Python-detection in create.md Phase 5 for hook configuration).",
+    "summary": "unit_048 complete. PHASE_011 CLOSED. skills/development-harness/commands/create.md Phase 2 gained an 'Execution Mode' category with two structured verbatim questions -- Q1 parallelism enable (y/n default n, maps to config.execution_mode.parallelism.enabled with full sub-field defaults), Q2 schema-bump behavior (break/migrate default break, maps to config.execution_mode.versioning.break_on_schema_bump with break->/create-development-harness recovery path called out). A preamble note instructs 'use exact wording' so every install produces the same config shape. Phase 4 Step 2's unit-field list grew from 4 to 7 (added depends_on with 'empty list allowed' note, parallel_safe with the explicit 'Default to false when blast radius is unknown' guidance from the acceptance criterion, touches_paths with 'Propose this per unit' + 'narrower globs' preference). New 'Parallelism-by-default' paragraph below the list instructs aggressive parallel_safe: true proposal when Phase 2 turned parallelism on, with the exact dry-run pipeline + 'when in doubt, leave false' safety net. New test_create_bootstrap_parallelism_questions.py (190 LOC, 11 cases) pins both questions verbatim, both config paths, answer mappings, parallel-execution.md cross-link, and all three new Phase 4 unit fields. PHASE_011 final summary: bugfix_001 (ISSUE_001 Windows Python-detection), bugfix_002 (ISSUE_002 Claude Code Stop-hook retirement), 045 (Parallel Execution Model in architecture.md), 046 (phase-contract parallelism fields + decomposition section), 047 (new parallel-execution.md deep-dive + overlap-reason fix), 048 (create.md Phase 2 + Phase 4 bootstrap flow). pr-review-checklist: all units have validation_evidence; no linter/type errors (stdlib-only); codebase patterns matched; tests pass 285/286 + 1 skip; not deploy-affecting (docs/skill-source repo); phase doc + checkpoint + state current. PHASE_011 marked completed. Suite 228 -> 286. Both tracked issues resolved.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Open PHASE_010 PR (feat/phase-010-observability -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_011 unit_bugfix_001: in skills/development-harness/commands/create.md Phase 5 (Hook configuration), apply the existing Python-detection pattern PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null) and bake the detected interpreter into the generated .claude/settings.local.json Stop-hook command (\"$PY .claude/hooks/continue-loop.py\"). Mirror the change for .cursor/hooks.json. Keep the hook script's shebang intact but no longer rely on it. This unblocks Windows installs where neither python3 nor a bare shebang works.",
-    "timestamp": "2026-04-20T09:10:00Z"
+    "next_action": "Open PHASE_011 PR (feat/phase-011-documentation -> main), run code-review, squash-merge per harness-git.md autonomous-merge authorization. THEN begin PHASE_012 unit_051: add a parallelism readiness checklist to parallel-execution.md covering touches_paths on every parallelism-eligible unit, no shared-aggregator units, CI handles multi-commit pushes. Note: unit_047 already included a 'Readiness checklist' section in parallel-execution.md with 8 checkboxes, so unit_051 will likely be an extension/refinement rather than a fresh section. Read the existing checklist first before drafting edits.",
+    "timestamp": "2026-04-20T12:00:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",
     "bootstrap_commit_strategy": "separate-chore-commit-first",
-    "current_branch": "feat/phase-010-observability",
+    "current_branch": "feat/phase-011-documentation",
     "open_pr_when_phase_complete": true
   },
   "execution_mode": "local"
