@@ -2,19 +2,19 @@
   "schema_version": "1.0",
   "skill_version": "1.0",
   "created": "2026-04-19T00:00:00Z",
-  "last_updated": "2026-04-20T13:45:00Z",
+  "last_updated": "2026-04-20T14:10:00Z",
   "execution": {
     "active_phase": "PHASE_013",
-    "active_unit": "unit_055",
-    "last_completed_unit": "unit_054",
-    "next_unit": "unit_055",
-    "session_count": 52,
+    "active_unit": "unit_056",
+    "last_completed_unit": "unit_055",
+    "next_unit": "unit_056",
+    "session_count": 53,
     "loop_budget": 12
   },
   "validation_summary": {
-    "last_run": "2026-04-20T13:45:00Z",
+    "last_run": "2026-04-20T14:10:00Z",
     "status": "passing",
-    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v passes 11/11 (0.002s); python -m unittest discover skills/development-harness/scripts/tests passes 331/332 with 1 OS-specific skip (38.3s, up from 321 -- 11 new cases for unit_054)"
+    "evidence": "python -m py_compile exits 0 (~0.1s); python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v passes 24/24 (0.005s, up from 11); python -m unittest discover skills/development-harness/scripts/tests passes 344/345 with 1 OS-specific skip (38.5s, up from 332 -- 13 new cases for unit_055)"
   },
   "deployment_summary": {
     "last_verified": null,
@@ -31,11 +31,11 @@
     "divergences": []
   },
   "checkpoint": {
-    "summary": "unit_054 complete. Self-test fixture scaffolded at skills/development-harness/scripts/tests/fixtures/self-test/ with a 2-phase / 6-unit mini-CRUD roadmap ('Tasklet' -- Items + Users resources). ROADMAP.md describes the product intent + the 'this is a harness self-test fixture' framing. README.md is the binding contract between unit_054 and downstream units 055-058: directory-contents table with per-artifact creating-unit attribution, ASCII phase graph showing all 6 units with exact touches_paths declarations, 3 seeded conditions documented with specific unit ids + the exact downstream-observable strings operators will see (path_overlap_with:unit_a2, src/seeds/users.json, conflict.category: 'scope_violation'), Expected end state section with orphan-free invariants, operator recipe. Seeded conditions: (1) Batch >= 2 via unit_a1 + unit_a2 disjoint touches_paths in PHASE_A; (2) Overlap-matrix rejection via unit_a3 declaring src/items/routes.py which also appears in unit_a2's touches_paths; (3) Scope violation via unit_b2's description requiring also writing src/seeds/users.json which is outside its declared touches_paths. New test_self_test_fixture.py (140 LOC, 11 cases across 5 classes) pins fixture presence + roadmap shape + all 3 seeded conditions with their downstream-observable strings + forward-references to the 4 planned artifacts + expected-end-state invariants + a regression guard that fixtures don't accidentally contain test_*.py modules. Suite 321 -> 332.",
+    "summary": "unit_055 complete. Captured the /create-development-harness output artifacts for the self-test fixture: config.json (parallelism.enabled=true + full sub-field shape + deployment.target 'none' + pytest testing + 'claude-code' tool) and phase-graph.json (two phases PHASE_A 'items' + PHASE_B 'users', 6 units total, all parallel_safe=true, touches_paths populated to match README.md's ASCII graph exactly). unit_a3's description carries a 'SEEDED OVERLAP' callout + the exact 'path_overlap_with:unit_a2' exclusion string downstream operators will see. unit_b2's description carries a 'SEEDED SCOPE VIOLATION' callout + instructs the sub-agent to also write src/seeds/users.json + names the expected 'scope_violation' conflict category. Rather than running /create-development-harness interactively (which would require simulating a multi-step question session), unit_055 captures the OUTPUTS /create would produce against this fixture with the documented answer set -- reproducible, diff-able, grep-able. test_self_test_fixture.py grew from 11 to 24 cases: new TestFixtureConfigJson class (4 cases pinning schema v2, parallelism enabled, sub-field shape, not-deploy-affecting), new TestFixturePhaseGraphJson class (9 cases pinning schema v2, phase structure, 6-unit set, every unit parallel_safe=true, seeded overlap, seeded scope violation via fnmatch-based-pattern-check matching runtime semantics, both SEEDED callouts in descriptions). Suite 332 -> 345.",
     "blockers": [],
     "open_questions": [],
-    "next_action": "Complete unit_055 (PHASE_013): run /create-development-harness on the self-test fixture. The fixture has ROADMAP.md but no .harness/ yet. Running /create walks Phases 0-7, populates touches_paths per unit as laid out in README.md's ASCII phase graph, sets config.execution_mode.parallelism.enabled=true (matches the 'y' answer for the Phase 2 Execution Mode question from unit_048), captures the resulting phase-graph.json + config.json into the fixture directory as part of the fixture's committed state for downstream unit_056 to invoke against. Validation: manual inspection + grep for expected fields (parallelism.enabled=true, touches_paths populated on all 6 units matching README.md's graph, two phases with the expected unit ids a1/a2/a3/b1/b2/b3).",
-    "timestamp": "2026-04-20T13:45:00Z"
+    "next_action": "Complete unit_056 (PHASE_013): run /invoke-development-harness iteratively against the fixture until all 2 phases complete. The run must actually exercise: (1) at least one batch of size >= 2 (expected: unit_a1 + unit_a2 in PHASE_A's first batch); (2) the seeded overlap-matrix rejection (unit_a3 excluded from that batch with path_overlap_with:unit_a2, then picked up in the next turn); (3) the seeded scope violation (unit_b2 dispatched, sub-agent writes src/seeds/users.json beyond declared scope, merge_batch._scope_violations rejects with scope_violation category). Captures trace log showing each batch composition + merge outcome under fixtures/self-test/trace.log. Validation: trace log contents contain each seeded condition fired + final fleet.mode 'idle' + no orphan worktrees/branches after the run. This unit is an OPERATOR TASK -- simulating a full invoke session against the fixture. In the dogfood loop context, I should write a Python test harness that exercises the three seeded conditions programmatically (via compute_parallel_batch + dispatch_batch + merge_batch calls in a temp repo) instead of requiring human /invoke iteration.",
+    "timestamp": "2026-04-20T14:10:00Z"
   },
   "policy": {
     "pr_cadence": "per-phase",

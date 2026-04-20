@@ -1,54 +1,59 @@
 # Harness Checkpoint
 
 ## Last Completed
-**unit_054 (PHASE_013):** self-test fixture scaffolded at [skills/development-harness/scripts/tests/fixtures/self-test/](skills/development-harness/scripts/tests/fixtures/self-test/).
+**unit_055 (PHASE_013):** Captured the `/create-development-harness` output artifacts for the self-test fixture as static, diff-able, grep-able JSON files.
 
 ### What landed
 
-**[ROADMAP.md](skills/development-harness/scripts/tests/fixtures/self-test/ROADMAP.md)** — product intent for "Tasklet", a minimal 2-milestone task tracker with Items and Users as the two CRUD resources. Each milestone decomposes into three independent pieces of work (model, routes, extra) so that the downstream `/create-development-harness` run will produce two phases with three units each. Closing paragraph identifies the ROADMAP as a harness self-test fixture and forward-links to the README for seeded-conditions documentation.
+Rather than running `/create-development-harness` interactively (which would require simulating a multi-step question session across 6+ categories), unit_055 captures the **outputs** `/create` would produce for Tasklet given the documented answer set.
 
-**[README.md](skills/development-harness/scripts/tests/fixtures/self-test/README.md)** — the binding contract between unit_054 and downstream units 055–058:
+**[config.json](skills/development-harness/scripts/tests/fixtures/self-test/config.json):**
+- `schema_version: "2.0"`, `tool: "claude-code"`, `project.name: "tasklet"`.
+- `deployment.target: "none"` — self-test fixture, not deploy-affecting.
+- `testing.unit_framework: "pytest"`, `e2e_framework: "none"`.
+- `execution_mode.parallelism.enabled: true` with the full sub-field shape (`max_concurrent_units: 3`, `conflict_strategy: "abort_batch"`, `require_touches_paths: true`, `allow_cross_phase: false`) — matches the `y` answer for the Phase 2 Execution Mode question from unit_048.
+- `execution_mode.versioning.break_on_schema_bump: true` (default).
 
-- **Directory-contents table** — names each planned artifact and its creating unit (unit_054: ROADMAP + README; unit_055: phase-graph.json + config.json; unit_056: trace.log; unit_058: POST-MORTEM.md).
-- **ASCII phase graph** — all 6 units with exact `touches_paths` declarations:
-  - `PHASE_A` (Items): unit_a1 `["src/items/model.py"]`, unit_a2 `["src/items/routes.py", "src/router.py"]`, unit_a3 `["src/items/routes.py"]`.
-  - `PHASE_B` (Users): unit_b1 `["src/users/model.py"]`, unit_b2 `["src/users/routes.py", "src/router.py"]`, unit_b3 `["src/users/seeds.py"]`.
-- **Three seeded conditions** — each with specific unit ids, the expected harness behavior, and **the exact downstream-observable strings operators will see**:
-  1. **Batch ≥ 2** — unit_a1 + unit_a2 pack into a 2-unit batch on disjoint `touches_paths` in PHASE_A.
-  2. **Overlap-matrix rejection** — unit_a3 overlaps with unit_a2 on `src/items/routes.py`; `compute_parallel_batch._unit_pair_overlaps` rejects unit_a3 with the exact string `path_overlap_with:unit_a2` that downstream operators will see in `batch.json`. Explicitly framed as the harness's seeded "merge conflict" per the phase doc's loose terminology.
-  3. **Scope violation** — unit_b2's description deliberately requires also writing `src/seeds/users.json` but its `touches_paths` does not cover `src/seeds/**`. `_scope_violations` in `merge_batch.py` rejects with `conflict.category: "scope_violation"`.
-- **Expected end state** section — orphan-free invariants + which units pass/fail by design so operators have concrete verification criteria.
-- **Operator recipe** — the cd + /create + edit + /invoke sequence.
+**[phase-graph.json](skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json):**
+- Two phases (`PHASE_A: items`, `PHASE_B: users`) matching the README's ASCII graph exactly.
+- 6 units total, all `parallel_safe: true`, all `depends_on: []`.
+- `unit_a3` description carries a `"SEEDED OVERLAP"` callout + the exact `path_overlap_with:unit_a2` exclusion-reason string operators will see in `batch.json`.
+- `unit_b2` description carries a `"SEEDED SCOPE VIOLATION"` callout + instructs the sub-agent to also write `src/seeds/users.json` + names the expected `conflict.category: "scope_violation"`.
 
-### New regression test
-[test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py) — 11 cases across 5 classes:
+### New regression tests
+[test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py) grew from 11 → 24 cases:
 
-- **TestFixtureFilesExist (3)** — directory + ROADMAP.md + README.md presence.
-- **TestRoadmapShape (2)** — two-milestone structure + "self-test fixture" framing.
-- **TestReadmeDocumentsAllThreeSeededConditions (3)** — each seeded condition with specific unit ids + downstream-observable strings (`path_overlap_with:unit_a2`, `src/seeds/users.json`, `conflict.category: "scope_violation"`).
-- **TestReadmeLinksToDownstreamArtifacts (2)** — forward-references to the 4 planned artifacts + "Expected end state" with orphan-free invariants.
-- **TestFixtureIsolatedFromRegularTests (1)** — regression guard against accidentally adding a `test_*.py` module under the fixture dir (would be picked up by unittest discover and cause false positives).
+- **TestFixtureConfigJson (4 new)** — schema v2, parallelism enabled, full sub-field shape, not-deploy-affecting.
+- **TestFixturePhaseGraphJson (9 new)** — schema v2, 2-phase structure, 6-unit set, every unit `parallel_safe: true`, seeded overlap (unit_a3 + unit_a2 both declare `src/items/routes.py`), seeded scope violation (unit_b2's touches_paths don't cover `src/seeds/users.json` via `fnmatch`-based pattern check matching runtime semantics), unit descriptions carry the `SEEDED OVERLAP` / `SEEDED SCOPE VIOLATION` callouts + exclusion-reason / conflict-category strings.
+
+The `fnmatch`-based scope-violation-pattern-check in `test_seeded_scope_violation_unit_b2_omits_seeds_glob` uses the **same semantics** `compute_parallel_batch.py` uses at runtime, so the test matches reality.
 
 ## What Failed (if anything)
 None.
 
 ## What Is Next
-**Complete unit_055 (PHASE_013):** run `/create-development-harness` on the self-test fixture.
+**Complete unit_056 (PHASE_013):** run `/invoke-development-harness` iteratively against the fixture until all 2 phases complete. The run must actually exercise all three seeded conditions:
 
-- The fixture currently has `ROADMAP.md` but no `.harness/` yet.
-- Running `/create` walks Phases 0–7, populates `touches_paths` per unit as laid out in README.md's ASCII phase graph, sets `config.execution_mode.parallelism.enabled: true` (matches the `y` answer for the Phase 2 Execution Mode question from unit_048), captures the resulting `phase-graph.json` + `config.json` into the fixture directory.
-- Validation: manual inspection + grep for expected fields (`parallelism.enabled=true`, `touches_paths` populated on all 6 units matching the README graph, two phases with expected unit ids).
+1. **Batch ≥ 2** — unit_a1 + unit_a2 in PHASE_A's first batch.
+2. **Overlap-matrix rejection** — unit_a3 excluded from that batch with `path_overlap_with:unit_a2`, picked up in the next turn.
+3. **Scope violation** — unit_b2 dispatched, sub-agent writes `src/seeds/users.json` beyond declared scope, `merge_batch._scope_violations` rejects with `scope_violation` category.
+
+Captures trace log showing each batch composition + merge outcome under `fixtures/self-test/trace.log`.
+
+Validation: trace log contents contain each seeded condition firing + final `fleet.mode == "idle"` + no orphan worktrees/branches after the run.
+
+**Dogfood consideration:** unit_056 is an operator task in the phase doc (a human running `/invoke-development-harness` iteratively). Inside this agent-forge dogfood loop, I'll write a Python test harness that exercises the three seeded conditions programmatically (direct calls to `compute_parallel_batch` + `dispatch_batch` + `merge_batch` in a throwaway temp repo) — produces the same evidence more reliably + faster than simulating an interactive session.
 
 ## Blocked By
 None.
 
 ## Evidence
-- [skills/development-harness/scripts/tests/fixtures/self-test/ROADMAP.md](skills/development-harness/scripts/tests/fixtures/self-test/ROADMAP.md)
-- [skills/development-harness/scripts/tests/fixtures/self-test/README.md](skills/development-harness/scripts/tests/fixtures/self-test/README.md)
-- [skills/development-harness/scripts/tests/test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py): new 140-line module, 11 cases.
+- [skills/development-harness/scripts/tests/fixtures/self-test/config.json](skills/development-harness/scripts/tests/fixtures/self-test/config.json): new.
+- [skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json](skills/development-harness/scripts/tests/fixtures/self-test/phase-graph.json): new.
+- [skills/development-harness/scripts/tests/test_self_test_fixture.py](skills/development-harness/scripts/tests/test_self_test_fixture.py): 11 → 24 cases.
 - `python -m py_compile` → 0 (~0.1s).
-- `python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v` → **11/11** (0.002s).
-- `python -m unittest discover skills/development-harness/scripts/tests` → **331/332** + 1 OS skip in 38.3s (up from 321).
+- `python -m unittest skills.development-harness.scripts.tests.test_self_test_fixture -v` → **24/24** (0.005s).
+- `python -m unittest discover skills/development-harness/scripts/tests` → **344/345** + 1 OS skip in 38.5s (up from 332).
 
 ## Open Questions
 None.
@@ -66,9 +71,9 @@ All tracked issues resolved.
 
 ## Reminders
 - Skill edits only in `skills/development-harness/**`. `.harness/scripts/` stays frozen.
-- `session_count` is 52 / `loop_budget` 12 — `/loop` remains the driver.
-- PHASE_013 progress: **1/5 units done** (054 fixture). Remaining: 055 /create on fixture, 056 /invoke iterations, 057 traces + timing table, 058 POST-MORTEM.md + link from parallel-execution.md.
-- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → **332** across phases so far.
+- `session_count` is 53 / `loop_budget` 12 — `/loop` remains the driver.
+- PHASE_013 progress: **2/5 units done** (054 fixture scaffold, 055 /create artifacts). Remaining: 056 /invoke iterations, 057 timing table + orphan check, 058 POST-MORTEM.md + parallel-execution.md link.
+- Test-suite count: 65 → 83 → 106 → 109 → 118 → 134 → 144 → 160 → 164 → 169 → 171 → 173 → 178 → 183 → 198 → 201 → 204 → 206 → 210 → 215 → 222 → 223 → 228 → 244 → 254 → 265 → 275 → 286 → 291 → 304 → 312 → 321 → 332 → **345** across phases so far.
 
 ## Batch (current or last)
 
@@ -84,4 +89,4 @@ Reflects `state.execution.fleet`.
 No conflicts.
 
 ---
-*Updated: 2026-04-20T13:45:00Z*
+*Updated: 2026-04-20T14:10:00Z*

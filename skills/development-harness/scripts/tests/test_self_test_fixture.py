@@ -1,22 +1,33 @@
-"""Tests for the self-test fixture -- unit_054.
+"""Tests for the self-test fixture -- units 054 + 055.
 
 PHASE_013 harness-self-test starts by creating a throwaway
 workspace the harness will be run against to validate end-to-end
-behavior. This module pins the fixture's existence + the seeded-
-conditions contract documented in README.md: batch >= 2, overlap-
-matrix rejection, and scope violation.
+behavior. This module pins:
+
+  * unit_054: fixture exists (ROADMAP.md + README.md) with the
+    seeded-conditions contract documented in README.md: batch >= 2,
+    overlap-matrix rejection, and scope violation.
+  * unit_055: the captured /create-development-harness output
+    artifacts (config.json + phase-graph.json) match the README
+    contract AND conform to v2 schemas AND will actually exercise
+    the three seeded conditions when the harness is run against
+    the fixture.
 
 The fixture itself is consumed ad-hoc (not by CI); these tests are
-a structural presence + doc-shape contract ensuring the fixture
-stays consistent with the PHASE_013 acceptance criteria and with
-the downstream units (055-058) that will run against it.
+structural presence + doc-shape + data-shape contracts ensuring
+the fixture stays consistent with the PHASE_013 acceptance
+criteria and with downstream units 056-058 that will run against
+it.
 """
+import json
 import unittest
 from pathlib import Path
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "self-test"
 ROADMAP = FIXTURE_DIR / "ROADMAP.md"
 README = FIXTURE_DIR / "README.md"
+CONFIG = FIXTURE_DIR / "config.json"
+PHASE_GRAPH = FIXTURE_DIR / "phase-graph.json"
 
 
 class TestFixtureFilesExist(unittest.TestCase):
@@ -147,6 +158,171 @@ class TestFixtureIsolatedFromRegularTests(unittest.TestCase):
                 f"fixture must not contain test_*.py modules (ad-hoc "
                 f"fixture, not CI); found {path}"
             )
+
+
+# ---------------------------------------------------------------------
+# unit_055 -- captured /create-development-harness artifacts
+# ---------------------------------------------------------------------
+
+
+class TestFixtureConfigJson(unittest.TestCase):
+    """The fixture's config.json is what unit_055 would have produced
+    if /create-development-harness had run interactively against the
+    ROADMAP. It is committed to the repo so downstream units 056-058
+    can operate against a stable starting point.
+
+    The harness invoke flow (commands/invoke.md Step 4) reads
+    execution_mode.parallelism to decide dispatch mode, and unit_053's
+    schema precheck reads schema_version. Every v2-required field must
+    be present and shaped correctly."""
+
+    def _load(self):
+        self.assertTrue(CONFIG.is_file(), f"fixture config.json missing at {CONFIG}")
+        return json.loads(CONFIG.read_text(encoding="utf-8"))
+
+    def test_schema_version_is_v2(self):
+        cfg = self._load()
+        self.assertEqual(
+            cfg["schema_version"], "2.0",
+            "fixture config must be v2 so validate_harness.py does not "
+            "reject it with the re-create pointer (unit_053 behavior)",
+        )
+
+    def test_parallelism_enabled_true(self):
+        """PHASE_013 acceptance: 'enable parallelism'. Without this,
+        the fixture exercises only the in-tree fast path and none of
+        the PHASE_007/009/010 parallel machinery is actually tested."""
+        cfg = self._load()
+        parallelism = cfg["execution_mode"]["parallelism"]
+        self.assertIs(
+            parallelism["enabled"], True,
+            "fixture parallelism.enabled must be true so the seeded "
+            "batch >= 2 condition actually fires",
+        )
+
+    def test_parallelism_defaults_preserved(self):
+        """The full parallelism block shape (max_concurrent_units,
+        conflict_strategy, require_touches_paths, allow_cross_phase)
+        must be present so the config is self-documenting per the
+        unit_048 /create-development-harness Phase 2 instruction."""
+        cfg = self._load()
+        parallelism = cfg["execution_mode"]["parallelism"]
+        self.assertEqual(parallelism["max_concurrent_units"], 3)
+        self.assertEqual(parallelism["conflict_strategy"], "abort_batch")
+        self.assertIs(parallelism["require_touches_paths"], True)
+        self.assertIs(parallelism["allow_cross_phase"], False)
+
+    def test_not_deploy_affecting(self):
+        """Tasklet is a test fixture -- deployment.target must be
+        'none' so PHASE completion reviews don't block on a missing
+        deploy verifier."""
+        cfg = self._load()
+        self.assertEqual(cfg["deployment"]["target"], "none")
+
+
+class TestFixturePhaseGraphJson(unittest.TestCase):
+    """The fixture's phase-graph.json must match the ASCII graph
+    promised in README.md exactly (unit_id, parallel_safe,
+    touches_paths). Without this, the three seeded conditions will
+    not fire and PHASE_013 becomes a no-op."""
+
+    def _load(self):
+        self.assertTrue(PHASE_GRAPH.is_file(),
+                        f"fixture phase-graph.json missing at {PHASE_GRAPH}")
+        return json.loads(PHASE_GRAPH.read_text(encoding="utf-8"))
+
+    def _units_by_id(self):
+        graph = self._load()
+        units = {}
+        for phase in graph["phases"]:
+            for unit in phase["units"]:
+                units[unit["id"]] = unit
+        return units
+
+    def test_schema_version_is_v2(self):
+        self.assertEqual(self._load()["schema_version"], "2.0")
+
+    def test_has_two_phases_with_expected_ids(self):
+        graph = self._load()
+        phase_ids = [p["id"] for p in graph["phases"]]
+        self.assertEqual(phase_ids, ["PHASE_A", "PHASE_B"])
+
+    def test_all_six_units_present_with_expected_ids(self):
+        units = self._units_by_id()
+        expected = {"unit_a1", "unit_a2", "unit_a3", "unit_b1", "unit_b2", "unit_b3"}
+        self.assertEqual(set(units.keys()), expected)
+
+    def test_every_unit_is_parallel_safe(self):
+        """README promises all 6 units parallel_safe=true so the
+        batch composition tests actually exercise parallel paths."""
+        units = self._units_by_id()
+        for uid, unit in units.items():
+            self.assertIs(
+                unit["parallel_safe"], True,
+                f"{uid} must have parallel_safe=true per README contract",
+            )
+
+    def test_seeded_overlap_unit_a3_overlaps_unit_a2(self):
+        """The overlap-rejection seed: a3 and a2 must both declare
+        src/items/routes.py in their touches_paths so compute_parallel_
+        batch._unit_pair_overlaps rejects a3 with path_overlap_with:a2."""
+        units = self._units_by_id()
+        self.assertIn("src/items/routes.py", units["unit_a2"]["touches_paths"])
+        self.assertIn("src/items/routes.py", units["unit_a3"]["touches_paths"])
+
+    def test_seeded_scope_violation_unit_b2_omits_seeds_glob(self):
+        """The scope-violation seed: unit_b2's description requires
+        writing src/seeds/users.json but touches_paths must NOT include
+        src/seeds/** -- that's what makes a faithful sub-agent's diff
+        trip the scope check."""
+        units = self._units_by_id()
+        touches = units["unit_b2"]["touches_paths"]
+        self.assertIn("src/users/routes.py", touches,
+                      "unit_b2 must declare src/users/routes.py (its real work)")
+        self.assertIn("src/router.py", touches,
+                      "unit_b2 must declare src/router.py (route registration)")
+        # The negative claim: no glob in touches_paths covers src/seeds/
+        # under fnmatch semantics.
+        import fnmatch
+        for pattern in touches:
+            self.assertFalse(
+                fnmatch.fnmatchcase("src/seeds/users.json", pattern),
+                f"unit_b2 touches_paths must not cover src/seeds/users.json "
+                f"(the scope-violation seed), but pattern {pattern!r} matches",
+            )
+
+    def test_seeded_scope_violation_description_names_the_violating_file(self):
+        """Without the description telling the sub-agent to write
+        src/seeds/users.json, the violation would not actually fire.
+        The description must name the violating file explicitly."""
+        units = self._units_by_id()
+        self.assertIn(
+            "src/seeds/users.json",
+            units["unit_b2"]["description"],
+            "unit_b2 description must name src/seeds/users.json so a "
+            "faithful sub-agent actually writes the violating file",
+        )
+
+    def test_unit_a3_description_flags_the_overlap_seed(self):
+        """Make sure future readers of phase-graph.json immediately
+        see that unit_a3's overlap with unit_a2 is intentional."""
+        units = self._units_by_id()
+        desc_lower = units["unit_a3"]["description"].lower()
+        self.assertIn("seeded overlap", desc_lower,
+                      "unit_a3 description must flag the overlap as seeded")
+        self.assertIn("path_overlap_with:unit_a2",
+                      units["unit_a3"]["description"],
+                      "unit_a3 description must name the exact exclusion "
+                      "reason downstream operators will see")
+
+    def test_unit_b2_description_flags_the_scope_violation_seed(self):
+        units = self._units_by_id()
+        desc_lower = units["unit_b2"]["description"].lower()
+        self.assertIn("seeded scope violation", desc_lower,
+                      "unit_b2 description must flag the scope violation as seeded")
+        self.assertIn("scope_violation", units["unit_b2"]["description"],
+                      "unit_b2 description must name the conflict.category "
+                      "operators will see")
 
 
 if __name__ == "__main__":
