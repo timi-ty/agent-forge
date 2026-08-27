@@ -194,9 +194,8 @@ For each changed file:
    - Typing conventions (interfaces vs types, generics usage, strictness level)
    - Import organization and ordering
    - Comment and documentation style
-3. **Measure each function the diff modifies**: note its `base -> PR` cyclomatic complexity and nesting depth per the Modified functions rule in [complexity.md](complexity.md).
 
-For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3, with the Counting rules section and the hunks for their files pasted in; take the measurements from their reports.
+For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR.
 
 Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
 
@@ -214,7 +213,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Any added or modified function matching a signal in [complexity.md](complexity.md)?
+- **Complexity**: Any function in the audit set matching a signal in [complexity.md](complexity.md)? For a modified function, read its base body from `$REVIEW_BASE` and apply the Modified functions rule.
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 

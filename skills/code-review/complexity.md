@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: measured in Phase 3, where the base body and the hunk are both in hand. Add the net decision points on the hunk's `+` and `-` lines to the base count; read nesting from the base body with the hunk applied (drop the `-` lines, insert the `+` lines at their indentation). When the `-` lines cover the whole base body, count the `+` lines alone, as for an added function. That yields `base -> PR` without a head checkout.
+**Modified functions**: read the base body from `$REVIEW_BASE`, apply the hunk (drop the `-` lines, insert the `+` lines at their indentation), and count the result as for an added function. For a row that reaches the table, also count the base body so the cell reads `base -> PR`.
 
 ### Worked example
 
@@ -59,7 +59,7 @@ Audit every function the diff adds or modifies, **as it stands after the PR**. F
 
 ### Complexity notes
 
-Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation fails a Guardrail or its entry's Not-when -- state the reason in the cell. Rows with a priority are findings, and every one names a cause: if no per-function entry matches, either the branching is inherent (`--`) or the function has several jobs.
+Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation fails a Guardrail or its entry's Not-when -- state the reason in the cell. Rows with a priority are findings, and every one names a cause.
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
@@ -67,7 +67,7 @@ Record a row for every function that matches a signal. `Priority` is the highest
 
 ### Finding format
 
-A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and -- when a catalog entry applies -- the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding.
+A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding.
 
 ```markdown
 - **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (nested preconditions). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
@@ -77,7 +77,7 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause and the transformation that removes it. `Dominant cause` is the per-function entry whose Looks-like the function matches; if several match, the one covering the most decision points, except that `Branch hidden behind indirection` is dominant whenever it matches. Use the heading's cause name in the column.
+One entry per dominant cause and the transformation that removes it. `Dominant cause` is the per-function entry whose Looks-like the function matches; if several match, the one with the higher Finding signals priority, and among equals the one covering the most decision points. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
@@ -128,11 +128,11 @@ if order.paid and order.shipped:
     notify(order)
 ```
 
-Not when: flattening forces you to duplicate a condition elsewhere, or the inner check has its own `else` that must stay distinct.
+Not when: flattening forces you to duplicate a condition elsewhere.
 
 #### Long conditional chain or duplicated branches -> Replace the chain with data
 
-Looks like: `if / elif / else` or a `switch` selecting behavior by a value; branches identical except for a value or call target; or a ladder of thresholds that is really configuration. Three shapes:
+Looks like: `if / elif / else` or a `switch` of three or more branches selecting behavior by a value; branches identical except for a value or call target; or a ladder of thresholds that is really configuration. Three shapes:
 
 Value -> handler:
 
@@ -193,7 +193,7 @@ grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 
 When the chain selects on a value, append the merge key to the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)` -- so Phase 6 can group sites on the same discriminator.
 
-Not when: there are only two branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
+Not when: the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
 #### Compound boolean -> Extract predicate
 
@@ -215,7 +215,7 @@ Not when: the name would only restate the expression (`is_a_and_b`). If you cann
 
 #### Several jobs in one function -> Split by responsibility
 
-Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body.
+Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body -- or a function matching a CC or nesting row that fits no other entry: more decisions than one concern accounts for.
 
 ```python
 # before
@@ -258,8 +258,6 @@ def export(data, as_json=False):
 def export_json(data): ...
 def export_csv(data): ...
 ```
-
-Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag.
 
 #### Branch hidden behind indirection -> Inline the branch
 
