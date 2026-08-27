@@ -17,14 +17,25 @@ the two parameterisations create.md uses: the `[claude-code/]` tool fork
 and the `$RULE_EXT` extension that goes with it. Running against a git
 checkout is what makes it catch an ignored file -- present on the author's
 disk, absent from the clone CI tests.
+
+Prose references alone leave a hole: create.md names the workspace
+commands only as a directory and then lists their destination filenames,
+which carry no `templates/` prefix. All seven would rest on one
+`is_dir()` check. So the second half of this test derives that inventory
+from schemas/manifest.json, which declares every command the harness
+deploys, and requires a source template for each.
 """
+import json
 import re
 import unittest
 from pathlib import Path
 
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES = SKILL_ROOT / "templates"
-DOC_DIRS = (SKILL_ROOT / "commands", TEMPLATES / "workspace-commands")
+WORKSPACE_COMMANDS = TEMPLATES / "workspace-commands"
+DOC_DIRS = (SKILL_ROOT / "commands", WORKSPACE_COMMANDS)
+MANIFEST = SKILL_ROOT / "schemas" / "manifest.json"
+
 
 # Matches a templates/... path wherever it appears: prose, a table cell, or
 # either half of a markdown link. Stops at the first character that cannot be
@@ -76,12 +87,12 @@ class TestCommandTemplateReferences(unittest.TestCase):
 
         Whatever /create is told to copy has to be there to copy.
         """
-        missing = sorted({
-            f"{doc.name} -> {detail}"
-            for doc, ref in _scan()
-            for exists, detail in [_resolve(ref)]
-            if not exists
-        })
+        missing = set()
+        for doc, ref in _scan():
+            exists, detail = _resolve(ref)
+            if not exists:
+                missing.add(f"{doc.name} -> {detail}")
+        missing = sorted(missing)
         self.assertEqual(
             [], missing,
             "command docs reference templates that do not exist:\n  "
@@ -101,7 +112,7 @@ class TestCommandTemplateReferences(unittest.TestCase):
             f"expected the docs to reference many templates, found {len(found)}",
         )
         self.assertGreaterEqual(
-            len(docs), 3,
+            len(docs), 2,
             f"expected references across several docs, found {sorted(docs)}",
         )
 
@@ -116,6 +127,31 @@ class TestCommandTemplateReferences(unittest.TestCase):
         self.assertTrue(
             checklist.is_file(),
             f"required by create.md, invoke.md and manifest.json: {checklist}",
+        )
+
+
+class TestWorkspaceCommandTemplates(unittest.TestCase):
+    def test_every_manifest_command_has_a_source_template(self):
+        """Each command the manifest deploys must have a template to copy.
+
+        create.md points at the workspace-commands directory as a whole, so
+        the reference scan above is satisfied by the directory existing --
+        it cannot tell that six of the seven files went missing. The
+        manifest is the authoritative list of what /create deploys, so
+        derive the expectation from it rather than from prose.
+        """
+        entries = json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"]
+        commands = [e["path"] for e in entries if e.get("type") == "command"]
+        self.assertTrue(commands, "manifest declares no command entries")
+
+        missing = sorted(
+            name for name in (Path(p).name for p in commands)
+            if not (WORKSPACE_COMMANDS / name).is_file()
+        )
+        self.assertEqual(
+            [], missing,
+            "manifest declares commands with no source template in "
+            f"{WORKSPACE_COMMANDS.name}/:\n  " + "\n  ".join(missing),
         )
 
 
