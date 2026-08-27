@@ -46,11 +46,11 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Complexity
 
-For every function the PR adds or modifies, as it stands after the PR, and every refactor in it. A match is exempt only under the `--` rule in [complexity.md](complexity.md).
+Scope: the audit set and `--` exemption in the Finding signals section of [complexity.md](complexity.md).
 
 - [ ] **Paths**: No function matches a CC row of the Finding signals table.
 - [ ] **Nesting**: No function matches the nesting row.
-- [ ] **Cause**: No function shows a catalog cause, including a refactor that matches `Branch hidden behind indirection`.
+- [ ] **Cause**: No function shows a catalog cause.
 
 ## Dead Code
 

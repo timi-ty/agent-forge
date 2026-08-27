@@ -47,14 +47,14 @@ Estimated CC 6, nesting depth 2. No signal below matches, so neither recorded no
 
 ## Finding signals
 
-Audit every function the diff adds or modifies, **as it stands after the PR**, and every refactor in it. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. New code targets CC <= 5. A function that matches no row below is not recorded.
+Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. A function that matches no row below is not recorded.
 
 | Signal | Reading | Priority |
 |--------|---------|----------|
 | CC 11-15 | Refactoring signal. | Low |
 | CC > 15 | Avoid. | Medium |
 | Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Medium |
-| Branch hidden behind indirection | Catalog entry: a refactor in this PR that fails a Guardrail. | Medium |
+| Branch hidden behind indirection | Catalog entry below; Medium because it is a regression this PR introduced. | Medium |
 | Any other catalog cause | A named structural cause; its entry's transformation is the fix. | Low |
 
 ### Complexity notes
@@ -63,7 +63,7 @@ Record a row for every function that matches a signal. `Priority` is the highest
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
-| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, optionally `(on <merge key>)`, or none] | Medium / Low / -- (reason) |
+| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it, or none] | Medium / Low / -- (reason) |
 
 ### Finding format
 
@@ -77,7 +77,7 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column.
+One entry per dominant cause and the transformation that removes it. `Dominant cause` is the entry whose Looks-like the function matches; if several match, the one covering the most decision points. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
@@ -261,7 +261,7 @@ Not when: the flag toggles one small step inside an otherwise shared path. Then 
 
 #### Branch hidden behind indirection -> Inline the branch
 
-Looks like: a refactor in this PR that lowered the count but whose result fails a Guardrail.
+Looks like: a refactor in this PR whose result fails a Guardrail.
 
 ```python
 # the PR replaced this ...
@@ -277,11 +277,11 @@ if user.is_admin:
     show_admin_panel()
 ```
 
-Not when: the indirection is reused from several call sites, or it removes a cause from an entry above.
+Not when: the indirection is reused from several call sites.
 
 ### Cross-function entries (Phase 6)
 
-Phase 4 tags each site with its per-function entry and a merge key in the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)`. Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
+When the dominant cause is `Long conditional chain or duplicated branches` and the chain selects on a value, append the merge key: `Long conditional chain or duplicated branches (on shape.kind)`. Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
 
 #### Type switch repeated across functions -> Polymorphism
 

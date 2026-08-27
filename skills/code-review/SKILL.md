@@ -194,9 +194,9 @@ For each changed file:
    - Typing conventions (interfaces vs types, generics usage, strictness level)
    - Import organization and ordering
    - Comment and documentation style
-3. **Note the base measurements** of each function the diff modifies, per the Counting rules in [complexity.md](complexity.md).
+3. **Note the base measurements** of each function the diff modifies without replacing its whole body, per the Counting rules in [complexity.md](complexity.md).
 
-For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3 with the Counting rules section pasted in; take the base measurements from their reports.
+For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3, with the Counting rules section and the hunks for their files pasted in; take the base measurements from their reports.
 
 Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
 
@@ -214,7 +214,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Any added or modified function, or refactor, matching a signal in [complexity.md](complexity.md)?
+- **Complexity**: Any added or modified function matching a signal in [complexity.md](complexity.md)?
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
@@ -222,7 +222,7 @@ When you find an issue, note the exact file path and line number from the diff.
 
 #### Required output: complexity notes
 
-Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards.
+Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards, and note `<file>: N functions audited` under it for each file; Phase 7 sums those lines.
 
 ### Phase 5 -- Semantic Verification
 
@@ -234,7 +234,7 @@ This phase is a **separate re-read** of every changed file. Do not rely on your 
 
 #### Required output: semantic verification notes
 
-You must produce these notes before proceeding to Phase 6. Their counts feed the `### Semantic Verification` section in Phase 7; their findings go in the priority groups.
+You must produce these notes before proceeding to Phase 6. The Phase 7 output rules say where their counts and findings go.
 
 **For each changed test file**, produce a table:
 
@@ -268,7 +268,7 @@ After reviewing individual files, check for issues that span the whole PR:
 
 - **New dependencies**: Are they justified? Are versions pinned?
 - **Internal consistency**: Do all files in the PR follow the same conventions as each other?
-- **Cross-function causes**: Group Phase 4 complexity rows by their `(on <merge key>)` qualifier; two or more rows on one key become a single finding under the matching Phase 6 entry in [complexity.md](complexity.md), replacing those rows.
+- **Cross-function causes**: Merge Phase 4 complexity rows that share a merge key, per the Cross-function entries in [complexity.md](complexity.md).
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?
