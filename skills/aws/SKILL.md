@@ -1,11 +1,11 @@
 ---
 name: aws
-description: Perform AWS operations via the CLI. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.
+description: Perform AWS operations via the CLI using static keys, IAM Identity Center, or SAML SSO. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.
 ---
 
 # AWS CLI Operations — Multi-Account
 
-This skill manages multiple AWS accounts (static IAM keys and SAML SSO) with safe switching. An account registry at `~/.aws/account-registry.json` tracks all configured accounts and which one is active.
+This skill manages multiple AWS accounts (static IAM keys, native IAM Identity Center, and SAML SSO) with safe switching. An account registry at `~/.aws/account-registry.json` tracks all configured accounts and which one is active.
 
 **CRITICAL**: Every `aws` command MUST be prefixed with `AWS_PROFILE=<profile>` using the active profile from the registry. Shell env vars do not persist between tool calls.
 
@@ -76,6 +76,39 @@ p.write_text(json.dumps(reg, indent=2))
 print('Added.')
 "
 ```
+
+### Register a new account — IAM Identity Center
+
+**Prerequisite:** the named profile must already exist in `~/.aws/config` and reference a configured `sso_session`, `sso_account_id`, and `sso_role_name`.
+
+1. Ask the user for: friendly name, description, AWS profile name, and default region.
+2. Authenticate and verify the profile:
+
+```bash
+AWS_PROFILE=<aws_profile> aws sso login --profile <aws_profile> --use-device-code
+AWS_PROFILE=<aws_profile> aws sts get-caller-identity
+```
+
+3. Capture the verified account ID and add it to the registry:
+
+```bash
+python -c "
+import json, pathlib
+p = pathlib.Path.home() / '.aws/account-registry.json'
+reg = json.loads(p.read_text())
+reg['accounts']['<name>'] = {
+    'description': '<desc>',
+    'account_id': '<from_sts>',
+    'aws_profile': '<aws_profile>',
+    'region': '<region>',
+    'auth_method': 'sso'
+}
+p.write_text(json.dumps(reg, indent=2) + '\n')
+print('Added.')
+"
+```
+
+The registry links the friendly account name to the AWS CLI profile. Identity Center session, start URL, account, and role configuration remain in `~/.aws/config` rather than being duplicated in the registry.
 
 ### Register a new account — SAML SSO (saml2aws)
 
@@ -219,6 +252,16 @@ Do not print access keys, secret keys, passwords, or tokens. Use `--query` to fi
 ### Refresh by auth method
 
 Read the account's `auth_method` from the registry and follow the matching procedure:
+
+#### `sso` (IAM Identity Center)
+
+Re-authenticate the existing AWS CLI profile through its configured Identity Center session:
+
+```bash
+AWS_PROFILE=<aws_profile> aws sso login --profile <aws_profile> --use-device-code
+```
+
+Have the user complete the device authorization and MFA flow, then verify with `AWS_PROFILE=<aws_profile> aws sts get-caller-identity` before retrying the failed command. Do not copy Identity Center role credentials into `~/.aws/credentials`; the CLI obtains and caches temporary credentials through the configured SSO session.
 
 #### `saml2aws`
 
@@ -433,13 +476,13 @@ aws secretsmanager get-secret-value --secret-id my-secret --query 'SecretString'
 
 ## Error Handling
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `AccessDenied` / `UnauthorizedAccess` | Missing IAM permission | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies` |
-| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
-| `ThrottlingException` | API rate limit hit | Wait and retry with exponential backoff |
-| `ResourceNotFoundException` | Resource doesn't exist or wrong region | Verify region with `--region` flag |
-| `InvalidParameterValue` | Bad input | Check AWS docs for the correct parameter format |
+| Error                                                                                | Cause                                  | Fix                                                                                                                               |
+| ------------------------------------------------------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessDenied` / `UnauthorizedAccess`                                                | Missing IAM permission                 | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies`                                 |
+| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired                    | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
+| `ThrottlingException`                                                                | API rate limit hit                     | Wait and retry with exponential backoff                                                                                           |
+| `ResourceNotFoundException`                                                          | Resource doesn't exist or wrong region | Verify region with `--region` flag                                                                                                |
+| `InvalidParameterValue`                                                              | Bad input                              | Check AWS docs for the correct parameter format                                                                                   |
 
 ## Multi-Region Operations
 
