@@ -12,9 +12,11 @@ Portable collection of AI agent skills and a development harness for AI-native e
 | **[issue-resolution-report](skills/issue-resolution-report/)** | Write and post a technically sound issue resolution report as a GitHub issue comment and/or PR description after fixing a bug. | `write a resolution report`, `document what was fixed`, `update a PR body with findings`, `post a resolution comment` | `gh` CLI |
 | **[pr-evidence-screenshots](skills/pr-evidence-screenshots/)** | Before/after screenshot pair for a UI fix, where the only difference between the two frames is the code. Hosts them so they render inline for a reviewer on a private repo. | `add screenshots to the PR`, `show before and after`, `prove the fix visually` | `node.js >= 18`, `@playwright/test`, `gh` CLI |
 | **[aws](skills/aws/)** | AWS CLI operations with safety rails. Confirms destructive ops, warns about costs, covers EC2/S3/IAM/Lambda/CloudFormation/RDS and more. | `AWS CLI`, `manage AWS`, `EC2 instances`, `S3 bucket`, `deploy to AWS` | AWS CLI v2 |
+| **[create-issue](skills/create-issue/)** | Turn a problem found in the current conversation into a well-structured GitHub issue -- asks filtering questions first, then sets labels, assignee and project fields. | `create an issue`, `open an issue`, `file an issue`, `track this as an issue` | `gh` CLI |
+| **[clickup](skills/clickup/)** | ClickUp integration. Direct API queries for tasks, comments and attachments, so task context arrives in the editor instead of the browser. | `set up clickup`, `link clickup`, `work on task`, `what is left in this sprint` | `node.js >= 18`, ClickUp API token |
 | **[redeploy-frontend](skills/redeploy-frontend/)** | Trigger a Vercel redeploy by pushing a timestamp comment. Auto-detects package manager, branch, and target file. Auto-fixes prettier issues. | `redeploy`, `redeploy frontend`, `trigger vercel deploy` | `git`, Vercel |
 | **[playwright-pool](skills/playwright-pool/)** | Playwright browser pool for multi-agent automation. Installs a pooling MCP proxy so multiple agents each get an isolated browser session — no contention, no shared state. Works with Cursor and Claude Code. | `set up playwright pool`, `install playwright pool`, `browser pool`, `multi-agent browser automation` | `node.js >= 18`, `@playwright/mcp` (via npx) |
-| **[sync-skills](skills/sync-skills/)** | Sync locally installed skills to match a branch of this repo. Handles first-time installs and updates in one flow. | paste a `github.com/timi-ty/cursor-forge` URL, `install skills`, `update skills`, `sync skills` | `gh` CLI, `git` |
+| **[sync-skills](skills/sync-skills/)** | Sync locally installed skills to match a branch of this repo. Handles first-time installs and updates in one flow. | paste a `github.com/timi-ty/agent-forge` URL, `install skills`, `update skills`, `sync skills` | `gh` CLI, `git` |
 | **[figma](skills/figma/)** | Figma design integration. Direct API queries for design specs, images, and layout data. Cross-references Figma visuals with existing codebase architecture during implementation. | `set up figma`, `configure figma`, `link figma`, `implement design from figma` | `node.js >= 18`, Figma PAT |
 | **[btw](skills/btw/)** | Interrupt the current task with a side-task that runs in a background subagent. | `/btw`, `btw`, `by the way` | — |
 
@@ -35,13 +37,13 @@ The development harness is a project-local control plane that turns a ROADMAP.md
 
 ### Via Cursor agent (recommended)
 
-Paste `https://github.com/timi-ty/cursor-forge` (or a branch URL) into any Cursor agent chat. The agent reads the repo's `catalog.json`, presents available skills, asks where to install them, and copies them into place. This works for both first-time installs and subsequent updates.
+Paste `https://github.com/timi-ty/agent-forge` (or a branch URL) into any Cursor agent chat. The agent reads the repo's `catalog.json`, presents available skills, asks where to install them, and copies them into place. This works for both first-time installs and subsequent updates.
 
 If the `sync-skills` skill is already installed locally, the agent uses it for smarter syncing -- diffing changed files, detecting removals, and batch-updating across scopes. Otherwise, the agent follows the repo's built-in [AI instructions](#for-ai-agents) to install from scratch. Either way, the entry point is the same: paste the URL.
 
 ### Via Claude Code (recommended)
 
-Paste `https://github.com/timi-ty/cursor-forge` into any Claude Code session. The agent reads `catalog.json`, presents available skills, asks where to install them, and copies them into place.
+Paste `https://github.com/timi-ty/agent-forge` into any Claude Code session. The agent reads `catalog.json`, presents available skills, asks where to install them, and copies them into place.
 
 Skills are installed to `~/.claude/commands/<skill-name>/` (global) or `.claude/commands/<skill-name>/` (workspace-local). The workflow is identical to the Cursor flow.
 
@@ -99,7 +101,7 @@ Fetch and parse [`catalog.json`](catalog.json) at the repo root. It contains a s
 - `description` -- what the skill does
 - `triggers` -- phrases and scenarios that indicate this skill is needed
 - `path` -- folder path relative to the repo root
-- `files` -- list of files in the skill folder
+- `files` -- representative files in the skill folder, for orientation. `sync-skills` compares whole directories, so this list does not have to be exhaustive and is not what decides whether a skill is out of date
 - `dependencies` -- external tools the skill requires
 - `notes` -- additional context (workflow summary, caveats)
 - `platforms` -- tool-specific install paths for `cursor` and `claude-code`
