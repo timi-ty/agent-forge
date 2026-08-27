@@ -1,6 +1,6 @@
 # Cyclomatic Complexity Reference
 
-Referenced from Phases 4, 7, and 9 of [SKILL.md](SKILL.md). Owns every number, cause name, and priority the complexity pass uses; the [checklist](checklist.md) `## Complexity` items are the code properties this file makes checkable.
+Referenced from Review Goal 6 and Phase 4 of [SKILL.md](SKILL.md). Owns every number, cause name, and priority the complexity pass uses; the [checklist](checklist.md) `## Complexity` items are the code properties this file makes checkable.
 
 ---
 
@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point. Branch-free inline callbacks are neither counted nor tabulated.
 
-**Modified functions**: count the base version (read in Phase 3 from `$REVIEW_BASE`), then add the net decision points on the hunk's `+` and `-` lines; nesting comes from the hunk's indentation. That yields the pre-PR and post-PR estimates in one pass, without a head checkout.
+**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting comes from the hunk's indentation. That yields `base -> PR` without a head checkout.
 
 ### Worked example
 
@@ -41,38 +41,47 @@ def resolve_price(order, user):                 # 1
     return price if price > 0 else 0            # +1 -> 6
 ```
 
-Estimated CC 6, nesting depth 2. In the 6-10 band with no catalog cause, so recorded but not a finding -- the branching is the domain.
+Estimated CC 6, nesting depth 2. In the 6-10 band with no catalog cause, so neither recorded nor a finding -- the branching is the domain.
 
 ---
 
 ## Thresholds
 
-Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. When the PR moved a function into a higher band, cite the pre-PR estimate too.
+Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase.
 
-| Signal | Reading | Row in notes? | Priority |
-|--------|---------|---------------|----------|
-| CC <= 5 | Target for new code. | No | -- |
-| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | Yes | -- |
-| CC 11-15 | Refactoring signal. | Yes | Low |
-| CC > 15 | Avoid unless there is a strong, stated reason. | Yes | Medium |
-| Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Yes | Medium |
-| Catalog cause present, any band | Its entry's transformation removes the cause and clears the Guardrails. | Yes | Low |
+| Signal | Reading | Priority |
+|--------|---------|----------|
+| CC <= 5 | Target for new code. | -- |
+| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | -- |
+| CC 11-15 | Refactoring signal. | Low |
+| CC > 15 | Avoid unless there is a strong, stated reason. | Medium |
+| Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Medium |
+| Catalog cause present, any band | Its entry's transformation removes the cause and clears the Guardrails. | Low |
+| A refactor in the PR fails a Guardrail | The PR traded a visible branch for something harder to read, slower, or harder to debug. | Medium |
 
-A row's priority is the highest of the signals it matches. `Domain-justified?` is evaluated only when a cause is recorded (rows without one write `--`); a `Yes` row is not a finding whatever its signals.
+### Complexity notes
+
+Record a row for every function that matches a signal with a priority. A row's `Priority` is the highest matched signal, or `--` when `Domain-justified?` is `Yes`; rows with a priority are findings.
+
+`Domain-justified? Yes` means the branching is inherent to the problem, or every applicable transformation would fail a Guardrail. State the reason in the row.
+
+| Function | File:line | Est. CC | Nesting | Dominant cause | Domain-justified? | Priority |
+|----------|-----------|---------|---------|----------------|-------------------|----------|
+| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, or the failed Guardrail] | Yes (reason) / No | Medium / Low / -- |
 
 ### Finding format
 
-A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, the dominant cause, and the transformation by catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
+A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, the dominant cause, and the transformation from its catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
 
 ```markdown
-- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 17, nesting 4 (deep nesting). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
+- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (deep nesting). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
 ```
 
 ---
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column and its transformation name in the `Transformation` column.
+One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column; the finding names the transformation from the same heading.
 
 ### Deep nesting -> Guard clauses
 
@@ -192,7 +201,7 @@ Not when: there are only two or three branches; the branches share intermediate 
 
 ### Type switch repeated across functions -> Polymorphism
 
-Looks like: several functions each switch on the same discriminator.
+Looks like: several functions each switch on the same discriminator. Assigned in Phase 6, not Phase 4: a single site is tagged as a chain in Phase 4, and Phase 6 merges rows on the same discriminator into one finding.
 
 ```python
 # before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
@@ -229,22 +238,32 @@ Not when: the name would only restate the expression (`is_a_and_b`). If you cann
 
 ### Several jobs in one function -> Split by responsibility
 
-Looks like: independent decisions about unrelated concerns (parse, validate, persist, notify) in one body -- often a loop whose body carries most of the function's decisions.
+Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body.
 
 ```python
 # before
-for row in rows:
-    if row.skip: continue
-    if row.kind == "a": ...
-    elif row.kind == "b": ...
-    ...
+def handle_upload(req):
+    if not req.file:
+        return error("no file")
+    if req.file.size > MAX_SIZE:
+        return error("too large")
+    if req.file.kind == "csv":
+        rows = parse_csv(req.file)
+    else:
+        rows = parse_json(req.file)
+    db.save(rows)
+    if req.notify:
+        send_email(req.user, len(rows))
 
-# after
-for row in rows:
-    process_row(row)
+# after -- each helper owns one concern's decisions; the orchestrator is straight-line
+def handle_upload(req):
+    file = validate_upload(req)
+    rows = parse_rows(file)
+    db.save(rows)
+    notify_if_requested(req, rows)
 ```
 
-Not when: the pieces read and write many locals of the enclosing function -- the extracted function would need a wide parameter list or an out-parameter, which is worse than the loop.
+Not when: the pieces read and write many locals of the enclosing function -- the extracted function would need a wide parameter list or an out-parameter, which is worse than the original.
 
 ### Boolean mode flag -> Split the function
 
@@ -269,12 +288,8 @@ Not when: the flag toggles one small step inside an otherwise shared path. Then 
 
 ## Guardrails
 
-Apply exactly one transformation per finding; if a second is needed, that is a second finding. Do not optimize the number blindly. A transformation is wrong -- and the slightly higher-complexity implementation is the correct one -- when the result would be:
+Do not optimize the number blindly. A transformation is wrong -- and the slightly higher-complexity implementation is the correct one -- when the result would be:
 
 - **harder to read than the branch it replaced**: an abstraction, an indirection, a class or pattern, or a helper that exists only to move a branch out of view
 - **slower in a performance-critical path**
 - **harder to debug**: a stack trace through a dispatch table is less obvious than a visible `if`
-
-`Domain-justified? Yes` in the complexity notes means the branching is inherent to the problem, or every applicable transformation would fail one of these tests. State the reason in the row.
-
-When applying a transformation in Phase 9: preserve behavior exactly, re-estimate CC after the edit, and state in the commit message which branching or responsibility was removed or isolated -- not just the new number.

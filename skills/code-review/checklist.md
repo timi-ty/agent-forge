@@ -46,9 +46,8 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Complexity
 
-- [ ] **Within thresholds**: No added or modified function exceeds the CC or nesting thresholds in [complexity.md](complexity.md) without a stated domain justification.
-- [ ] **No catalog cause**: No added or modified function shows a cause from the catalog in `complexity.md` whose transformation clears its Guardrails.
-- [ ] **Not gamed**: Any complexity refactor the PR itself contains clears the Guardrails in `complexity.md`.
+- [ ] **Within thresholds**: No added or modified function matches a finding signal in the Thresholds table of [complexity.md](complexity.md), unless its complexity-notes row is `Domain-justified? Yes` with a stated reason.
+- [ ] **Not gamed**: No refactor in the PR trades a visible branch for something that fails a Guardrail in `complexity.md`.
 
 ## Dead Code
 

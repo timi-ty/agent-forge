@@ -197,7 +197,7 @@ For each changed file:
 
 For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR.
 
-Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
+Take notes on the patterns you discover. You will use these as the baseline for Phase 4. For each function the diff modifies, also note its base cyclomatic complexity and nesting depth using the counting rules in [complexity.md](complexity.md); Phase 4 adds the hunk's delta to it.
 
 ### Phase 4 -- File-by-File Diff Review
 
@@ -213,7 +213,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Any added or modified function above the thresholds, or showing a catalog cause, in [complexity.md](complexity.md)?
+- **Complexity**: Any added or modified function, or refactor, matching a finding signal in [complexity.md](complexity.md)?
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
@@ -221,13 +221,7 @@ When you find an issue, note the exact file path and line number from the diff.
 
 #### Required output: complexity notes
 
-Fill this table as you review each file, not as a separate walk afterwards. Record a row for each function the Thresholds table in [complexity.md](complexity.md) marks `Row in notes? Yes`, and keep a running count of every function audited for the Phase 7 report.
-
-| Function | File:line | Est. CC | Nesting | Dominant cause | Transformation | Domain-justified? | Priority |
-|----------|-----------|---------|---------|----------------|----------------|-------------------|----------|
-| `functionName` | `path/to/file.ts:42` | 17 | 4 | deep nesting | guard clauses | No | Medium |
-
-Rows with a priority go into the Phase 7 report at that priority; the rest are evidence the pass ran. `Dominant cause` and `Transformation` are catalog headings.
+Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards. Rows with a priority are findings and go into the Phase 7 report at that priority.
 
 ### Phase 5 -- Semantic Verification
 
@@ -273,6 +267,7 @@ After reviewing individual files, check for issues that span the whole PR:
 
 - **New dependencies**: Are they justified? Are versions pinned?
 - **Internal consistency**: Do all files in the PR follow the same conventions as each other?
+- **Repeated type switch**: If two or more Phase 4 complexity rows record a chain on the same discriminator, merge them into one Polymorphism finding (see the catalog in [complexity.md](complexity.md)).
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?
@@ -291,7 +286,7 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 - Group items under `### High`, `### Medium`, and `### Low` priority headings.
 - If a priority group has no items, omit that heading entirely.
 - Reference specific file paths (and line numbers when useful) in bold at the start of each bullet.
-- Include the evidence sections `### Semantic Verification` (Phase 5) and `### Complexity` (Phase 4 counts) after the priority groups. Both are **always present**, even when nothing was found: each documents that its pass ran and summarizes the result. Issues from either pass are reported in the appropriate priority group above (they contribute to the verdict).
+- Include the evidence sections `### Semantic Verification` (Phase 5) and `### Complexity` (Phase 4) after the priority groups. Both are **always present**, even when nothing was found: each states its counts, and its findings are reported in the appropriate priority group above (they contribute to the verdict).
 
 **Priority definitions:**
 - **High** -- Bugs, data loss, security holes, dead code that misleads users, or fundamentally broken behavior. Must fix before merge.
@@ -319,14 +314,10 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 
 **Test files reviewed**: [count]
 **Application code files reviewed**: [count]
-
-[If issues were found, list them here as bullets with the same format as above. If no issues were found:]
-
-All tests verified to fail on feature breakage. All application code logic verified to match stated intent.
+**Semantic findings**: [count] (in the priority groups above)
 
 ### Complexity
 
-**Functions audited**: [count]
 **Complexity findings**: [count of rows with a priority] (in the priority groups above)
 ```
 
@@ -395,7 +386,7 @@ If the project has a `.env.example` or `.env.template` in the repo root but no `
 
 **Do not log or display the contents of these files** -- they may contain secrets.
 
-Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Then do a **regular push** (not force push):
+Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Each commit message names the finding it resolves and what structurally changed, not just a metric. Then do a **regular push** (not force push):
 
 ```bash
 git -C ../$REPO_NAME-wt-fix-pr<N> push
