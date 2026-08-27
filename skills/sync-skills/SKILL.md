@@ -1,11 +1,11 @@
 ---
 name: sync-skills
-description: Sync locally installed agent skills to match a branch of the cursor-forge repo. Works with both Cursor and Claude Code. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says "install skills", "update skills", "sync skills", or "install cursor skills".
+description: Sync locally installed agent skills to match a branch of the agent-forge repo. Works with both Cursor and Claude Code. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/agent-forge URL, or says "install skills", "update skills", "sync skills", or "install cursor skills".
 ---
 
 # Sync Skills
 
-Sync locally installed agent skills with a branch of the `cursor-forge` GitHub repo. Works for first-time installs (everything is new) and subsequent updates (adds new skills, updates changed ones, removes deleted ones). Always asks for confirmation before making changes.
+Sync locally installed agent skills with a branch of the `agent-forge` GitHub repo. Works for first-time installs (everything is new) and subsequent updates (adds new skills, updates changed ones, removes deleted ones). Always asks for confirmation before making changes.
 
 ## Workflow
 
@@ -69,27 +69,32 @@ For each installed skill folder found, note its name and scope.
 
 ### Step 3: Diff remote vs installed
 
+Clone the remote branch once, up front — both this comparison and the install in
+Step 5 read from it:
+
+```bash
+git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git <tmp-dir>
+```
+
+If the clone fails, **abort** and tell the user: "Could not clone `{owner}/{repo}` at branch `{branch}`. Verify the URL and that the branch exists."
+
 For each scope independently, classify every skill:
 
 **NEW** — skill is in the remote catalog but not installed in this scope.
 
-**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but at least one file listed in the catalog entry's `files` array differs from its local counterpart. For each file in `files`, fetch the remote content and compare against the local file. **Always normalize line endings** on both sides before comparing — strip `\r` from both remote and local content unconditionally:
+**UPDATED** — skill is installed in this scope AND exists in the remote catalog, but its directory differs from the remote one. Compare the **whole directory**, not a list of files:
 
 ```bash
-# Fetch and normalize remote content (strip \r)
-remote=$(gh api "repos/$OWNER/$REPO/contents/{skill-path}/{file}?ref=$BRANCH" \
-  --jq '.content' | python -c "import sys,base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))" | tr -d '\r')
-
-# Normalize local content (strip \r)
-local=$(tr -d '\r' < "<local-path>/{file}")
-
-# Compare normalized content
-if [ "$remote" != "$local" ]; then ...
+diff -r --strip-trailing-cr --exclude='__pycache__' "<tmp-dir>/{skill-path}" "<scope-path>/{skill-name}"
 ```
 
-If any file differs (or does not exist locally), classify the skill as UPDATED.
+Exit 0 → UNCHANGED. Any other exit → UPDATED. A directory comparison catches added, removed and modified files alike, so a skill cannot drift silently.
 
-> **Note on comparison:** Do NOT use `jq`'s `@base64d` to decode the content — it appends a trailing `\n` to its output, making every file appear 1 byte larger than the real content and causing all skills to always show as UPDATED. Use Python's `base64.b64decode` (as shown above) for byte-exact output. Line-ending normalization (`tr -d '\r'`) is **mandatory on every comparison**, not just on Windows — local files may have CRLF line endings even on Linux (e.g. Windows filesystems mounted via WSL symlinks), so OS detection is not reliable for this.
+> **Why the whole directory, and not the catalog's `files` array:** the array is documentation, not a manifest, and it goes stale. `development-harness` lists one file and ships ninety-five — comparing only what was listed reported that skill up to date no matter what changed inside it. A directory comparison needs no bookkeeping to stay correct, and reads the clone you already have instead of making one `gh api` call per file.
+>
+> **Why `--strip-trailing-cr`:** local files may have CRLF endings even on Linux — a Windows filesystem mounted through WSL, for instance — so OS detection is not a reliable substitute. Normalize unconditionally.
+>
+> **Why `--exclude='__pycache__'`:** skills shipping `.py` files grow bytecode caches in the install directory as soon as anything runs them. Those are generated, never in the repo, and without this exclusion they would report the skill as UPDATED forever.
 
 **REMOVED** — skill folder exists locally in this scope but is NOT present in the remote catalog.
 
@@ -125,16 +130,7 @@ If the workspace scope directory is not present in the current directory, defaul
 
 ### Step 5: Execute
 
-Clone the remote branch to a temporary directory to get all skill files (not just `SKILL.md`):
-
-```bash
-# Clone the full repo (shallow) to access all skill files
-git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git <tmp-dir>
-```
-
-If the clone fails, **abort** and tell the user: "Could not clone `{owner}/{repo}` at branch `{branch}`. Verify the URL and that the branch exists."
-
-Then apply confirmed changes:
+Apply confirmed changes, reading from the clone made in Step 3:
 
 **For each REMOVED skill (confirmed):**
 ```bash

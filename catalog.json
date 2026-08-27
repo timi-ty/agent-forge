@@ -144,9 +144,9 @@
     {
       "name": "sync-skills",
       "path": "skills/sync-skills",
-      "description": "Sync locally installed agent skills to match a branch of the cursor-forge repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/cursor-forge URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
+      "description": "Sync locally installed agent skills to match a branch of the agent-forge repo. Handles first-time installs and subsequent updates in one flow. Use when the user pastes a github.com/timi-ty/agent-forge URL, or says 'install skills', 'update skills', 'sync skills', or 'install cursor skills'.",
       "triggers": [
-        "user pastes a github.com/timi-ty/cursor-forge URL",
+        "user pastes a github.com/timi-ty/agent-forge URL",
         "install skills",
         "update skills",
         "sync skills",
@@ -353,6 +353,39 @@
         "claude-code": {
           "install_path_global": "~/.claude/commands/pr-evidence-screenshots",
           "install_path_workspace": ".claude/commands/pr-evidence-screenshots",
+          "entry_file": "SKILL.md"
+        }
+      }
+    },
+    {
+      "name": "clickup",
+      "path": "skills/clickup",
+      "description": "Set up ClickUp integration for AI coding agents. Provisions credentials, links a ClickUp view to the current project, and provides direct API query tools for fetching tasks, comments, and attachments during development.",
+      "triggers": [
+        "set up clickup",
+        "configure clickup",
+        "link clickup",
+        "connect clickup",
+        "clickup setup",
+        "change clickup view",
+        "reconfigure clickup",
+        "remove clickup from this project",
+        "what is left in this sprint",
+        "work on task"
+      ],
+      "files": ["SKILL.md", "setup/package.json", "setup/index.mjs", "query/package.json", "query/index.mjs"],
+      "dependencies": ["node.js >= 18", "ClickUp API token"],
+      "notes": "Two-phase skill mirroring figma: setup (token provisioning, view linking via URL parsing) and runtime (direct ClickUp REST API v2 queries with rate limiting, 5-min caching, and task simplification). Six query commands: tasks, task, comments, search, download-attachment, statuses. No MCP server and no external npm dependencies — Node.js built-ins and fetch() only.",
+      "setup_required": true,
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/clickup",
+          "install_path_workspace": ".cursor/skills/clickup",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/clickup",
+          "install_path_workspace": ".claude/commands/clickup",
           "entry_file": "SKILL.md"
         }
       }
