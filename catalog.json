@@ -197,7 +197,7 @@
     {
       "name": "aws",
       "path": "skills/aws",
-      "description": "Perform AWS operations via the CLI. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.",
+      "description": "Perform AWS operations via the CLI using static keys, IAM Identity Center, or SAML SSO. Use when the user asks to manage AWS resources, services, infrastructure, or anything involving EC2, S3, Lambda, IAM, RDS, ECS, CloudFormation, Route53, CloudWatch, Lightsail, or other AWS services.",
       "triggers": [
         "manage AWS resources",
         "AWS CLI",
@@ -213,7 +213,7 @@
       ],
       "files": ["SKILL.md"],
       "dependencies": ["AWS CLI v2", "saml2aws (optional, for SAML SSO accounts)"],
-      "notes": "Multi-account support with an account registry (~/.aws/account-registry.json). Handles static IAM keys and SAML SSO via saml2aws (Browser provider). Safety-first: confirms destructive ops with account context and warns about cost-incurring resources. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager.",
+      "notes": "Multi-account support with an account registry (~/.aws/account-registry.json). Handles static IAM keys, native IAM Identity Center (aws sso login through a configured sso_session in ~/.aws/config), and SAML SSO via saml2aws (Browser provider). Safety-first: confirms destructive ops with account context and warns about cost-incurring resources. Covers EC2, S3, IAM, Lambda, CloudFormation, RDS, Route53, CloudWatch, Lightsail, ECS, and Secrets Manager.",
       "platforms": {
         "cursor": {
           "install_path_global": "~/.cursor/skills/aws",
