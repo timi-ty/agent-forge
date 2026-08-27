@@ -1,6 +1,6 @@
 # Cyclomatic Complexity Reference
 
-Method for the complexity pass in Phase 4 (complexity notes), the severity mapping in Phase 7 (output), and the refactors applied in Phase 9 (plan to address issues). The [checklist](checklist.md) `## Complexity` section lists *what* to look for; this file defines *how* to count, *when* it is a finding, and *which* transformation to apply.
+Owner of every number, cause name, and priority the complexity pass uses: Phase 4 (complexity notes), Phase 7 (priority of complexity findings), and Phase 9 (applying a transformation). The [checklist](checklist.md) `## Complexity` section says *what* to check; this file defines *how* to count, *when* a function is a finding, and *which* transformation applies.
 
 The objective is to minimize the number of independent execution paths a reader must reason about while keeping the code explicit, cohesive, and easy to test. A lower number is the side effect, not the goal.
 
@@ -21,14 +21,12 @@ Cyclomatic complexity (CC) of a function = the number of independent paths throu
 3. Add **nothing** for: `else`, `default`, `finally`, `return`, `throw` / `raise`, `break`, `continue`, recursion, and null-safe operators (`?.`, `??`, `or default`) used purely to supply a default value.
 
 Language notes:
-- Python `match`: +1 per `case` except `case _`. Guard clauses on a case (`case X if cond`) add +1 more.
+- Python `match`: `case _` adds nothing. A guard on a case (`case X if cond`) adds +1 more.
 - TypeScript / JavaScript `switch`: +1 per `case` label, including fall-through labels, because each is a distinct entry path.
-- Kotlin `when` and Go `select` / `switch`: same as `switch`.
-- Go `if err != nil { return err }`: counts +1 like any `if`. A function that is mostly error plumbing can legitimately sit in the 6-10 band; diagnose the cause before flagging (see below).
 
 **Nesting depth**: the deepest chain of control-flow blocks (`if` / loop / `try` / `switch`) inside the body. Statements at the top level of the function are depth 0; each enclosing block adds 1. A `for` containing an `if` containing a `try` is depth 3.
 
-**Prefer measured numbers when the project already has them.** If the repository has a complexity linter configured -- eslint `complexity`, `radon` / `flake8` `C901`, `gocyclo`, rubocop `Metrics/CyclomaticComplexity`, PHPMD `CyclomaticComplexity` -- run it on the changed files and use its numbers. Never install tooling to get a number; a hand estimate from the rules above is sufficient and reproducible.
+**Measured numbers.** Use a linter's numbers instead of a hand estimate only when both hold: the repository already configures a complexity rule (eslint `complexity`; `max-complexity` / `C901` in `.flake8`, `setup.cfg`, `ruff.toml` or `pyproject.toml`; `gocyclo` in `.golangci.yml`; `Metrics/CyclomaticComplexity` in `.rubocop.yml`), and the PR head worktree already exists with dependencies installed. Otherwise hand-estimate. Never install tooling to get a number. Say above the complexity notes when linter numbers were used.
 
 ### Worked example
 
@@ -43,83 +41,45 @@ def resolve_price(order, user):                 # 1
     return price if price > 0 else 0            # +1 -> 6
 ```
 
-Estimated CC 6, nesting depth 2. In the 6-10 band; only a finding if a listed smell is present and obviously fixable (here: none -- the branching is the domain).
+Estimated CC 6, nesting depth 2. In the 6-10 band and no cause from the catalog below applies, so not a finding -- the branching is the domain.
 
 ---
 
 ## Thresholds
 
-| Estimated CC | Reading |
-|--------------|---------|
-| <= 5 | Target for new code. |
-| 6-10 | Acceptable when the domain genuinely requires that many cases. Not a finding on its own. |
-| 11-15 | Refactoring signal. A finding when the function is new or changed in this PR. |
-| > 15 | Avoid unless there is a strong, stated reason. A finding when new or changed in this PR. |
+Estimate every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. When the PR moved a function into a higher band, cite the pre-PR estimate too.
 
-Nesting depth >= 4 is a finding regardless of CC -- depth is what makes a function hard to hold in your head.
+| Estimated CC or nesting | Reading | Priority |
+|-------------------------|---------|----------|
+| CC <= 5 | Target for new code. | Not a finding. Counted, not tabulated. |
+| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | Not a finding unless a catalog cause applies (then Low). Record the row. |
+| CC 11-15 | Refactoring signal. | **Low** -- nice to fix. |
+| CC > 15 | Avoid unless there is a strong, stated reason. | **Medium** -- maintainability concern; should fix. |
+| Nesting depth >= 4 | Hard to hold in your head regardless of CC. | **Medium** |
 
----
+A function in any band that shows a cause from the catalog below, where the transformation clears the guardrails, is a **Low** finding. A row marked `Domain-justified? Yes` is not a finding regardless of its band (see Guardrails).
 
-## Scope rule
+The Phase 4 complexity notes get a row for every function at CC >= 6, nesting >= 4, or showing a catalog cause. Functions in the target band are only counted.
 
-Audit **every function the diff adds or modifies**. Do not audit or flag functions the PR does not touch, even if they are worse -- the review is of this PR, not the codebase.
+### Finding format
 
-Two exceptions that *are* findings:
-- The PR pushes an existing function across a threshold (e.g. adds the branch that takes it from 10 to 11). Cite the before and after estimate.
-- The PR copies an already-complex function to create a near-duplicate. That is a reuse finding *and* a complexity finding.
+A complexity finding is written like every other finding: bold file path and line, the function, the estimated CC and nesting depth, the dominant cause, and the transformation named by its catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
 
----
-
-## Cause diagnosis
-
-For each function above threshold, name the **dominant cause** -- the one structural reason most of the paths exist. The cause selects the transformation.
-
-| Dominant cause | What it looks like | Transformation |
-|----------------|--------------------|----------------|
-| **Deep nesting** | Validation or precondition checks wrap the main operation in successive `if` blocks. | Guard clauses / early return |
-| **Repeated conditions** | The same predicate (or its negation) is tested in several places in the function. | Flatten nested conditionals, or extract predicate |
-| **Long conditional chain** | `if / elif / elif / else` or a `switch` selecting behavior by a value. | Dispatch map, or replace chain with data |
-| **Several jobs in one function** | Independent decisions about unrelated concerns (parse, validate, persist, notify) in one body. | Extract loop body / split by responsibility |
-| **Boolean mode flag** | A parameter like `dry_run`, `strict`, `as_json` that steers into substantially different paths. | Split a boolean-flag function |
-| **Duplicated branches** | Two or more branches that are identical except for a value or a call target. | Consolidate duplicated branches |
-| **Compound boolean** | A condition with three or more `&&` / `||` terms, often mixing unrelated concerns. | Extract predicate |
-| **Type switch repeated across functions** | Several functions each `switch` on the same discriminator. | Polymorphism / strategy |
+```markdown
+- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 17, nesting 4 (deep nesting). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
+```
 
 ---
 
-## Transformation catalog
+## Cause -> transformation catalog
 
-Each entry: the smell it targets, a compact before / after, and when **not** to use it. Apply exactly one transformation per finding; if a second is needed, that is a second finding.
+One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column and its transformation name in the `Transformation` column. Each entry gives what the cause looks like, a compact before / after, and when **not** to apply the transformation.
 
-### 1. Guard clauses / early return
+### Deep nesting -> Guard clauses
 
-Targets: deep nesting from validation.
+Looks like: precondition checks wrap the main operation in successive `if` blocks.
 
 Prefer:
-
-```text
-validate -> return early on failure
-validate -> return early on failure
-perform main operation
-return result
-```
-
-over:
-
-```text
-if valid:
-    if another_condition:
-        if another_condition:
-            perform main operation
-        else:
-            ...
-    else:
-        ...
-else:
-    ...
-```
-
-Concretely, prefer:
 
 ```python
 if not user:
@@ -149,11 +109,11 @@ else:
     return error
 ```
 
-Not when: the "failure" branches each do substantive, different work. That is dispatch, not validation -- see 3.
+Not when: the "failure" branches each do substantive, different work. That is a chain (see below), not validation.
 
-### 2. Flatten nested conditionals
+### Repeated conditions -> Flatten nested conditionals
 
-Targets: repeated conditions; nesting that exists only because two checks were written separately.
+Looks like: the same predicate (or its negation) is tested in several places, or nesting exists only because two checks were written separately.
 
 ```python
 # before
@@ -166,11 +126,13 @@ if order.paid and order.shipped:
     notify(order)
 ```
 
-Not when: flattening forces you to duplicate a condition elsewhere, or when the inner check has its own `else` that must stay distinct.
+Not when: flattening forces you to duplicate a condition elsewhere, or the inner check has its own `else` that must stay distinct.
 
-### 3. Dispatch map / lookup table
+### Long conditional chain or duplicated branches -> Replace the chain with data
 
-Targets: a long `if / elif` or `switch` chain that selects behavior by a value.
+Looks like: `if / elif / else` or a `switch` selecting behavior by a value; branches identical except for a value or call target; or a ladder of thresholds that is really configuration. Three shapes:
+
+Value -> handler:
 
 ```ts
 // before
@@ -197,86 +159,7 @@ function handler(kind: Kind) {
 }
 ```
 
-Not when: there are only two or three branches, the branches share intermediate state, or evaluation order matters (a map hides ordering).
-
-### 4. Polymorphism / strategy
-
-Targets: the *same* discriminator switched on in several functions.
-
-```python
-# before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
-def area(shape): ...
-def perimeter(shape): ...
-def bounding_box(shape): ...
-
-# after -- one class per kind owns its three behaviors
-class Circle:
-    def area(self): ...
-    def perimeter(self): ...
-    def bounding_box(self): ...
-```
-
-Not when: the switch exists in one place. A single dispatch site is a map (see 3), and a class hierarchy for one switch is excessive indirection.
-
-### 5. Extract predicate
-
-Targets: compound booleans; a condition whose meaning is not obvious from its terms.
-
-```python
-# before
-if user.plan == "pro" and not user.suspended and user.seats_used < user.seats_total:
-    grant_seat(user)
-
-# after
-if can_add_seat(user):
-    grant_seat(user)
-```
-
-The predicate is the same CC; the win is that the caller now has one concept to reason about, and the predicate is testable in isolation.
-
-Not when: the name would only restate the expression (`is_a_and_b`). If you cannot name the concept, the condition may be fine as it is.
-
-### 6. Extract loop body
-
-Targets: a loop whose body carries most of the function's decisions.
-
-```python
-# before
-for row in rows:
-    if row.skip: continue
-    if row.kind == "a": ...
-    elif row.kind == "b": ...
-    ...
-
-# after
-for row in rows:
-    process_row(row)
-```
-
-Not when: the body reads and writes many locals of the enclosing function -- the extracted function would need a wide parameter list or an out-parameter, which is worse than the loop.
-
-### 7. Split a boolean-flag function
-
-Targets: a flag parameter that selects between substantially different execution paths.
-
-```python
-# before
-def export(data, as_json=False):
-    if as_json:
-        ...  # 12 lines
-    else:
-        ...  # 14 lines
-
-# after
-def export_json(data): ...
-def export_csv(data): ...
-```
-
-Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag; two near-identical functions are the duplicated-branch smell.
-
-### 8. Consolidate duplicated branches
-
-Targets: branches identical except for a value or call target.
+Value -> parameter:
 
 ```python
 # before
@@ -291,11 +174,7 @@ else:
 client = Client(url=URLS[env], retries=3)
 ```
 
-Not when: the branches only coincide today and are expected to diverge (a documented reason, not a hunch).
-
-### 9. Replace an `if / elif` chain with data
-
-Targets: a ladder of thresholds or rules that is really configuration.
+Ordered thresholds -> value:
 
 ```python
 # before
@@ -310,42 +189,93 @@ GRADE_BANDS = [(90, "A"), (80, "B"), (70, "C")]
 grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 ```
 
-Not when: the rules have side effects or ordering dependencies that a table would hide from the reader.
+Not when: there are only two or three branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
----
+### Type switch repeated across functions -> Polymorphism
 
-## Severity mapping
+Looks like: several functions each switch on the same discriminator.
 
-Applies only to functions the PR adds or modifies (see Scope rule).
+```python
+# before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
+def area(shape): ...
+def perimeter(shape): ...
+def bounding_box(shape): ...
 
-| Finding | Priority |
-|---------|----------|
-| Estimated CC > 15, or nesting depth >= 4 | **Medium** -- maintainability concern; should fix before merge. |
-| Estimated CC 11-15 | **Low** -- refactoring signal; nice to fix. |
-| Estimated CC 6-10 with a listed smell (boolean mode flag, duplicated branches, long chain) and an obvious transformation | **Low** |
-| Estimated CC 6-10 with no listed smell | Not a finding. Record the row in the complexity notes and move on. |
-| PR pushes an existing function across a threshold | Same priority as the band it lands in; cite before and after. |
-
-A complexity finding is written like every other finding: bold file path, the function, the estimate and dominant cause, and the named transformation.
-
-```markdown
-- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 17, nesting 4 (deep nesting from validation). Convert the four precondition checks to guard clauses; the main loop then sits at depth 1.
+# after -- one class per kind owns its three behaviors
+class Circle:
+    def area(self): ...
+    def perimeter(self): ...
+    def bounding_box(self): ...
 ```
+
+Not when: the switch exists in one place. A single dispatch site is a map (above); a class hierarchy for one switch is excessive indirection.
+
+### Compound boolean -> Extract predicate
+
+Looks like: a condition with three or more `&&` / `||` terms, often mixing unrelated concerns.
+
+```python
+# before
+if user.plan == "pro" and not user.suspended and user.seats_used < user.seats_total:
+    grant_seat(user)
+
+# after
+if can_add_seat(user):
+    grant_seat(user)
+```
+
+The predicate has the same CC; the win is that the caller now has one concept to reason about, and the predicate is testable in isolation.
+
+Not when: the name would only restate the expression (`is_a_and_b`). If you cannot name the concept, the condition may be fine as it is.
+
+### Several jobs in one function -> Split by responsibility
+
+Looks like: independent decisions about unrelated concerns (parse, validate, persist, notify) in one body -- often a loop whose body carries most of the function's decisions.
+
+```python
+# before
+for row in rows:
+    if row.skip: continue
+    if row.kind == "a": ...
+    elif row.kind == "b": ...
+    ...
+
+# after
+for row in rows:
+    process_row(row)
+```
+
+Not when: the pieces read and write many locals of the enclosing function -- the extracted function would need a wide parameter list or an out-parameter, which is worse than the loop.
+
+### Boolean mode flag -> Split the function
+
+Looks like: a parameter such as `dry_run`, `strict`, `as_json` that steers into substantially different execution paths.
+
+```python
+# before
+def export(data, as_json=False):
+    if as_json:
+        ...  # 12 lines
+    else:
+        ...  # 14 lines
+
+# after
+def export_json(data): ...
+def export_csv(data): ...
+```
+
+Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag; two near-identical functions are the duplicated-branches cause.
 
 ---
 
 ## Guardrails
 
-Do not optimize the number blindly. Before proposing or applying a transformation, confirm it does **not** introduce:
+Apply exactly one transformation per finding; if a second is needed, that is a second finding. Do not optimize the number blindly. A transformation is wrong -- and the slightly higher-complexity implementation is the correct one -- when the result would be:
 
-- obscure abstractions
-- excessive indirection
-- unnecessary classes or design patterns
-- fragmented code -- meaningless one-line helpers that exist only to move a branch out of view
-- worse performance in a performance-critical path
-- harder debugging (a stack trace through a dispatch table is less obvious than a visible `if`)
-- behavior that is less obvious to the reader than the branch it replaced
+- **harder to read than the branch it replaced**: an abstraction, an indirection, a class or pattern, or a helper that exists only to move a branch out of view
+- **slower in a performance-critical path**
+- **harder to debug**: a stack trace through a dispatch table is less obvious than a visible `if`
 
-If any of these would result, the slightly higher-complexity implementation is the correct one. Say so in the complexity notes (`Domain-justified? Yes` with the reason) and do not raise a finding.
+`Domain-justified? Yes` in the complexity notes means the branching is inherent to the problem, or every applicable transformation would fail one of these tests. State the reason in the row; a justified row is not a finding regardless of its band.
 
 When applying a transformation in Phase 9: preserve behavior exactly, re-estimate CC after the edit, and state in the commit message which branching or responsibility was removed or isolated -- not just the new number.
