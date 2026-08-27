@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Perform a senior-engineer code review of a pull request. Checks that changes are scoped to the PR's stated goal, conform to existing codebase patterns, introduce no bugs, are maximally efficient, and contain no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
+description: Perform a senior-engineer code review of a pull request. Checks that changes are scoped to the PR's stated goal, conform to existing codebase patterns, introduce no bugs, are maximally efficient, keep cyclomatic complexity low, and contain no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
 ---
 
 # Code Review
@@ -14,6 +14,7 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
+6. **Low complexity** -- New or changed functions keep control flow simple: few independent paths for a reader to hold, without hiding behavior behind abstraction. Finding signals are in [complexity.md](complexity.md).
 
 ---
 
@@ -141,12 +142,19 @@ If the project has a `.env.example` or `.env.template` in the repo root but no `
 
 **Do not log or display the contents of these files** -- they may contain secrets.
 
+#### Fetch the PR head ref
+
+Fetch the PR's head so Phase 4 can read post-PR file contents without a second worktree:
+
+```bash
+git fetch origin pull/<N>/head:pr-<N>
+```
+
 #### Optional: Check out the PR head branch
 
 If you need to run the PR code locally (build, test, lint), also create a worktree for the PR's head:
 
 ```bash
-git fetch origin pull/<N>/head:pr-<N>
 git worktree add ../$REPO_NAME-wt-review-pr<N>-head pr-<N>
 ```
 
@@ -212,10 +220,15 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
+- **Complexity**: Any function in the audit set matching a signal in [complexity.md](complexity.md)? For a modified function, apply its Modified functions rule.
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
 When you find an issue, note the exact file path and line number from the diff.
+
+#### Required output: complexity notes
+
+Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards, and note `<file>: N functions audited` under it for each file; Phase 7 sums those lines.
 
 ### Phase 5 -- Semantic Verification
 
@@ -227,7 +240,7 @@ This phase is a **separate re-read** of every changed file. Do not rely on your 
 
 #### Required output: semantic verification notes
 
-You must produce these notes before proceeding to Phase 6. They are included in Phase 7 (Output).
+You must produce these notes before proceeding to Phase 6. The Phase 7 output rules say where their counts and findings go.
 
 **For each changed test file**, produce a table:
 
@@ -261,6 +274,7 @@ After reviewing individual files, check for issues that span the whole PR:
 
 - **New dependencies**: Are they justified? Are versions pinned?
 - **Internal consistency**: Do all files in the PR follow the same conventions as each other?
+- **Cross-function causes**: Merge Phase 4 complexity rows that share a merge key, per the Cross-function entries in [complexity.md](complexity.md).
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?
@@ -279,7 +293,7 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 - Group items under `### High`, `### Medium`, and `### Low` priority headings.
 - If a priority group has no items, omit that heading entirely.
 - Reference specific file paths (and line numbers when useful) in bold at the start of each bullet.
-- Include a `### Semantic Verification` section after the priority groups. This section is **always present**, even when no semantic issues were found. It documents that the verification was performed and summarizes the results. Semantic issues found in Phase 5 should also appear in the appropriate priority group above (they contribute to the verdict).
+- Include the evidence sections `### Semantic Verification` (Phase 5) and `### Complexity` (Phase 4) after the priority groups. Both are **always present**, even when nothing was found: each states its counts, and its findings are reported in the appropriate priority group above (they contribute to the verdict).
 
 **Priority definitions:**
 - **High** -- Bugs, data loss, security holes, dead code that misleads users, or fundamentally broken behavior. Must fix before merge.
@@ -307,10 +321,12 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 
 **Test files reviewed**: [count]
 **Application code files reviewed**: [count]
+**Semantic findings**: [count] (in the priority groups above)
 
-[If issues were found, list them here as bullets with the same format as above. If no issues were found:]
+### Complexity
 
-All tests verified to fail on feature breakage. All application code logic verified to match stated intent.
+**Functions audited**: [count]
+**Complexity findings**: [count] (in the priority groups above)
 ```
 
 After writing the file, display the contents to the user as well.
@@ -378,7 +394,7 @@ If the project has a `.env.example` or `.env.template` in the repo root but no `
 
 **Do not log or display the contents of these files** -- they may contain secrets.
 
-Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Then do a **regular push** (not force push):
+Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Each commit message names the finding it resolves and what changed. Then do a **regular push** (not force push):
 
 ```bash
 git -C ../$REPO_NAME-wt-fix-pr<N> push
@@ -454,7 +470,7 @@ If removal fails (e.g., modified files in the worktree), force it:
 git worktree remove --force ../$REPO_NAME-wt-review-pr<N>
 ```
 
-Also clean up the local `pr-<N>` branch ref if it was created for the head worktree:
+Also delete the local `pr-<N>` ref fetched in Phase 3:
 
 ```bash
 git branch -D pr-<N>

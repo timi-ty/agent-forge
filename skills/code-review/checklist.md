@@ -44,6 +44,14 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 - [ ] **Memory**: No unnecessary copies of large data structures. No memory leaks from retained references or uncleaned listeners.
 - [ ] **Network**: No unnecessary API calls. Requests are deduplicated or cached where appropriate.
 
+## Complexity
+
+Scope: the audit set and `--` exemption in the Finding signals section of [complexity.md](complexity.md).
+
+- [ ] **Paths**: No function matches a CC row of the Finding signals table.
+- [ ] **Nesting**: No function matches the nesting row.
+- [ ] **Cause**: No function shows a per-function catalog cause.
+
 ## Dead Code
 
 - [ ] **Unused imports**: Every import is referenced in the file.
