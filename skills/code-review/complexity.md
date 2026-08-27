@@ -1,8 +1,6 @@
 # Cyclomatic Complexity Reference
 
-Owner of every number, cause name, and priority the complexity pass uses: Phase 4 (complexity notes), Phase 7 (priority of complexity findings), and Phase 9 (applying a transformation). The [checklist](checklist.md) `## Complexity` section says *what* to check; this file defines *how* to count, *when* a function is a finding, and *which* transformation applies.
-
-The objective is to minimize the number of independent execution paths a reader must reason about while keeping the code explicit, cohesive, and easy to test. A lower number is the side effect, not the goal.
+Referenced from Phases 4, 7, and 9 of [SKILL.md](SKILL.md). Owns every number, cause name, and priority the complexity pass uses; the [checklist](checklist.md) `## Complexity` items are the code properties this file makes checkable.
 
 ---
 
@@ -12,21 +10,23 @@ Cyclomatic complexity (CC) of a function = the number of independent paths throu
 
 1. Start at **1** for the function body.
 2. Add **1** for each of:
-   - `if`, `elif` / `else if` (plain `else` adds nothing)
+   - `if`, `elif` / `else if`
    - conditional expression / ternary (`a if c else b`, `c ? a : b`)
    - loop: `for`, `while`, `do ... while`, `for ... of/in`, and a comprehension or generator `if` filter
    - each non-default `case` / `when` branch in a `switch` / `match` / `when` / `select`
    - `catch` / `except` / `rescue` clause
    - each `&&`, `||`, `and`, `or` inside a condition (they are short-circuit branches)
-3. Add **nothing** for: `else`, `default`, `finally`, `return`, `throw` / `raise`, `break`, `continue`, recursion, and null-safe operators (`?.`, `??`, `or default`) used purely to supply a default value.
+3. Add **nothing** for: `else`, `default` / `case _`, `finally`, `return`, `throw` / `raise`, `break`, `continue`, recursion, and null-safe operators (`?.`, `??`, `or default`) used purely to supply a default value.
 
 Language notes:
-- Python `match`: `case _` adds nothing. A guard on a case (`case X if cond`) adds +1 more.
+- Python `match`: a guard on a case (`case X if cond`) adds +1 beyond the case itself.
 - TypeScript / JavaScript `switch`: +1 per `case` label, including fall-through labels, because each is a distinct entry path.
 
 **Nesting depth**: the deepest chain of control-flow blocks (`if` / loop / `try` / `switch`) inside the body. Statements at the top level of the function are depth 0; each enclosing block adds 1. A `for` containing an `if` containing a `try` is depth 3.
 
-**Measured numbers.** Use a linter's numbers instead of a hand estimate only when both hold: the repository already configures a complexity rule (eslint `complexity`; `max-complexity` / `C901` in `.flake8`, `setup.cfg`, `ruff.toml` or `pyproject.toml`; `gocyclo` in `.golangci.yml`; `Metrics/CyclomaticComplexity` in `.rubocop.yml`), and the PR head worktree already exists with dependencies installed. Otherwise hand-estimate. Never install tooling to get a number. Say above the complexity notes when linter numbers were used.
+**Unit of audit**: a named function or method, or an anonymous function containing at least one decision point. Branch-free inline callbacks are neither counted nor tabulated.
+
+**Modified functions**: count the base version (read in Phase 3 from `$REVIEW_BASE`), then add the net decision points on the hunk's `+` and `-` lines; nesting comes from the hunk's indentation. That yields the pre-PR and post-PR estimates in one pass, without a head checkout.
 
 ### Worked example
 
@@ -41,29 +41,28 @@ def resolve_price(order, user):                 # 1
     return price if price > 0 else 0            # +1 -> 6
 ```
 
-Estimated CC 6, nesting depth 2. In the 6-10 band and no cause from the catalog below applies, so not a finding -- the branching is the domain.
+Estimated CC 6, nesting depth 2. In the 6-10 band with no catalog cause, so recorded but not a finding -- the branching is the domain.
 
 ---
 
 ## Thresholds
 
-Estimate every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. When the PR moved a function into a higher band, cite the pre-PR estimate too.
+Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. When the PR moved a function into a higher band, cite the pre-PR estimate too.
 
-| Estimated CC or nesting | Reading | Priority |
-|-------------------------|---------|----------|
-| CC <= 5 | Target for new code. | Not a finding. Counted, not tabulated. |
-| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | Not a finding unless a catalog cause applies (then Low). Record the row. |
-| CC 11-15 | Refactoring signal. | **Low** -- nice to fix. |
-| CC > 15 | Avoid unless there is a strong, stated reason. | **Medium** -- maintainability concern; should fix. |
-| Nesting depth >= 4 | Hard to hold in your head regardless of CC. | **Medium** |
+| Signal | Reading | Row in notes? | Priority |
+|--------|---------|---------------|----------|
+| CC <= 5 | Target for new code. | No | -- |
+| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | Yes | -- |
+| CC 11-15 | Refactoring signal. | Yes | Low |
+| CC > 15 | Avoid unless there is a strong, stated reason. | Yes | Medium |
+| Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Yes | Medium |
+| Catalog cause present, any band | Its entry's transformation removes the cause and clears the Guardrails. | Yes | Low |
 
-A function in any band that shows a cause from the catalog below, where the transformation clears the guardrails, is a **Low** finding. A row marked `Domain-justified? Yes` is not a finding regardless of its band (see Guardrails).
-
-The Phase 4 complexity notes get a row for every function at CC >= 6, nesting >= 4, or showing a catalog cause. Functions in the target band are only counted.
+A row's priority is the highest of the signals it matches. `Domain-justified?` is evaluated only when a cause is recorded (rows without one write `--`); a `Yes` row is not a finding whatever its signals.
 
 ### Finding format
 
-A complexity finding is written like every other finding: bold file path and line, the function, the estimated CC and nesting depth, the dominant cause, and the transformation named by its catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
+A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, the dominant cause, and the transformation by catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
 
 ```markdown
 - **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 17, nesting 4 (deep nesting). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
@@ -73,7 +72,7 @@ A complexity finding is written like every other finding: bold file path and lin
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column and its transformation name in the `Transformation` column. Each entry gives what the cause looks like, a compact before / after, and when **not** to apply the transformation.
+One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column and its transformation name in the `Transformation` column.
 
 ### Deep nesting -> Guard clauses
 
@@ -111,9 +110,9 @@ else:
 
 Not when: the "failure" branches each do substantive, different work. That is a chain (see below), not validation.
 
-### Repeated conditions -> Flatten nested conditionals
+### Nested sequential checks -> Flatten nested conditionals
 
-Looks like: the same predicate (or its negation) is tested in several places, or nesting exists only because two checks were written separately.
+Looks like: nesting that exists only because two independent checks were written separately.
 
 ```python
 # before
@@ -276,6 +275,6 @@ Apply exactly one transformation per finding; if a second is needed, that is a s
 - **slower in a performance-critical path**
 - **harder to debug**: a stack trace through a dispatch table is less obvious than a visible `if`
 
-`Domain-justified? Yes` in the complexity notes means the branching is inherent to the problem, or every applicable transformation would fail one of these tests. State the reason in the row; a justified row is not a finding regardless of its band.
+`Domain-justified? Yes` in the complexity notes means the branching is inherent to the problem, or every applicable transformation would fail one of these tests. State the reason in the row.
 
 When applying a transformation in Phase 9: preserve behavior exactly, re-estimate CC after the edit, and state in the commit message which branching or responsibility was removed or isolated -- not just the new number.

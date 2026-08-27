@@ -46,10 +46,8 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Complexity
 
-Applies to every function the diff adds or modifies. Numbers, cause names, and transformations are owned by [complexity.md](complexity.md).
-
-- [ ] **Estimated**: Every function the diff adds or modifies has an estimated cyclomatic complexity and nesting depth, recorded in the Phase 4 complexity notes per the Thresholds section of `complexity.md`.
-- [ ] **Cause named**: Every recorded row above the target band, or showing a catalog cause -- deep nesting, repeated conditions, long conditional chain, duplicated branches, type switch repeated across functions, compound boolean, several jobs in one function, boolean mode flag -- names its dominant cause and transformation using the catalog headings.
+- [ ] **Within thresholds**: No added or modified function exceeds the CC or nesting thresholds in [complexity.md](complexity.md) without a stated domain justification.
+- [ ] **No catalog cause**: No added or modified function shows a cause from the catalog in `complexity.md` whose transformation clears its Guardrails.
 - [ ] **Not gamed**: Any complexity refactor the PR itself contains clears the Guardrails in `complexity.md`.
 
 ## Dead Code

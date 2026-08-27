@@ -213,7 +213,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Estimate cyclomatic complexity and nesting depth for every function the file adds or modifies, and append rows to the complexity notes below as you go. Counting rules, thresholds, and transformations are in [complexity.md](complexity.md).
+- **Complexity**: Any added or modified function above the thresholds, or showing a catalog cause, in [complexity.md](complexity.md)?
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
@@ -221,13 +221,13 @@ When you find an issue, note the exact file path and line number from the diff.
 
 #### Required output: complexity notes
 
-Fill this table as you review each file, not as a separate walk afterwards. Estimate every function the diff adds or modifies; record a row for the functions the Thresholds section of [complexity.md](complexity.md) says to tabulate. Write `**Functions audited**: [count]` above the table, and say there if linter numbers were used.
+Fill this table as you review each file, not as a separate walk afterwards. Record a row for each function the Thresholds table in [complexity.md](complexity.md) marks `Row in notes? Yes`, and keep a running count of every function audited for the Phase 7 report.
 
-| Function | File:line | Est. CC | Nesting | Dominant cause | Transformation | Domain-justified? |
-|----------|-----------|---------|---------|----------------|----------------|-------------------|
-| `functionName` | `path/to/file.ts:42` | 17 | 4 | deep nesting | guard clauses | No |
+| Function | File:line | Est. CC | Nesting | Dominant cause | Transformation | Domain-justified? | Priority |
+|----------|-----------|---------|---------|----------------|----------------|-------------------|----------|
+| `functionName` | `path/to/file.ts:42` | 17 | 4 | deep nesting | guard clauses | No | Medium |
 
-Rows the Priority column in `complexity.md` marks as findings go into the Phase 7 report at that priority; the rest stay as evidence the pass ran. `Dominant cause` and `Transformation` use the heading names from the catalog in `complexity.md`; `Domain-justified?` follows its Guardrails section.
+Rows with a priority go into the Phase 7 report at that priority; the rest are evidence the pass ran. `Dominant cause` and `Transformation` are catalog headings.
 
 ### Phase 5 -- Semantic Verification
 
@@ -291,7 +291,7 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 - Group items under `### High`, `### Medium`, and `### Low` priority headings.
 - If a priority group has no items, omit that heading entirely.
 - Reference specific file paths (and line numbers when useful) in bold at the start of each bullet.
-- Include the evidence sections `### Semantic Verification` (Phase 5 notes) and `### Complexity` (Phase 4 notes) after the priority groups. Both are **always present**, even when nothing was found: each documents that its pass ran and summarizes the result. Issues from either pass also appear in the appropriate priority group above (they contribute to the verdict).
+- Include the evidence sections `### Semantic Verification` (Phase 5) and `### Complexity` (Phase 4 counts) after the priority groups. Both are **always present**, even when nothing was found: each documents that its pass ran and summarizes the result. Issues from either pass are reported in the appropriate priority group above (they contribute to the verdict).
 
 **Priority definitions:**
 - **High** -- Bugs, data loss, security holes, dead code that misleads users, or fundamentally broken behavior. Must fix before merge.
@@ -327,7 +327,7 @@ All tests verified to fail on feature breakage. All application code logic verif
 ### Complexity
 
 **Functions audited**: [count]
-**Complexity findings**: [count] (listed in the priority groups above)
+**Complexity findings**: [count of rows with a priority] (in the priority groups above)
 ```
 
 After writing the file, display the contents to the user as well.
@@ -362,8 +362,6 @@ Ask a follow-up question to determine scope. Offer these options:
 - **Include specific issues only** -- address only the issues the user specifies. If selected, ask the user to input the issue numbers to include.
 
 Once the scope is determined, switch to plan mode and create a plan with one actionable todo per selected issue, referencing the file path and fix description from the review report. Do **not** apply the PR verdict (no approve or request-changes is posted) -- the user can re-run the review or manually apply the verdict after fixes are made.
-
-A complexity finding's fix description is its named transformation; implement it per the Guardrails in [complexity.md](complexity.md).
 
 **Applying fixes to the PR branch**: When you exit plan mode and implement the fixes, use a worktree checked out to the PR's **head branch** (not the base branch):
 
