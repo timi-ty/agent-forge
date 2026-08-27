@@ -47,7 +47,7 @@ Find the agent-transcripts folder. Its path follows the pattern:
 ~/.cursor/projects/<project-slug>/agent-transcripts/
 ```
 
-where `<project-slug>` is the workspace path with `/` replaced by `-` (e.g., `Users-timi-Documents-ngriid`).
+where `<project-slug>` is the workspace path with `/` replaced by `-` (e.g. `/Users/alex/Documents/my-app` becomes `Users-alex-Documents-my-app`).
 
 List `.txt` files sorted by modification time (most recent first):
 
