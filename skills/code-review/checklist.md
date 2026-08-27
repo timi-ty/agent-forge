@@ -50,7 +50,7 @@ Scope: the audit set and `--` exemption in the Finding signals section of [compl
 
 - [ ] **Paths**: No function matches a CC row of the Finding signals table.
 - [ ] **Nesting**: No function matches the nesting row.
-- [ ] **Cause**: No function shows a catalog cause.
+- [ ] **Cause**: No function shows a per-function catalog cause.
 
 ## Dead Code
 

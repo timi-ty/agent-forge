@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting is the greater of the base depth and the deepest hunk line. When the `-` lines cover the whole base body, the `+` lines alone are the PR count. That yields `base -> PR` without a head checkout.
+**Modified functions**: measured in Phase 3, where the base body and the hunk are both in hand. Add the net decision points on the hunk's `+` and `-` lines to the base count; read nesting from the base body with the hunk applied (drop the `-` lines, insert the `+` lines at their indentation). When the `-` lines cover the whole base body, count the `+` lines alone, as for an added function. That yields `base -> PR` without a head checkout.
 
 ### Worked example
 
@@ -59,11 +59,11 @@ Audit every function the diff adds or modifies, **as it stands after the PR**. F
 
 ### Complexity notes
 
-Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation would fail a Guardrail -- state the reason in the cell. Rows with a priority are findings.
+Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation fails a Guardrail or its entry's Not-when -- state the reason in the cell. Rows with a priority are findings, and every one names a cause: if no per-function entry matches, either the branching is inherent (`--`) or the function has several jobs.
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
-| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it, or none] | Medium / Low / -- (reason) |
+| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it] | Medium / Low / -- (reason) |
 
 ### Finding format
 
@@ -77,13 +77,13 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause and the transformation that removes it. `Dominant cause` is the entry whose Looks-like the function matches; if several match, the one covering the most decision points. Use the heading's cause name in the column.
+One entry per dominant cause and the transformation that removes it. `Dominant cause` is the per-function entry whose Looks-like the function matches; if several match, the one covering the most decision points, except that `Branch hidden behind indirection` is dominant whenever it matches. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
 #### Nested preconditions -> Guard clauses
 
-Looks like: precondition checks wrap the main operation in successive `if` blocks.
+Looks like: precondition checks whose failure branch exits (return, raise, error) wrap the main operation in successive `if` blocks.
 
 ```python
 # before
@@ -111,11 +111,11 @@ if not user.has_permission:
 return perform_action(user)
 ```
 
-Not when: the "failure" branches each do substantive, different work. That is a chain (see below), not validation.
+Not when: the "failure" branches each do substantive, different work.
 
 #### Nested sequential checks -> Flatten nested conditionals
 
-Looks like: nesting that exists only because two independent checks were written separately.
+Looks like: nesting that exists only because two independent checks with no failure branch were written separately, guarding one statement.
 
 ```python
 # before
@@ -191,6 +191,8 @@ GRADE_BANDS = [(90, "A"), (80, "B"), (70, "C")]
 grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 ```
 
+When the chain selects on a value, append the merge key to the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)` -- so Phase 6 can group sites on the same discriminator.
+
 Not when: there are only two branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
 #### Compound boolean -> Extract predicate
@@ -257,7 +259,7 @@ def export_json(data): ...
 def export_csv(data): ...
 ```
 
-Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag; two near-identical functions are the duplicated-branches cause.
+Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag.
 
 #### Branch hidden behind indirection -> Inline the branch
 
@@ -281,7 +283,7 @@ Not when: the indirection is reused from several call sites.
 
 ### Cross-function entries (Phase 6)
 
-When the dominant cause is `Long conditional chain or duplicated branches` and the chain selects on a value, append the merge key: `Long conditional chain or duplicated branches (on shape.kind)`. Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
+Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
 
 #### Type switch repeated across functions -> Polymorphism
 

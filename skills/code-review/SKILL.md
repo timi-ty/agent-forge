@@ -194,9 +194,9 @@ For each changed file:
    - Typing conventions (interfaces vs types, generics usage, strictness level)
    - Import organization and ordering
    - Comment and documentation style
-3. **Note the base measurements** of each function the diff modifies without replacing its whole body, per the Counting rules in [complexity.md](complexity.md).
+3. **Measure each function the diff modifies**: note its `base -> PR` cyclomatic complexity and nesting depth per the Modified functions rule in [complexity.md](complexity.md).
 
-For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3, with the Counting rules section and the hunks for their files pasted in; take the base measurements from their reports.
+For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3, with the Counting rules section and the hunks for their files pasted in; take the measurements from their reports.
 
 Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
 
