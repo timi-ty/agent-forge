@@ -85,7 +85,7 @@ print('Added.')
 2. Authenticate and verify the profile:
 
 ```bash
-AWS_PROFILE=<aws_profile> aws sso login --profile <aws_profile> --use-device-code
+AWS_PROFILE=<aws_profile> aws sso login --use-device-code
 AWS_PROFILE=<aws_profile> aws sts get-caller-identity
 ```
 
@@ -103,12 +103,12 @@ reg['accounts']['<name>'] = {
     'region': '<region>',
     'auth_method': 'sso'
 }
-p.write_text(json.dumps(reg, indent=2) + '\n')
+p.write_text(json.dumps(reg, indent=2))
 print('Added.')
 "
 ```
 
-The registry links the friendly account name to the AWS CLI profile. Identity Center session, start URL, account, and role configuration remain in `~/.aws/config` rather than being duplicated in the registry.
+Identity Center session, start URL, account, and role configuration stay in `~/.aws/config` — do not duplicate them into the registry.
 
 ### Register a new account — SAML SSO (saml2aws)
 
@@ -258,7 +258,7 @@ Read the account's `auth_method` from the registry and follow the matching proce
 Re-authenticate the existing AWS CLI profile through its configured Identity Center session:
 
 ```bash
-AWS_PROFILE=<aws_profile> aws sso login --profile <aws_profile> --use-device-code
+AWS_PROFILE=<aws_profile> aws sso login --use-device-code
 ```
 
 Have the user complete the device authorization and MFA flow, then verify with `AWS_PROFILE=<aws_profile> aws sts get-caller-identity` before retrying the failed command. Do not copy Identity Center role credentials into `~/.aws/credentials`; the CLI obtains and caches temporary credentials through the configured SSO session.
@@ -476,13 +476,13 @@ aws secretsmanager get-secret-value --secret-id my-secret --query 'SecretString'
 
 ## Error Handling
 
-| Error                                                                                | Cause                                  | Fix                                                                                                                               |
-| ------------------------------------------------------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `AccessDenied` / `UnauthorizedAccess`                                                | Missing IAM permission                 | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies`                                 |
-| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired                    | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
-| `ThrottlingException`                                                                | API rate limit hit                     | Wait and retry with exponential backoff                                                                                           |
-| `ResourceNotFoundException`                                                          | Resource doesn't exist or wrong region | Verify region with `--region` flag                                                                                                |
-| `InvalidParameterValue`                                                              | Bad input                              | Check AWS docs for the correct parameter format                                                                                   |
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `AccessDenied` / `UnauthorizedAccess` | Missing IAM permission | Check policies via `aws iam list-attached-user-policies` or `aws iam list-attached-role-policies` |
+| `ExpiredTokenException` / `ExpiredToken` / `RequestExpired` / `InvalidIdentityToken` | Credentials expired | Run the Credential Refresh procedure for the account's `auth_method` (see the Credential Refresh section), then retry the command |
+| `ThrottlingException` | API rate limit hit | Wait and retry with exponential backoff |
+| `ResourceNotFoundException` | Resource doesn't exist or wrong region | Verify region with `--region` flag |
+| `InvalidParameterValue` | Bad input | Check AWS docs for the correct parameter format |
 
 ## Multi-Region Operations
 
