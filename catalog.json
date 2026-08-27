@@ -329,6 +329,33 @@
           "entry_file": "SKILL.md"
         }
       }
+    },
+    {
+      "name": "pr-evidence-screenshots",
+      "path": "skills/pr-evidence-screenshots",
+      "description": "Capture a before/after screenshot pair for a UI fix, where the only difference between the two frames is the code, and embed them inline in a GitHub PR or issue on a private repo.",
+      "triggers": [
+        "add screenshots to the PR",
+        "show before and after",
+        "prove the fix visually",
+        "add evidence to the issue",
+        "screenshot the bug and the fix"
+      ],
+      "files": ["SKILL.md", "scripts/capture-pair.mjs"],
+      "dependencies": ["node.js >= 18", "@playwright/test (resolved from the repo under test)", "gh CLI (GitHub CLI)", "git"],
+      "notes": "Two failure modes drive the whole method, and both are silent. A pair captured on different viewports, data or waits is not evidence; and on a private repo most image-hosting routes 404 for a human reviewer while passing a curl check. Builds both sides as production builds in separate worktrees on fixed ports, drives one identical script against each, and hosts the PNGs on an orphan branch in the same repo linked via /raw/ (the only route authenticated by the viewer's session cookie). scripts/capture-pair.mjs is a template: it reads credentials from EVIDENCE_EMAIL and EVIDENCE_PASSWORD, and its flows are meant to be replaced.",
+      "platforms": {
+        "cursor": {
+          "install_path_global": "~/.cursor/skills/pr-evidence-screenshots",
+          "install_path_workspace": ".cursor/skills/pr-evidence-screenshots",
+          "entry_file": "SKILL.md"
+        },
+        "claude-code": {
+          "install_path_global": "~/.claude/commands/pr-evidence-screenshots",
+          "install_path_workspace": ".claude/commands/pr-evidence-screenshots",
+          "entry_file": "SKILL.md"
+        }
+      }
     }
   ]
 }
