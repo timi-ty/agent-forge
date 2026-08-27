@@ -1,6 +1,6 @@
 # Cyclomatic Complexity Reference
 
-Referenced from Review Goal 6 and Phase 4 of [SKILL.md](SKILL.md). Owns every number, cause name, and priority the complexity pass uses; the [checklist](checklist.md) `## Complexity` items are the code properties this file makes checkable.
+Owns every number, cause name, and priority the complexity pass uses; the [checklist](checklist.md) `## Complexity` items are the code properties this file makes checkable.
 
 ---
 
@@ -24,9 +24,9 @@ Language notes:
 
 **Nesting depth**: the deepest chain of control-flow blocks (`if` / loop / `try` / `switch`) inside the body. Statements at the top level of the function are depth 0; each enclosing block adds 1. A `for` containing an `if` containing a `try` is depth 3.
 
-**Unit of audit**: a named function or method, or an anonymous function containing at least one decision point. Branch-free inline callbacks are neither counted nor tabulated.
+**Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting comes from the hunk's indentation. That yields `base -> PR` without a head checkout.
+**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting is the greater of the base depth and the deepest hunk line. That yields `base -> PR` without a head checkout.
 
 ### Worked example
 
@@ -41,49 +41,45 @@ def resolve_price(order, user):                 # 1
     return price if price > 0 else 0            # +1 -> 6
 ```
 
-Estimated CC 6, nesting depth 2. In the 6-10 band with no catalog cause, so neither recorded nor a finding -- the branching is the domain.
+Estimated CC 6, nesting depth 2. No signal below matches, so neither recorded nor a finding.
 
 ---
 
-## Thresholds
+## Finding signals
 
-Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase.
+Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. New code targets CC <= 5; CC 6-10 is acceptable when the domain requires that many cases, and gets no row unless a catalog cause is present.
 
 | Signal | Reading | Priority |
 |--------|---------|----------|
-| CC <= 5 | Target for new code. | -- |
-| CC 6-10 | Acceptable when the domain genuinely requires that many cases. | -- |
 | CC 11-15 | Refactoring signal. | Low |
 | CC > 15 | Avoid unless there is a strong, stated reason. | Medium |
 | Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Medium |
-| Catalog cause present, any band | Its entry's transformation removes the cause and clears the Guardrails. | Low |
-| A refactor in the PR fails a Guardrail | The PR traded a visible branch for something harder to read, slower, or harder to debug. | Medium |
+| Branch hidden behind indirection (a refactor in the PR) | See Guardrails. | Medium |
+| Any other catalog cause | A named structural cause; its entry's transformation is the fix. | Low |
 
 ### Complexity notes
 
-Record a row for every function that matches a signal with a priority. A row's `Priority` is the highest matched signal, or `--` when `Domain-justified?` is `Yes`; rows with a priority are findings.
+Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation would fail a Guardrail -- state the reason in the cell. Rows with a priority are findings.
 
-`Domain-justified? Yes` means the branching is inherent to the problem, or every applicable transformation would fail a Guardrail. State the reason in the row.
-
-| Function | File:line | Est. CC | Nesting | Dominant cause | Domain-justified? | Priority |
-|----------|-----------|---------|---------|----------------|-------------------|----------|
-| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, or the failed Guardrail] | Yes (reason) / No | Medium / Low / -- |
+| Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
+|----------|-----------|---------|---------|----------------|----------|
+| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, or none] | Medium / Low / -- (reason) |
 
 ### Finding format
 
-A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, the dominant cause, and the transformation from its catalog heading. Never write "this looks complex" -- the count and the cause are the finding.
+A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and -- when a catalog entry applies -- the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding. A commit resolving a complexity finding names the transformation applied, not the new count.
 
 ```markdown
-- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (deep nesting). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
+- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (nested preconditions). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
 ```
 
 ---
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column; the finding names the transformation from the same heading.
+One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column.
 
-### Deep nesting -> Guard clauses
+### Nested preconditions -> Guard clauses
 
 Looks like: precondition checks wrap the main operation in successive `if` blocks.
 
@@ -197,11 +193,11 @@ GRADE_BANDS = [(90, "A"), (80, "B"), (70, "C")]
 grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 ```
 
-Not when: there are only two or three branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
+Not when: there are only two branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
 ### Type switch repeated across functions -> Polymorphism
 
-Looks like: several functions each switch on the same discriminator. Assigned in Phase 6, not Phase 4: a single site is tagged as a chain in Phase 4, and Phase 6 merges rows on the same discriminator into one finding.
+Looks like: several functions each switch on the same discriminator. Assigned in Phase 6, not Phase 4: Phase 4 tags each site as a chain and names the discriminator in the cause cell (`Long conditional chain (on shape.kind)`); Phase 6 merges rows on the same discriminator into one finding.
 
 ```python
 # before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
@@ -283,6 +279,26 @@ def export_csv(data): ...
 ```
 
 Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag; two near-identical functions are the duplicated-branches cause.
+
+### Branch hidden behind indirection -> Inline the branch
+
+Looks like: a helper, table, or class introduced by this PR whose only job is to move one branch out of view -- a refactor that lowered the count but fails a Guardrail.
+
+```python
+# the PR replaced this ...
+if user.is_admin:
+    show_admin_panel()
+
+# ... with this
+ADMIN_ACTIONS = {True: show_admin_panel, False: lambda: None}
+ADMIN_ACTIONS[user.is_admin]()
+
+# inline the branch
+if user.is_admin:
+    show_admin_panel()
+```
+
+Not when: the indirection is reused from several call sites, or it removes a cause from an entry above.
 
 ---
 

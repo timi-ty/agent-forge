@@ -46,8 +46,10 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Complexity
 
-- [ ] **Within thresholds**: No added or modified function matches a finding signal in the Thresholds table of [complexity.md](complexity.md), unless its complexity-notes row is `Domain-justified? Yes` with a stated reason.
-- [ ] **Not gamed**: No refactor in the PR trades a visible branch for something that fails a Guardrail in `complexity.md`.
+- [ ] **Paths**: Every added or modified function's estimated cyclomatic complexity is within the bands in [complexity.md](complexity.md), or the branching is inherent to the problem.
+- [ ] **Nesting**: No added or modified function nests control flow deeper than the bound in `complexity.md`, or the depth is inherent to the problem.
+- [ ] **Cause**: No added or modified function shows a catalog cause in `complexity.md` whose transformation clears the Guardrails.
+- [ ] **Not gamed**: No refactor in the PR fails a Guardrail in `complexity.md`.
 
 ## Dead Code
 

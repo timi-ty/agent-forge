@@ -14,7 +14,7 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
-6. **Low complexity** -- New or changed functions keep control flow simple: few independent paths for a reader to hold, without hiding behavior behind abstraction. Thresholds are in [complexity.md](complexity.md).
+6. **Low complexity** -- New or changed functions keep control flow simple: few independent paths for a reader to hold, without hiding behavior behind abstraction. Finding signals are in [complexity.md](complexity.md).
 
 ---
 
@@ -195,9 +195,9 @@ For each changed file:
    - Import organization and ordering
    - Comment and documentation style
 
-For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR.
+For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes the base counts described next for the functions in their area.
 
-Take notes on the patterns you discover. You will use these as the baseline for Phase 4. For each function the diff modifies, also note its base cyclomatic complexity and nesting depth using the counting rules in [complexity.md](complexity.md); Phase 4 adds the hunk's delta to it.
+Take notes on the patterns you discover. You will use these as the baseline for Phase 4. For each function the diff modifies, also note its base cyclomatic complexity and nesting depth using the counting rules in [complexity.md](complexity.md).
 
 ### Phase 4 -- File-by-File Diff Review
 
@@ -213,7 +213,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Any added or modified function, or refactor, matching a finding signal in [complexity.md](complexity.md)?
+- **Complexity**: Any added or modified function, or refactor, matching a signal in [complexity.md](complexity.md)?
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
@@ -221,7 +221,7 @@ When you find an issue, note the exact file path and line number from the diff.
 
 #### Required output: complexity notes
 
-Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards. Rows with a priority are findings and go into the Phase 7 report at that priority.
+Fill the complexity notes table defined in [complexity.md](complexity.md) as you review each file, not as a separate walk afterwards.
 
 ### Phase 5 -- Semantic Verification
 
@@ -267,7 +267,7 @@ After reviewing individual files, check for issues that span the whole PR:
 
 - **New dependencies**: Are they justified? Are versions pinned?
 - **Internal consistency**: Do all files in the PR follow the same conventions as each other?
-- **Repeated type switch**: If two or more Phase 4 complexity rows record a chain on the same discriminator, merge them into one Polymorphism finding (see the catalog in [complexity.md](complexity.md)).
+- **Cross-function causes**: Apply the catalog entries in [complexity.md](complexity.md) assigned to this phase to the Phase 4 complexity rows, merging the rows each covers into one finding.
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?
@@ -318,7 +318,8 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 
 ### Complexity
 
-**Complexity findings**: [count of rows with a priority] (in the priority groups above)
+**Functions audited**: [count]
+**Complexity findings**: [count] (in the priority groups above)
 ```
 
 After writing the file, display the contents to the user as well.
@@ -386,7 +387,7 @@ If the project has a `.env.example` or `.env.template` in the repo root but no `
 
 **Do not log or display the contents of these files** -- they may contain secrets.
 
-Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Each commit message names the finding it resolves and what structurally changed, not just a metric. Then do a **regular push** (not force push):
+Make all fixes in this worktree. Commit them as **new commits on top** of the existing branch -- never amend existing commits. Each commit message names the finding it resolves and what changed. Then do a **regular push** (not force push):
 
 ```bash
 git -C ../$REPO_NAME-wt-fix-pr<N> push
