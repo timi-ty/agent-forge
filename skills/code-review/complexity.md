@@ -24,7 +24,7 @@ Language notes:
 
 **Nesting depth**: the deepest chain of control-flow blocks (`if` / loop / `try` / `switch`) inside the body. Statements at the top level of the function are depth 0; each enclosing block adds 1. A `for` containing an `if` containing a `try` is depth 3.
 
-**Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
+**Unit of audit**: a named function or method, or an anonymous function containing at least one decision point. Code inside documentation or fenced examples is not audited.
 
 **Modified functions**: read the function as it stands after the PR from the head ref Phase 3 fetched (`git show pr-<N>:<path>`, or `$HEAD_WT/<path>` when that worktree exists) and count it as for an added function. For a row that is assigned a priority, also count the base body from `$REVIEW_BASE` so the cell reads `base -> PR`.
 
@@ -258,6 +258,8 @@ def export(data, as_json=False):
 def export_json(data): ...
 def export_csv(data): ...
 ```
+
+Not when: the two paths share most of their body -- splitting would duplicate it.
 
 #### Branch hidden behind indirection -> Inline the branch
 
