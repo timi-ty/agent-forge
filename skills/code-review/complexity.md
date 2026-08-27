@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: read the base body from `$REVIEW_BASE`, apply the hunk (drop the `-` lines, insert the `+` lines at their indentation), and count the result as for an added function. For a row that is assigned a priority, also count the base body so the cell reads `base -> PR`.
+**Modified functions**: read the function as it stands after the PR from the head ref (`git fetch origin pull/<N>/head:pr-<N>` then `git show pr-<N>:<path>`, or `$HEAD_WT/<path>` when that worktree exists) and count it as for an added function. For a row that is assigned a priority, also count the base body from `$REVIEW_BASE` so the cell reads `base -> PR`.
 
 ### Worked example
 
@@ -63,7 +63,7 @@ Record a row for every function that matches a signal. `Priority` is the highest
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
-| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it] | Medium / Low / -- (reason) |
+| `function name` | `path/to/file:line` | [n; `base -> PR` for a modified function with a priority] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it] | Medium / Low / -- (reason) |
 
 ### Finding format
 
@@ -77,7 +77,7 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause and the transformation that removes it. `Dominant cause` is the highest-priority matching per-function entry whose transformation passes its Not-when and the Guardrails; ties go to the entry covering the most decision points. If an entry matches but none passes, the row takes `--` and names the entry and the clause that failed. If no entry matches: when the decisions exceed what one concern accounts for, the cause is `Several jobs in one function`; when one concern accounts for them all, the branching is inherent and the row takes `--`. Use the heading's cause name in the column.
+One entry per dominant cause and the transformation that removes it. Rank the matching per-function entries by Finding signals priority, then by the number of decision points each covers; walk them in that order and take the first whose transformation passes its Not-when and the Guardrails as `Dominant cause`. If the walk exhausts, the row takes `--` and names the entry and the clause that failed. If no entry matches, the branching is inherent and the row takes `--`. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
@@ -281,7 +281,7 @@ Not when: the indirection is reused from several call sites.
 
 ### Cross-function entries (Phase 6)
 
-Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows and taking the highest Priority among them.
+Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows; its Priority is the highest signal among them, or `--` only if Polymorphism fails a Guardrail.
 
 #### Type switch repeated across functions -> Polymorphism
 
@@ -308,4 +308,4 @@ Do not optimize the number blindly. A transformation is wrong -- and the slightl
 
 - **harder to read than the branch it replaced**: an abstraction, indirection, class, or helper with no name a caller can reason about on its own -- it exists only to move the branch out of view
 - **slower in a performance-critical path**
-- **harder to debug**: a stack trace through a dispatch table is less obvious than a visible `if`
+- **harder to debug**: the failure site no longer shows which decision selected the path
