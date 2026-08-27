@@ -194,10 +194,11 @@ For each changed file:
    - Typing conventions (interfaces vs types, generics usage, strictness level)
    - Import organization and ordering
    - Comment and documentation style
+3. **Note the base measurements** of each function the diff modifies, per the Counting rules in [complexity.md](complexity.md).
 
-For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes the base counts described next for the functions in their area.
+For large PRs (10+ files), use parallel explore subagents to investigate different areas of the codebase concurrently. Launch up to 4 at a time, each exploring a different module or directory touched by the PR. Their brief includes step 3 with the Counting rules section pasted in; take the base measurements from their reports.
 
-Take notes on the patterns you discover. You will use these as the baseline for Phase 4. For each function the diff modifies, also note its base cyclomatic complexity and nesting depth using the counting rules in [complexity.md](complexity.md).
+Take notes on the patterns you discover. You will use these as the baseline for Phase 4.
 
 ### Phase 4 -- File-by-File Diff Review
 
@@ -233,7 +234,7 @@ This phase is a **separate re-read** of every changed file. Do not rely on your 
 
 #### Required output: semantic verification notes
 
-You must produce these notes before proceeding to Phase 6. They are included in Phase 7 (Output).
+You must produce these notes before proceeding to Phase 6. Their counts feed the `### Semantic Verification` section in Phase 7; their findings go in the priority groups.
 
 **For each changed test file**, produce a table:
 
@@ -267,7 +268,7 @@ After reviewing individual files, check for issues that span the whole PR:
 
 - **New dependencies**: Are they justified? Are versions pinned?
 - **Internal consistency**: Do all files in the PR follow the same conventions as each other?
-- **Cross-function causes**: Apply the catalog entries in [complexity.md](complexity.md) assigned to this phase to the Phase 4 complexity rows, merging the rows each covers into one finding.
+- **Cross-function causes**: Group Phase 4 complexity rows by their `(on <merge key>)` qualifier; two or more rows on one key become a single finding under the matching Phase 6 entry in [complexity.md](complexity.md), replacing those rows.
 - **Security**: Exposed secrets, injection vectors, auth bypasses, unsanitized input?
 - **Performance**: Unbounded loops, missing pagination, expensive operations in hot paths?
 - **API contract changes**: Do changes to interfaces/types/APIs break any consumers?

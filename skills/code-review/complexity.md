@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting is the greater of the base depth and the deepest hunk line. That yields `base -> PR` without a head checkout.
+**Modified functions**: add the net decision points on the hunk's `+` and `-` lines to the base count noted in Phase 3; nesting is the greater of the base depth and the deepest hunk line. When the `-` lines cover the whole base body, the `+` lines alone are the PR count. That yields `base -> PR` without a head checkout.
 
 ### Worked example
 
@@ -47,14 +47,14 @@ Estimated CC 6, nesting depth 2. No signal below matches, so neither recorded no
 
 ## Finding signals
 
-Audit every function the diff adds or modifies, **as it stands after the PR**. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. New code targets CC <= 5; CC 6-10 is acceptable when the domain requires that many cases, and gets no row unless a catalog cause is present.
+Audit every function the diff adds or modifies, **as it stands after the PR**, and every refactor in it. Functions the PR does not touch are never flagged, however bad they are -- the review is of this PR, not the codebase. New code targets CC <= 5. A function that matches no row below is not recorded.
 
 | Signal | Reading | Priority |
 |--------|---------|----------|
 | CC 11-15 | Refactoring signal. | Low |
-| CC > 15 | Avoid unless there is a strong, stated reason. | Medium |
+| CC > 15 | Avoid. | Medium |
 | Nesting depth >= 4 | Hard to hold in your head regardless of CC. | Medium |
-| Branch hidden behind indirection (a refactor in the PR) | See Guardrails. | Medium |
+| Branch hidden behind indirection | Catalog entry: a refactor in this PR that fails a Guardrail. | Medium |
 | Any other catalog cause | A named structural cause; its entry's transformation is the fix. | Low |
 
 ### Complexity notes
@@ -63,11 +63,11 @@ Record a row for every function that matches a signal. `Priority` is the highest
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
-| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, or none] | Medium / Low / -- (reason) |
+| `function name` | `path/to/file:line` | [n, or `base -> PR` for a modified function] | [n, same form] | [catalog heading, optionally `(on <merge key>)`, or none] | Medium / Low / -- (reason) |
 
 ### Finding format
 
-A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and -- when a catalog entry applies -- the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding. A commit resolving a complexity finding names the transformation applied, not the new count.
+A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and -- when a catalog entry applies -- the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding.
 
 ```markdown
 - **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (nested preconditions). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
@@ -79,13 +79,26 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 One entry per dominant cause -- the structural reason most of a function's paths exist -- and the transformation that removes it. Use the heading's cause name in the `Dominant cause` column.
 
-### Nested preconditions -> Guard clauses
+### Per-function entries (Phase 4)
+
+#### Nested preconditions -> Guard clauses
 
 Looks like: precondition checks wrap the main operation in successive `if` blocks.
 
-Prefer:
-
 ```python
+# before
+if user:
+    if user.is_active:
+        if user.has_permission:
+            return perform_action(user)
+        else:
+            return error
+    else:
+        return error
+else:
+    return error
+
+# after
 if not user:
     return error
 
@@ -98,24 +111,9 @@ if not user.has_permission:
 return perform_action(user)
 ```
 
-over:
-
-```python
-if user:
-    if user.is_active:
-        if user.has_permission:
-            return perform_action(user)
-        else:
-            return error
-    else:
-        return error
-else:
-    return error
-```
-
 Not when: the "failure" branches each do substantive, different work. That is a chain (see below), not validation.
 
-### Nested sequential checks -> Flatten nested conditionals
+#### Nested sequential checks -> Flatten nested conditionals
 
 Looks like: nesting that exists only because two independent checks were written separately.
 
@@ -132,7 +130,7 @@ if order.paid and order.shipped:
 
 Not when: flattening forces you to duplicate a condition elsewhere, or the inner check has its own `else` that must stay distinct.
 
-### Long conditional chain or duplicated branches -> Replace the chain with data
+#### Long conditional chain or duplicated branches -> Replace the chain with data
 
 Looks like: `if / elif / else` or a `switch` selecting behavior by a value; branches identical except for a value or call target; or a ladder of thresholds that is really configuration. Three shapes:
 
@@ -195,26 +193,7 @@ grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 
 Not when: there are only two branches; the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
-### Type switch repeated across functions -> Polymorphism
-
-Looks like: several functions each switch on the same discriminator. Assigned in Phase 6, not Phase 4: Phase 4 tags each site as a chain and names the discriminator in the cause cell (`Long conditional chain (on shape.kind)`); Phase 6 merges rows on the same discriminator into one finding.
-
-```python
-# before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
-def area(shape): ...
-def perimeter(shape): ...
-def bounding_box(shape): ...
-
-# after -- one class per kind owns its three behaviors
-class Circle:
-    def area(self): ...
-    def perimeter(self): ...
-    def bounding_box(self): ...
-```
-
-Not when: the switch exists in one place. A single dispatch site is a map (above); a class hierarchy for one switch is excessive indirection.
-
-### Compound boolean -> Extract predicate
+#### Compound boolean -> Extract predicate
 
 Looks like: a condition with three or more `&&` / `||` terms, often mixing unrelated concerns.
 
@@ -232,7 +211,7 @@ The predicate has the same CC; the win is that the caller now has one concept to
 
 Not when: the name would only restate the expression (`is_a_and_b`). If you cannot name the concept, the condition may be fine as it is.
 
-### Several jobs in one function -> Split by responsibility
+#### Several jobs in one function -> Split by responsibility
 
 Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body.
 
@@ -261,7 +240,7 @@ def handle_upload(req):
 
 Not when: the pieces read and write many locals of the enclosing function -- the extracted function would need a wide parameter list or an out-parameter, which is worse than the original.
 
-### Boolean mode flag -> Split the function
+#### Boolean mode flag -> Split the function
 
 Looks like: a parameter such as `dry_run`, `strict`, `as_json` that steers into substantially different execution paths.
 
@@ -280,9 +259,9 @@ def export_csv(data): ...
 
 Not when: the flag toggles one small step inside an otherwise shared path. Then keep the flag; two near-identical functions are the duplicated-branches cause.
 
-### Branch hidden behind indirection -> Inline the branch
+#### Branch hidden behind indirection -> Inline the branch
 
-Looks like: a helper, table, or class introduced by this PR whose only job is to move one branch out of view -- a refactor that lowered the count but fails a Guardrail.
+Looks like: a refactor in this PR that lowered the count but whose result fails a Guardrail.
 
 ```python
 # the PR replaced this ...
@@ -300,12 +279,35 @@ if user.is_admin:
 
 Not when: the indirection is reused from several call sites, or it removes a cause from an entry above.
 
+### Cross-function entries (Phase 6)
+
+Phase 4 tags each site with its per-function entry and a merge key in the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)`. Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
+
+#### Type switch repeated across functions -> Polymorphism
+
+Looks like: several functions each switch on the same discriminator (the merge key).
+
+```python
+# before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
+def area(shape): ...
+def perimeter(shape): ...
+def bounding_box(shape): ...
+
+# after -- one class per kind owns its three behaviors
+class Circle:
+    def area(self): ...
+    def perimeter(self): ...
+    def bounding_box(self): ...
+```
+
+Not when: the switch exists in one place. A single dispatch site is a map (above); a class hierarchy for one switch is excessive indirection.
+
 ---
 
 ## Guardrails
 
 Do not optimize the number blindly. A transformation is wrong -- and the slightly higher-complexity implementation is the correct one -- when the result would be:
 
-- **harder to read than the branch it replaced**: an abstraction, an indirection, a class or pattern, or a helper that exists only to move a branch out of view
+- **harder to read than the branch it replaced**: an abstraction, indirection, class, or helper with no name a caller can reason about on its own -- it exists only to move the branch out of view
 - **slower in a performance-critical path**
 - **harder to debug**: a stack trace through a dispatch table is less obvious than a visible `if`

@@ -16,7 +16,7 @@
       ],
       "files": ["SKILL.md", "checklist.md", "complexity.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "12-phase workflow: gather PR context, scope and hygiene check, understand codebase patterns (via worktree), file-by-file diff review with a per-function cyclomatic complexity audit (complexity.md), semantic verification, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve or request changes), offer to merge, cleanup worktrees. Outputs a pr-{number}-review.md file (gitignored; not committed).",
+      "notes": "12-phase workflow: gather PR context, scope and hygiene check, understand codebase patterns (via worktree), file-by-file diff review, semantic verification, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve or request changes), offer to merge, cleanup worktrees. Outputs a pr-{number}-review.md file (gitignored; not committed).",
       "platforms": {
         "cursor": {
           "install_path_global": "~/.cursor/skills/code-review",

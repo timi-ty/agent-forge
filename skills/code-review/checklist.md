@@ -46,10 +46,11 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Complexity
 
-- [ ] **Paths**: Every added or modified function's estimated cyclomatic complexity is within the bands in [complexity.md](complexity.md), or the branching is inherent to the problem.
-- [ ] **Nesting**: No added or modified function nests control flow deeper than the bound in `complexity.md`, or the depth is inherent to the problem.
-- [ ] **Cause**: No added or modified function shows a catalog cause in `complexity.md` whose transformation clears the Guardrails.
-- [ ] **Not gamed**: No refactor in the PR fails a Guardrail in `complexity.md`.
+For every function the PR adds or modifies, as it stands after the PR, and every refactor in it. A match is exempt only under the `--` rule in [complexity.md](complexity.md).
+
+- [ ] **Paths**: No function matches a CC row of the Finding signals table.
+- [ ] **Nesting**: No function matches the nesting row.
+- [ ] **Cause**: No function shows a catalog cause, including a refactor that matches `Branch hidden behind indirection`.
 
 ## Dead Code
 
