@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: read the base body from `$REVIEW_BASE`, apply the hunk (drop the `-` lines, insert the `+` lines at their indentation), and count the result as for an added function. For a row that reaches the table, also count the base body so the cell reads `base -> PR`.
+**Modified functions**: read the base body from `$REVIEW_BASE`, apply the hunk (drop the `-` lines, insert the `+` lines at their indentation), and count the result as for an added function. For a row that is assigned a priority, also count the base body so the cell reads `base -> PR`.
 
 ### Worked example
 
@@ -59,7 +59,7 @@ Audit every function the diff adds or modifies, **as it stands after the PR**. F
 
 ### Complexity notes
 
-Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the branching is inherent to the problem or every applicable transformation fails a Guardrail or its entry's Not-when -- state the reason in the cell. Rows with a priority are findings, and every one names a cause.
+Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the catalog rule below yields no usable transformation -- state the reason in the cell. Rows with a priority are findings, and every one names a cause.
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
@@ -70,14 +70,14 @@ Record a row for every function that matches a signal. `Priority` is the highest
 A complexity finding follows the Phase 7 output rules and additionally names the function, the estimated CC and nesting depth, and the dominant cause and its transformation. Never write "this looks complex" -- the count and the cause are the finding.
 
 ```markdown
-- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 4 (nested preconditions). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
+- **`src/billing/invoice.ts:42`** -- `applyDiscounts` is est. CC 12 -> 17, nesting 3 -> 4 (nested preconditions). Guard clauses: convert the four precondition checks to early returns; the main loop then sits at depth 1.
 ```
 
 ---
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause and the transformation that removes it. `Dominant cause` is the per-function entry whose Looks-like the function matches; if several match, the one with the higher Finding signals priority, and among equals the one covering the most decision points. Use the heading's cause name in the column.
+One entry per dominant cause and the transformation that removes it. `Dominant cause` is the highest-priority matching per-function entry whose transformation passes its Not-when and the Guardrails; ties go to the entry covering the most decision points. If an entry matches but none passes, the row takes `--` and names the entry and the clause that failed. If no entry matches: when the decisions exceed what one concern accounts for, the cause is `Several jobs in one function`; when one concern accounts for them all, the branching is inherent and the row takes `--`. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
@@ -215,7 +215,7 @@ Not when: the name would only restate the expression (`is_a_and_b`). If you cann
 
 #### Several jobs in one function -> Split by responsibility
 
-Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body -- or a function matching a CC or nesting row that fits no other entry: more decisions than one concern accounts for.
+Looks like: independent decisions about unrelated concerns (validate, parse, persist, notify) in one body, or more decisions than one concern accounts for.
 
 ```python
 # before
@@ -281,11 +281,11 @@ Not when: the indirection is reused from several call sites.
 
 ### Cross-function entries (Phase 6)
 
-Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows.
+Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows and taking the highest Priority among them.
 
 #### Type switch repeated across functions -> Polymorphism
 
-Looks like: several functions each switch on the same discriminator (the merge key).
+Looks like: several functions each switch on the same discriminator (the merge key); a single dispatch site is a map (above), and a class hierarchy for one switch is excessive indirection.
 
 ```python
 # before -- three functions each do `if shape.kind == "circle": ... elif "rect": ...`
@@ -299,8 +299,6 @@ class Circle:
     def perimeter(self): ...
     def bounding_box(self): ...
 ```
-
-Not when: the switch exists in one place. A single dispatch site is a map (above); a class hierarchy for one switch is excessive indirection.
 
 ---
 

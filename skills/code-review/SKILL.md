@@ -213,7 +213,7 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
-- **Complexity**: Any function in the audit set matching a signal in [complexity.md](complexity.md)? For a modified function, read its base body from `$REVIEW_BASE` and apply the Modified functions rule.
+- **Complexity**: Any function in the audit set matching a signal in [complexity.md](complexity.md)? For a modified function, apply its Modified functions rule.
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
