@@ -142,12 +142,19 @@ If the project has a `.env.example` or `.env.template` in the repo root but no `
 
 **Do not log or display the contents of these files** -- they may contain secrets.
 
+#### Fetch the PR head ref
+
+Fetch the PR's head so Phase 4 can read post-PR file contents without a second worktree:
+
+```bash
+git fetch origin pull/<N>/head:pr-<N>
+```
+
 #### Optional: Check out the PR head branch
 
 If you need to run the PR code locally (build, test, lint), also create a worktree for the PR's head:
 
 ```bash
-git fetch origin pull/<N>/head:pr-<N>
 git worktree add ../$REPO_NAME-wt-review-pr<N>-head pr-<N>
 ```
 
@@ -463,7 +470,7 @@ If removal fails (e.g., modified files in the worktree), force it:
 git worktree remove --force ../$REPO_NAME-wt-review-pr<N>
 ```
 
-Also clean up the local `pr-<N>` branch ref if it was created for the head worktree:
+Also delete the local `pr-<N>` ref fetched in Phase 3:
 
 ```bash
 git branch -D pr-<N>

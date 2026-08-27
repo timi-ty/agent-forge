@@ -26,7 +26,7 @@ Language notes:
 
 **Unit of audit**: a named function or method, or an anonymous function containing at least one decision point.
 
-**Modified functions**: read the function as it stands after the PR from the head ref (`git fetch origin pull/<N>/head:pr-<N>` then `git show pr-<N>:<path>`, or `$HEAD_WT/<path>` when that worktree exists) and count it as for an added function. For a row that is assigned a priority, also count the base body from `$REVIEW_BASE` so the cell reads `base -> PR`.
+**Modified functions**: read the function as it stands after the PR from the head ref Phase 3 fetched (`git show pr-<N>:<path>`, or `$HEAD_WT/<path>` when that worktree exists) and count it as for an added function. For a row that is assigned a priority, also count the base body from `$REVIEW_BASE` so the cell reads `base -> PR`.
 
 ### Worked example
 
@@ -59,11 +59,11 @@ Audit every function the diff adds or modifies, **as it stands after the PR**. F
 
 ### Complexity notes
 
-Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the catalog rule below yields no usable transformation -- state the reason in the cell. Rows with a priority are findings, and every one names a cause.
+Record a row for every function that matches a signal. `Priority` is the highest matched signal, or `--` when the catalog rule below yields no usable transformation. Rows with a priority are findings, and every one names a cause.
 
 | Function | File:line | Est. CC | Nesting | Dominant cause | Priority |
 |----------|-----------|---------|---------|----------------|----------|
-| `function name` | `path/to/file:line` | [n; `base -> PR` for a modified function with a priority] | [n, same form] | [catalog heading, with `(on <merge key>)` where the catalog requires it] | Medium / Low / -- (reason) |
+| `function name` | `path/to/file:line` | [n; `base -> PR` for a modified function with a priority] | [n, same form] | [cause name, with `(on <merge key>)` where the catalog requires it] | Medium / Low / -- (reason) |
 
 ### Finding format
 
@@ -77,7 +77,7 @@ A complexity finding follows the Phase 7 output rules and additionally names the
 
 ## Cause -> transformation catalog
 
-One entry per dominant cause and the transformation that removes it. Rank the matching per-function entries by Finding signals priority, then by the number of decision points each covers; walk them in that order and take the first whose transformation passes its Not-when and the Guardrails as `Dominant cause`. If the walk exhausts, the row takes `--` and names the entry and the clause that failed. If no entry matches, the branching is inherent and the row takes `--`. Use the heading's cause name in the column.
+One entry per dominant cause and the transformation that removes it. Rank the matching per-function entries by Finding signals priority, then by the number of decision points each covers; walk them in that order and take the first whose transformation passes its Not-when and the Guardrails as `Dominant cause`. If the walk exhausts, the row takes `--` and names the entry and the clause that failed. If no entry matches, the branching is inherent and the row takes `--`. A `--` row keeps the failed entry's cause name in `Dominant cause` and the failed clause in `Priority`; an inherent row leaves `Dominant cause` empty and states why in `Priority`. Use the heading's cause name in the column.
 
 ### Per-function entries (Phase 4)
 
@@ -191,7 +191,7 @@ GRADE_BANDS = [(90, "A"), (80, "B"), (70, "C")]
 grade = next((g for floor, g in GRADE_BANDS if score >= floor), "F")
 ```
 
-When the chain selects on a value, append the merge key to the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)` -- so Phase 6 can group sites on the same discriminator.
+When the chain selects on a discriminator (the first two shapes), append the merge key to the cause cell -- `Long conditional chain or duplicated branches (on shape.kind)` -- so Phase 6 can group sites on the same discriminator.
 
 Not when: the branches share intermediate state; the rules have side effects or ordering dependencies a table would hide; or the branches only coincide today and are documented to diverge.
 
@@ -281,7 +281,7 @@ Not when: the indirection is reused from several call sites.
 
 ### Cross-function entries (Phase 6)
 
-Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows; its Priority is the highest signal among them, or `--` only if Polymorphism fails a Guardrail.
+Phase 6 groups rows by merge key; two or more rows on one key become a single finding under the entry below, replacing those rows, with the highest signal among them as its Priority. If Polymorphism fails a Guardrail, leave the rows unmerged.
 
 #### Type switch repeated across functions -> Polymorphism
 
