@@ -1,5 +1,6 @@
-"""Every template a command doc references must exist in the skill.
+"""Tests for command-doc template references.
 
+Every template a command doc references must exist in the skill.
 The harness commands copy files out of `templates/` into a user's
 workspace. A reference to a template that is not present fails at
 /create time -- in the user's project, after install -- and nothing in
