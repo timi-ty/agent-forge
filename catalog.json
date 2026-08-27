@@ -5,7 +5,7 @@
     {
       "name": "code-review",
       "path": "skills/code-review",
-      "description": "Perform a senior-engineer code review of a pull request. Checks that new code conforms to existing codebase patterns, introduces no bugs, is maximally efficient, and contains no dead or unused code.",
+      "description": "Perform a senior-engineer code review of a pull request. Checks that new code conforms to existing codebase patterns, introduces no bugs, is maximally efficient, keeps cyclomatic complexity low, and contains no dead or unused code.",
       "triggers": [
         "review a PR",
         "code review",
@@ -14,9 +14,9 @@
         "check this pull request",
         "user attaches a PR link or URL"
       ],
-      "files": ["SKILL.md", "checklist.md"],
+      "files": ["SKILL.md", "checklist.md", "complexity.md"],
       "dependencies": ["gh CLI (GitHub CLI)"],
-      "notes": "8-phase workflow: gather PR context, understand codebase patterns, file-by-file diff review, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve/merge or request changes). Outputs a pr-{number}-review.md file (gitignored; not committed).",
+      "notes": "12-phase workflow: gather PR context, scope and hygiene check, understand codebase patterns (via worktree), file-by-file diff review with a per-function cyclomatic complexity audit (complexity.md: counting rules, thresholds, transformation catalog), semantic verification, cross-cutting analysis, deliver report, verdict, confirm with user, apply verdict (approve or request changes), offer to merge, cleanup worktrees. Outputs a pr-{number}-review.md file (gitignored; not committed).",
       "platforms": {
         "cursor": {
           "install_path_global": "~/.cursor/skills/code-review",

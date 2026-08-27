@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Perform a senior-engineer code review of a pull request. Checks that changes are scoped to the PR's stated goal, conform to existing codebase patterns, introduce no bugs, are maximally efficient, and contain no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
+description: Perform a senior-engineer code review of a pull request. Checks that changes are scoped to the PR's stated goal, conform to existing codebase patterns, introduce no bugs, are maximally efficient, keep cyclomatic complexity low, and contain no dead or unused code. Use when the user asks to review a PR, code review, review pull request, or attaches a PR link/URL.
 ---
 
 # Code Review
@@ -14,6 +14,7 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
+6. **Low complexity** -- New or changed functions keep control flow simple: target cyclomatic complexity <= 5, and > 10 is a refactoring signal. Fewer independent paths for a reader to hold, without hiding behavior behind abstraction.
 
 ---
 
@@ -212,10 +213,27 @@ Key review areas (summarized):
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
 - **Type safety**: Are types as narrow as possible? Any `any` that should be typed? Missing generics?
+- **Complexity**: Any new or changed function with deep nesting, a long conditional chain, a boolean mode flag, or an estimated cyclomatic complexity above 10? Counting rules and transformations are in [complexity.md](complexity.md).
 
 Semantic verification is handled separately in Phase 5. Do not attempt it here -- it requires a distinct adversarial re-read of each file.
 
 When you find an issue, note the exact file path and line number from the diff.
+
+#### Required output: complexity notes
+
+Before leaving Phase 4, produce one row for **every function the diff adds or modifies**, following the counting rules and scope rule in [complexity.md](complexity.md):
+
+| Function | File:line | Est. CC | Nesting | Dominant cause | Transformation | Domain-justified? |
+|----------|-----------|---------|---------|----------------|----------------|-------------------|
+| `functionName` | `path/to/file.ts:42` | 17 | 4 | deep nesting from validation | guard clauses | No |
+
+Rules:
+- Rows above threshold (estimated CC > 10, or nesting depth >= 4) become review findings at the priority given by the severity mapping in `complexity.md`. Rows within threshold stay in the table as evidence that the pass ran; they are not findings.
+- `Dominant cause` and `Transformation` use the names from the cause diagnosis table in `complexity.md`. Leave them blank for rows within threshold.
+- `Domain-justified? Yes` means the branching is inherent to the problem, or every applicable transformation would trip a guardrail. State the reason in the row. A justified row is not a finding regardless of its number.
+- If the project has a complexity linter configured, use its numbers and say so above the table.
+
+These notes are included in Phase 7 (Output).
 
 ### Phase 5 -- Semantic Verification
 
@@ -280,11 +298,12 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 - If a priority group has no items, omit that heading entirely.
 - Reference specific file paths (and line numbers when useful) in bold at the start of each bullet.
 - Include a `### Semantic Verification` section after the priority groups. This section is **always present**, even when no semantic issues were found. It documents that the verification was performed and summarizes the results. Semantic issues found in Phase 5 should also appear in the appropriate priority group above (they contribute to the verdict).
+- Include a `### Complexity` section after `### Semantic Verification`. This section is **always present**. It summarizes the Phase 4 complexity notes: how many changed functions were audited and how many are above threshold, with the offending rows. Complexity findings should also appear in the appropriate priority group above (they contribute to the verdict).
 
 **Priority definitions:**
 - **High** -- Bugs, data loss, security holes, dead code that misleads users, or fundamentally broken behavior. Must fix before merge.
-- **Medium** -- Deviations from codebase patterns, inconsistencies, maintainability concerns. Should fix.
-- **Low** -- Minor optimizations, nitpicks, optional improvements. Nice to fix.
+- **Medium** -- Deviations from codebase patterns, inconsistencies, maintainability concerns, changed functions with estimated cyclomatic complexity > 15 or nesting depth >= 4. Should fix.
+- **Low** -- Minor optimizations, nitpicks, optional improvements, changed functions with estimated cyclomatic complexity 11-15. Nice to fix.
 
 **Output template:**
 
@@ -311,6 +330,15 @@ Write a markdown file to the workspace root named `pr-{number}-review.md` (e.g. 
 [If issues were found, list them here as bullets with the same format as above. If no issues were found:]
 
 All tests verified to fail on feature breakage. All application code logic verified to match stated intent.
+
+### Complexity
+
+**Functions changed**: [count]
+**Above threshold**: [count]
+
+[If any changed function is above threshold, list its row from the Phase 4 complexity notes here. If none:]
+
+All changed functions within threshold (estimated cyclomatic complexity <= 10, nesting depth <= 3).
 ```
 
 After writing the file, display the contents to the user as well.
@@ -345,6 +373,8 @@ Ask a follow-up question to determine scope. Offer these options:
 - **Include specific issues only** -- address only the issues the user specifies. If selected, ask the user to input the issue numbers to include.
 
 Once the scope is determined, switch to plan mode and create a plan with one actionable todo per selected issue, referencing the file path and fix description from the review report. Do **not** apply the PR verdict (no approve or request-changes is posted) -- the user can re-run the review or manually apply the verdict after fixes are made.
+
+For a complexity finding, the todo names the transformation from the finding (e.g. "convert the precondition checks in `applyDiscounts` to guard clauses"). When implementing it, follow the guardrails in [complexity.md](complexity.md): preserve behavior exactly, apply one transformation per finding, re-estimate the function's complexity after the edit, and state in the commit message which branching or responsibility was removed or isolated -- not just the new number.
 
 **Applying fixes to the PR branch**: When you exit plan mode and implement the fixes, use a worktree checked out to the PR's **head branch** (not the base branch):
 
@@ -470,5 +500,6 @@ git branch -D pr-<N>
 - **Be constructive**: For every problem, suggest a concrete fix.
 - **Respect the codebase**: The existing code is the authority. New code should match existing patterns, even if you personally prefer a different approach.
 - **No false positives**: Only flag real issues. Do not invent problems. If unsure, leave it out.
+- **Measure before flagging**: A complexity finding cites the estimated count, the nesting depth, and the dominant cause. Never write "this looks complex".
 - **Prioritize correctly**: Bugs and misleading behavior are High. Pattern deviations are Medium. Nitpicks are Low.
 - **Always confirm before acting**: Never approve, merge, or request changes without explicit user confirmation.

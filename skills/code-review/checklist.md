@@ -44,6 +44,20 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 - [ ] **Memory**: No unnecessary copies of large data structures. No memory leaks from retained references or uncleaned listeners.
 - [ ] **Network**: No unnecessary API calls. Requests are deduplicated or cached where appropriate.
 
+## Complexity
+
+Applies to every function the diff adds or modifies. Counting rules, thresholds, and transformations are in [complexity.md](complexity.md).
+
+- [ ] **Estimated CC**: New or changed functions have an estimated cyclomatic complexity <= 10 (target <= 5). Flag > 10. Flag any function the PR pushes across a threshold, citing the before and after estimate.
+- [ ] **Nesting depth**: No more than 3 levels of nested control flow. Nesting that exists to wrap the main operation in precondition checks should be guard clauses with early returns.
+- [ ] **Guard clauses**: Preconditions are checked up front and return early. The main operation is not buried inside successive `if` blocks.
+- [ ] **Conditional chains**: No long `if / elif / else` or `switch` chains selecting behavior by a value where a dispatch map, data table, or polymorphism reads more clearly.
+- [ ] **Boolean mode flags**: No parameter whose value steers the function into substantially different execution paths. Split into separate functions.
+- [ ] **Compound booleans**: Conditions with three or more `&&` / `||` terms are extracted into a named predicate when a meaningful name exists.
+- [ ] **Single responsibility**: The decisions in a function all serve one job. Independent decisions about unrelated concerns (parse, validate, persist, notify) live in separate functions.
+- [ ] **Duplicated branches**: No branches that are identical except for a value or call target. Consolidate into one path over data.
+- [ ] **Not gamed**: Any complexity fix in the PR reduces the paths a reader must hold, not just the number -- no meaningless one-line helpers, no dispatch indirection for two branches, no abstraction that is harder to debug than the `if` it replaced.
+
 ## Dead Code
 
 - [ ] **Unused imports**: Every import is referenced in the file.
