@@ -14,6 +14,13 @@ globs: ["**/*"]
 - Each completed unit or small group results in a commit
 - Never reference AI/agent/Cursor/Claude Code in commit messages
 
+## Current Purpose Gate
+- Before PR publication or phase completion, inspect the final affected flow and ask: **"Which current requirement would fail if this mechanism were deleted?"** Trace producers, consumers, and representations using code, contract, supported-consumer, or runtime evidence. Being called and tested does not establish need.
+- For removals/replacements, check obsolete helpers, compatibility paths, fields/types/serialization, comments, tests, fixtures, and data transformations. Retain compatibility only for an evidenced currently supported consumer or explicit current requirement; investigate missing evidence before deleting it.
+- Unjustified historical machinery is a blocking maintainability finding. Resolve in-scope remnants before claiming completion. If publishing incomplete work, disclose unresolved remnants and do not describe the removal or phase as complete.
+- For removals/replacements, state the resulting current contract and justify retained compatibility in the existing PR description format. Unrelated PRs need no new report section.
+- Stay within the approved current phase, unit scope, and ownership rules; record unrelated cleanup for later.
+
 ## Pull Requests
 - Open PR when a phase or significant unit group completes
 - PR size follows config preference (default: small)

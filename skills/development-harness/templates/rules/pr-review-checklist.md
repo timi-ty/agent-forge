@@ -11,7 +11,11 @@ is verified by that step — see the note at the end.
 - [ ] All units have validation evidence in phase-graph.json
 - [ ] No linter errors in changed files
 - [ ] No type errors in changed files
-- [ ] Code follows existing codebase patterns
+- [ ] Code follows existing conventions where they serve current requirements; obsolete patterns are not preserved automatically
+- [ ] Every mechanism added or retained in the affected flow answers **"Which current requirement would fail if this mechanism were deleted?"** with code, contract, supported-consumer, or runtime evidence. Being called and tested does not establish need
+- [ ] Removals/replacements cover affected producers, consumers, fields/types/serialization, stored representations, helpers, comments, tests, fixtures, and data transformations; no unjustified obsolete machinery remains
+- [ ] Retained compatibility identifies an evidenced currently supported consumer or explicit current requirement and the contract deletion would break; missing evidence has been investigated
+- [ ] Unresolved in-scope remnants block phase completion and are reported as blockers; unrelated cleanup is recorded for later within ownership and scope rules
 
 ## Testing
 - [ ] Unit tests pass for all new/modified code

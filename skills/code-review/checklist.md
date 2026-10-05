@@ -15,6 +15,8 @@ Detailed review criteria for Phase 4 (file-by-file review) and Phase 5 (semantic
 
 ## Pattern Conformance
 
+Existing patterns provide context; preserve them only where they serve current requirements.
+
 - [ ] **Naming**: Functions, variables, types, and files follow the same naming conventions as existing code in the same module (camelCase vs snake_case, prefix/suffix patterns, abbreviation style).
 - [ ] **File structure**: The file is organized the same way as its siblings (imports at top, then types, then constants, then main exports -- or whatever the local convention is).
 - [ ] **Import style**: Import ordering, grouping (external vs internal), and syntax (named vs default, `import type` usage) match existing files.
@@ -62,6 +64,13 @@ Scope: the audit set and `--` exemption in the Finding signals section of [compl
 - [ ] **Dead branches**: No `if` branches that can never be true, no `switch` cases that can never match.
 - [ ] **Unused parameters**: Function parameters are all used. Remove or prefix with `_` if intentionally unused.
 
+## Current Purpose and Complete Removal
+
+- [ ] **Current requirement**: For every mechanism added or retained in the affected flow, ask: **"Which current requirement would fail if this mechanism were deleted?"** Trace evidence through actual code, contracts, supported consumers, or runtime artifacts. **Being called and tested does not establish that a mechanism is needed.**
+- [ ] **Complete removal**: For removals/replacements, follow affected producers and consumers through fields, types, serialization, stored representations, helpers, comments, tests, fixtures, and data transformations. Remove obsolete remnants within the stated scope; record unrelated cleanup separately.
+- [ ] **Compatibility evidence**: Retained adapters, scrubbers, fallbacks, or transformations name the evidenced currently supported consumer or explicit current requirement and the contract that deletion would break. Historical data or speculative future use alone is insufficient. Investigate missing evidence before deciding it is obsolete.
+- [ ] **Maintainability finding**: Unjustified historical machinery is a Medium finding that prevents approval, even when reachable and covered by tests.
+
 ## Security
 
 - [ ] **Input validation**: All external input (user input, API responses, URL params) is validated before use.
@@ -86,6 +95,7 @@ The sections below are used in **Phase 5 (Semantic Verification)**, not Phase 4.
 
 Shift from "does this test follow patterns?" to "does this test actually prove what it claims?" For each test, ask: **if the feature this test covers were broken, would this test fail?**
 
+- [ ] **Current contract**: Tests prove the resulting current requirements. Tests and fixtures that only preserve an obsolete mechanism are removal remnants, not evidence that it is needed.
 - [ ] **Subject identity**: The test instantiates and exercises the *real* implementation, not a hand-written stub, re-implementation, or test-local subclass defined in the test file. If the test defines its own version of the class/function it claims to test, every assertion passes against the fake -- proving nothing about the application.
 - [ ] **Data preconditions**: Tests that query, filter, or aggregate data first create data with sufficient variety that the operation is meaningfully exercised. A filter test against an empty table always returns `success: true` with zero results -- it cannot distinguish a working filter from a broken one.
 - [ ] **Assertion strength**: Assertions verify specific expected values, not just structural existence. Flag weak assertions that would pass on almost any response: `toBeDefined()`, `toBeTruthy()`, `toHaveProperty('x')` without a value check, `expect(data).toBeDefined()` on an endpoint that always returns a (possibly empty) data wrapper.
@@ -99,6 +109,7 @@ Shift from "does this test follow patterns?" to "does this test actually prove w
 
 Shift from "does this code follow patterns?" to "does this code actually accomplish what it claims?" For each function, trace the data flow and verify the logic matches the intent.
 
+- [ ] **Current purpose**: Apply the Current Purpose and Complete Removal checks to the traced data flow. Identify the current requirement and concrete consequence of deleting each added or retained mechanism, including compatibility and transformations.
 - [ ] **Business logic substance**: For each conditional or branching path, verify it handles a case that actually occurs. A guard clause whose condition is always true (or always false) in practice is dead logic that looks alive. Trace the data flow to confirm the branch can be reached with realistic inputs.
 - [ ] **Integration point correctness**: Where code calls external services (database queries, API calls, message brokers, Firebase, etc.), verify the call is semantically correct: right table/collection, right fields, right query conditions, right message format. Syntactically valid calls to the wrong table or with wrong conditions are bugs that compile cleanly.
 - [ ] **Error handling substance**: Error handlers do more than catch and re-throw or catch and silently swallow. Verify they provide useful diagnostic information, clean up intermediate state, or propagate errors in a way that callers can act on. A `try/catch` that transforms an error into a less informative one is a net negative.

@@ -54,6 +54,14 @@ You have exactly these tools available: **Read, Edit, Write, Glob, Grep, Bash**.
 
 Violating a forbidden rule is a scope violation even if the file happens to match a declared glob. The orchestrator has the authority to merge — you have the authority to produce commits on your branch.
 
+## Simple Design -- current requirements only
+
+Before implementation, identify the current requirement in your unit's acceptance criteria and trace affected producers, consumers, and representations within `touches_paths`. Ask: **"Which current requirement would fail if this mechanism were deleted?"** Ground the answer in code, contracts, supported consumers, or runtime artifacts. Being called and tested does not establish need. Prefer correcting the underlying model over adding accommodation layers.
+
+For removals/replacements, cover obsolete helpers, compatibility paths, fields/types/serialization, comments, tests, fixtures, and data transformations. Retain compatibility only for an evidenced currently supported consumer or explicit current requirement; investigate missing evidence before deleting it. Stay within this unit and its declared scope, not later phases or adjacent cleanup. Record unrelated findings in the existing report without fixing them. If completing the current requirement requires out-of-scope edits, fail with `scope_violation`; if the requirement cannot be established, fail with `ambiguity`.
+
+Before committing or reporting success, repeat the current-purpose check on your diff. Resolve in-scope obsolete remnants; an incomplete removal must be reported through the existing failure report rather than claimed as success. Do not publish a PR; the orchestrator owns publication.
+
 ## Workflow
 
 1. **Read your identity.** Load `.harness/WORKTREE_UNIT.json`; note `unit_id`, `phase_id`, and `touches_paths`.

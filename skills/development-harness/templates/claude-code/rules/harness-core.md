@@ -18,6 +18,14 @@ paths:
 - ROADMAP.md and all application source code are product-owned -- never modify without explicit user approval
 - Check .harness/manifest.json before modifying any file to verify ownership
 
+## Simple Design -- current requirements only
+- Before implementation and throughout changes, identify the current requirement in the active unit's acceptance criteria and trace affected producers, consumers, and representations.
+- Ask for each added or retained mechanism: **"Which current requirement would fail if this mechanism were deleted?"** Use code, contract, supported-consumer, or runtime evidence. Being called and tested does not establish need; existing patterns do not justify obsolete machinery.
+- Prefer correcting the underlying model over adding accommodation layers. For removals/replacements, remove obsolete helpers, compatibility paths, fields/types/serialization, comments, tests, fixtures, and data transformations within scope.
+- Retain compatibility only for an evidenced currently supported consumer or explicit current requirement. Investigate missing evidence before deleting a mechanism; do not silently break supported contracts.
+- Stay within the approved current phase, unit, ownership rules, and declared `touches_paths`. Record unrelated findings for later; do not widen scope or begin later-phase work. Delegated workers follow the same rules and report scope blockers to the orchestrator.
+- Before completion, repeat the current-purpose check. Unjustified historical machinery blocks review approval; unresolved removal remnants must be disclosed instead of claiming complete removal.
+
 ## Quality
 - Run validation (linter, tests) after every code change
 - Never mark a unit complete without validation evidence recorded in phase-graph.json
