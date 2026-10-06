@@ -10,11 +10,12 @@ Perform a thorough, senior-engineer-level code review of a pull request.
 ## Review Goals
 
 1. **Scope** -- Every changed file must relate to the PR's stated purpose. No unrelated changes, no scope creep, no accidental inclusions from a dirty branch.
-2. **Conformance** -- New code must match the patterns, conventions, and architecture of the existing codebase exactly.
+2. **Conformance** -- Follow existing conventions and architecture where they serve current requirements. Existing patterns provide context; do not automatically preserve obsolete patterns.
 3. **Correctness** -- No new bugs, no missing edge cases, no logic errors. Code does what it claims to do -- not just syntactically valid, but semantically correct. Tests prove real behavior, not just compile and pass.
 4. **Efficiency** -- Code is as lean and performant as possible; no redundant operations.
 5. **No dead code** -- Every import, variable, function, and branch is used.
-6. **Low complexity** -- New or changed functions keep control flow simple: few independent paths for a reader to hold, without hiding behavior behind abstraction. Finding signals are in [complexity.md](complexity.md).
+6. **Current purpose** -- Every mechanism added or retained in the affected paths serves an evidenced current requirement. Ask: **"Which current requirement would fail if this mechanism were deleted?"** Being called and tested does not establish need. Unjustified historical machinery is a Medium maintainability finding and prevents approval.
+7. **Low complexity** -- New or changed functions keep control flow simple: few independent paths for a reader to hold, without hiding behavior behind abstraction. Finding signals are in [complexity.md](complexity.md).
 
 ---
 
@@ -215,7 +216,7 @@ For the full review checklist, see [checklist.md](checklist.md).
 Key review areas (summarized):
 
 - **Scope**: Does this file belong in this PR? (Cross-reference against Phase 2 findings.)
-- **Pattern conformance**: Does the new code follow the exact same patterns found in Phase 3? Naming, structure, error handling, types, imports?
+- **Pattern conformance**: Does the new code follow the conventions found in Phase 3 where they serve current requirements? Check naming, structure, error handling, types, and imports without preserving obsolete design.
 - **Correctness**: Any bugs? Missing null checks? Off-by-one errors? Unhandled promise rejections? Race conditions?
 - **Efficiency**: Any unnecessary allocations, redundant computations, N+1 patterns, or operations that could be batched?
 - **Dead code**: Any unused imports, unreachable branches, variables assigned but never read, commented-out code, functions defined but never called?
@@ -238,6 +239,8 @@ This phase is a **separate re-read** of every changed file. Do not rely on your 
 
 **How to execute**: For each changed file, re-read it from the diff. Do not skim. Apply the Semantic Verification sections of the [checklist](checklist.md) (Test Code or Application Code, as appropriate). Produce the structured notes below.
 
+For mechanisms added or retained in affected paths, trace the current requirement through producers, consumers, and representations. Ask: **"Which current requirement would fail if this mechanism were deleted?"** Answer with code, contract, consumer, or runtime evidence; calling a helper and testing its output alone does not establish its current purpose. For removals/replacements, check obsolete helpers, fields/types/serialization, comments, tests, fixtures, and data transformations across the flow. Retained compatibility needs an evidenced currently supported consumer or explicit current requirement. Investigate missing evidence before concluding a mechanism is obsolete. Report unjustified historical machinery as a Medium maintainability finding; record unrelated cleanup separately without expanding the review's change scope.
+
 #### Required output: semantic verification notes
 
 You must produce these notes before proceeding to Phase 6. The Phase 7 output rules say where their counts and findings go.
@@ -252,11 +255,11 @@ Complete every row. "Yes" requires stating which assertion would fail and why. "
 
 **For each changed application code file**, produce a table:
 
-| Function / block | What it claims to do | What would go wrong if this logic were removed or reordered? | Verified? |
+| Function / block | Current requirement and evidence | Which current requirement would fail if this mechanism were deleted? | Verified? |
 |-----------------|---------------------|-----------------------------------------------------------|----------|
-| `function name or code block` | [stated purpose] | [concrete consequence, or "nothing -- dead logic"] | Yes / Issue found |
+| `function name or code block` | [current contract and supporting evidence] | [concrete consequence for that requirement, or "none -- unjustified mechanism"] | Yes / Issue found |
 
-"Nothing -- dead logic" is a finding. "Issue found" entries go into the review report.
+"None -- unjustified mechanism" is a Medium maintainability finding even if the code is called and tested. "Issue found" entries go into the review report.
 
 #### Anti-bias checklist
 
@@ -484,7 +487,7 @@ git branch -D pr-<N>
 - **Be specific**: Always reference exact file paths. Never say "in some places" -- say exactly where.
 - **Be direct**: State the problem and the fix in one or two sentences. No preamble, no elaboration.
 - **Be constructive**: For every problem, suggest a concrete fix.
-- **Respect the codebase**: The existing code is the authority. New code should match existing patterns, even if you personally prefer a different approach.
+- **Respect the codebase**: Use existing conventions and architecture as context. Personal style preferences are not findings; obsolete patterns do not justify retaining mechanisms without a current requirement.
 - **No false positives**: Only flag real issues. Do not invent problems. If unsure, leave it out.
 - **Prioritize correctly**: Bugs and misleading behavior are High. Pattern deviations are Medium. Nitpicks are Low.
 - **Always confirm before acting**: Never approve, merge, or request changes without explicit user confirmation.

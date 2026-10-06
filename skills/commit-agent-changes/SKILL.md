@@ -263,6 +263,12 @@ After transfer, verify that `git -C $COMMIT_DIR status --porcelain` shows the ex
 
 **All git commands in this phase run in `$COMMIT_DIR`** (the worktree if Phase 3 created one, or the workspace root if Phase 3 was skipped). Use `git -C $COMMIT_DIR` or set the working directory to `$COMMIT_DIR` before running commands.
 
+#### Check current purpose before grouping or committing
+
+For every mechanism added or retained in the affected paths, ask: **"Which current requirement would fail if this mechanism were deleted?"** Trace the answer through actual producers, consumers, and representations with code, contract, consumer, or runtime evidence. Being called and tested does not establish need. For removals/replacements, check obsolete helpers, compatibility paths, fields/types/serialization, comments, tests, fixtures, and data transformations. Retain compatibility only for an evidenced currently supported consumer or explicit current requirement; investigate missing evidence before removing it.
+
+Resolve remnants only within the approved phase and deliverable. Record unrelated findings for later. If in-scope remnants remain unresolved, disclose them and do not present the removal as complete.
+
 #### Analyze and group
 
 Read the diffs (`git -C $COMMIT_DIR diff -- <file>` for each file) and group them by cohesive concern. A "concern" is a single logical unit of work -- all the files needed to accomplish one thing.
@@ -314,6 +320,8 @@ Using `git commit -- <files>` stages and commits only the listed files. Even tho
 
 **All git commands in this phase run in `$COMMIT_DIR`** (same as Phase 4).
 
+Before pushing or creating/updating the PR, repeat the current-purpose check against the final diff and the resulting contract. Verify that retained compatibility has evidence and unresolved removal remnants are disclosed. This gate does not authorize unrelated cleanup.
+
 Push the commits:
 
 ```bash
@@ -322,7 +330,7 @@ git -C $COMMIT_DIR push -u origin HEAD
 
 #### If an existing PR was found in Phase 2
 
-The push is sufficient -- the PR is already open and will reflect the new commits. Display the existing PR URL to the user.
+The PR reflects the new commits. For removals/replacements, update its description in the existing format to state the resulting current contract, justify retained compatibility, and disclose unresolved remnants without claiming complete removal. Display the existing PR URL to the user.
 
 #### If no existing PR was found
 
@@ -353,7 +361,7 @@ EOF
 **PR title**: Same format as the commit subject if single-commit. For multi-commit PRs, write a broader summary (still under 72 chars).
 
 **PR body rules:**
-- Summary: 1-3 bullets focused on WHY, not WHAT
+- Summary: 1-3 bullets focused on WHY, not WHAT. For removals/replacements, state the resulting current contract, explain any retained compatibility with evidence for the currently supported consumer or requirement, and disclose unresolved remnants. Use the existing format; unrelated PRs need no additional report section.
 - Commits: list each commit hash + message (get from `git log --oneline <base>..HEAD`)
 - Test plan: concrete steps someone can follow to verify the changes work
 

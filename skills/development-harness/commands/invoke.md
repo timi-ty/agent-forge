@@ -129,6 +129,10 @@ This creates per-unit worktrees under `.harness/worktrees/<batch_id>/<unit_id>`,
 
 ## Step 6: Execute
 
+Before planning or implementing each unit, identify the current requirement in its approved acceptance criteria and trace affected producers, consumers, and representations. For each mechanism you add or retain, ask: **"Which current requirement would fail if this mechanism were deleted?"** Answer with code, contract, supported-consumer, or runtime evidence. Being called and tested does not establish need. Prefer correcting the underlying model over adding accommodation layers. For removals/replacements, cover obsolete helpers, compatibility paths, fields/types/serialization, comments, tests, fixtures, and data transformations; retain compatibility only for an evidenced currently supported consumer or explicit current requirement. Investigate missing evidence before deleting a mechanism.
+
+Stay within the current phase, unit acceptance criteria, declared `touches_paths`, and ownership rules. Record unrelated findings for later; do not start later-phase work or widen scope for cleanup. If the required flow crosses those limits, report the blocker to the orchestrator or user before editing. Delegated workers follow the same requirement trace and scope limits.
+
 ### In-tree fast path
 
 Execute the single unit inline, following its row in `PHASES/PHASE_XXX_<slug>.md`'s Units-of-Work table (description, acceptance criteria, validation method).
